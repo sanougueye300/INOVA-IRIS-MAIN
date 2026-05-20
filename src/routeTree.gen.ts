@@ -38,6 +38,7 @@ import { Route as AuthLoginRouteImport } from './routes/auth.login'
 import { Route as AuthLockRouteImport } from './routes/auth.lock'
 import { Route as AuthForgotPasswordRouteImport } from './routes/auth.forgot-password'
 import { Route as Auth2faRouteImport } from './routes/auth.2fa'
+import { Route as AdminProfilesRouteImport } from './routes/admin.profiles'
 import { Route as AdminNewRouteImport } from './routes/admin.new'
 import { Route as AdminUserIdRouteImport } from './routes/admin.$userId'
 
@@ -186,6 +187,11 @@ const Auth2faRoute = Auth2faRouteImport.update({
   path: '/2fa',
   getParentRoute: () => AuthRoute,
 } as any)
+const AdminProfilesRoute = AdminProfilesRouteImport.update({
+  id: '/profiles',
+  path: '/profiles',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminNewRoute = AdminNewRouteImport.update({
   id: '/new',
   path: '/new',
@@ -218,6 +224,7 @@ export interface FileRoutesByFullPath {
   '/workflow': typeof WorkflowRoute
   '/admin/$userId': typeof AdminUserIdRoute
   '/admin/new': typeof AdminNewRoute
+  '/admin/profiles': typeof AdminProfilesRoute
   '/auth/2fa': typeof Auth2faRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/lock': typeof AuthLockRoute
@@ -250,6 +257,7 @@ export interface FileRoutesByTo {
   '/workflow': typeof WorkflowRoute
   '/admin/$userId': typeof AdminUserIdRoute
   '/admin/new': typeof AdminNewRoute
+  '/admin/profiles': typeof AdminProfilesRoute
   '/auth/2fa': typeof Auth2faRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/lock': typeof AuthLockRoute
@@ -284,6 +292,7 @@ export interface FileRoutesById {
   '/workflow': typeof WorkflowRoute
   '/admin/$userId': typeof AdminUserIdRoute
   '/admin/new': typeof AdminNewRoute
+  '/admin/profiles': typeof AdminProfilesRoute
   '/auth/2fa': typeof Auth2faRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/lock': typeof AuthLockRoute
@@ -319,6 +328,7 @@ export interface FileRouteTypes {
     | '/workflow'
     | '/admin/$userId'
     | '/admin/new'
+    | '/admin/profiles'
     | '/auth/2fa'
     | '/auth/forgot-password'
     | '/auth/lock'
@@ -351,6 +361,7 @@ export interface FileRouteTypes {
     | '/workflow'
     | '/admin/$userId'
     | '/admin/new'
+    | '/admin/profiles'
     | '/auth/2fa'
     | '/auth/forgot-password'
     | '/auth/lock'
@@ -384,6 +395,7 @@ export interface FileRouteTypes {
     | '/workflow'
     | '/admin/$userId'
     | '/admin/new'
+    | '/admin/profiles'
     | '/auth/2fa'
     | '/auth/forgot-password'
     | '/auth/lock'
@@ -626,6 +638,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Auth2faRouteImport
       parentRoute: typeof AuthRoute
     }
+    '/admin/profiles': {
+      id: '/admin/profiles'
+      path: '/profiles'
+      fullPath: '/admin/profiles'
+      preLoaderRoute: typeof AdminProfilesRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/new': {
       id: '/admin/new'
       path: '/new'
@@ -646,12 +665,14 @@ declare module '@tanstack/react-router' {
 interface AdminRouteChildren {
   AdminUserIdRoute: typeof AdminUserIdRoute
   AdminNewRoute: typeof AdminNewRoute
+  AdminProfilesRoute: typeof AdminProfilesRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminUserIdRoute: AdminUserIdRoute,
   AdminNewRoute: AdminNewRoute,
+  AdminProfilesRoute: AdminProfilesRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
 

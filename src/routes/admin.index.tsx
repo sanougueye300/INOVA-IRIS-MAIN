@@ -189,11 +189,11 @@ function Admin() {
               </p>
             </div>
 
-            {/* Bouton Nouvel Utilisateur redirigeant vers la page de création */}
+            {/* Bouton Nouvel Agent redirigeant vers la page de création */}
             <Link to="/admin/new" className="inline-block">
               <Button className="shadow-lg hover:shadow-xl transition-shadow">
                 <UserPlus className="mr-2 h-4 w-4" />
-                Nouvel utilisateur
+                Nouvel agent
               </Button>
             </Link>
           </div>

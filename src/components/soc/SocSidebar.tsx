@@ -182,7 +182,8 @@ export function SocSidebar({ onNavigate }: { onNavigate?: () => void }) {
 
             {adminOpen && (
               <div className="ml-4 space-y-0.5 border-l pl-2" style={{ borderColor: isDarker ? "#3f3f46" : "hsl(var(--border))" }}>
-                {renderItem({ to: "/admin", label: "Utilisateurs & rôles", icon: UserCog })}
+                {renderItem({ to: "/admin", label: "Gestion des agents", icon: UserCog })}
+                {renderItem({ to: "/admin/profiles", label: "Gestion des profils", icon: Shield })}
                 {renderItem({ to: "/settings", label: "Paramètres Globaux", icon: Sliders })}
                 {renderItem({ to: "/integrations", label: "Connecteurs & API", icon: Plug })}
                 {renderItem({ to: "/audit", label: "Journaux d'Audit", icon: FileText })}

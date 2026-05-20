@@ -16,7 +16,7 @@ import { RequireAuth } from "@/components/RequireAuth";
 import type { AppRole } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/admin/new")({
-  head: () => ({ meta: [{ title: "Nouvel Utilisateur — SOC Platform" }] }),
+  head: () => ({ meta: [{ title: "Nouvel Agent — SOC Platform" }] }),
   component: () => <RequireAuth requireAdmin><NewUserPage /></RequireAuth>,
 });
 
@@ -53,10 +53,10 @@ function NewUserPage() {
       const body = { email: form.email, fullName, organization: form.organization, role: form.role };
       const { error } = await supabase.functions.invoke("admin-create-user", { body });
       if (error) throw error;
-      toast.success("Utilisateur créé", { description: `OTP envoyé à ${form.email}` });
+      toast.success("Agent créé", { description: `OTP envoyé à ${form.email}` });
       navigate({ to: "/admin" });
     } catch (e: any) {
-      toast.error("Erreur", { description: e.message ?? "Impossible de créer l'utilisateur" });
+      toast.error("Erreur", { description: e.message ?? "Impossible de créer l'agent" });
     } finally { setBusy(false); }
   };
 
@@ -90,7 +90,7 @@ function NewUserPage() {
                     <Camera className="h-3 w-3" />
                   </button>
                 </div>
-                <h2 className="mt-3 text-xl font-bold">{fullName || "Nouvel Utilisateur"}</h2>
+                <h2 className="mt-3 text-xl font-bold">{fullName || "Nouvel Agent"}</h2>
                 <p className="text-sm text-muted-foreground">{form.organization || "Organisation"}</p>
               </div>
             </Card>
