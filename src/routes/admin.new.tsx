@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import orangeLogo from "@/assets/orange-logo.png";
@@ -16,7 +17,7 @@ import { RequireAuth } from "@/components/RequireAuth";
 import type { AppRole } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/admin/new")({
-  head: () => ({ meta: [{ title: "Nouvel Agent — SOC Platform" }] }),
+  head: () => ({ meta: [{ title: "Nouveau RH — SOC Platform" }] }),
   component: () => <RequireAuth requireAdmin><NewUserPage /></RequireAuth>,
 });
 
@@ -37,9 +38,7 @@ function NewUserPage() {
     facebook: "", twitter: "", linkedin: "", youtube: "",
   });
   const [isActive, setIsActive] = useState(true);
-  const [permissions, setPermissions] = useState({
-    dispatching: false, showExperiences: false, showFollowers: true,
-  });
+  const [permissions, setPermissions] = useState({ dispatching: false, showExperiences: false, showFollowers: true });
   const [tagPolicy, setTagPolicy] = useState<"group" | "everyone">("group");
 
   const fullName = `${form.prenom} ${form.nom}`.trim();
@@ -50,10 +49,11 @@ function NewUserPage() {
     if (!form.email) { toast.error("L'email est requis"); return; }
     setBusy(true);
     try {
-      const body = { email: form.email, fullName, organization: form.organization, role: form.role };
+      const body = { email: form.email, fullName, organization: form.organization, role: form.role, generation };
+
       const { error } = await supabase.functions.invoke("admin-create-user", { body });
       if (error) throw error;
-      toast.success("Agent créé", { description: `OTP envoyé à ${form.email}` });
+      toast.success("RH créé", { description: `OTP envoyé à ${form.email}` });
       navigate({ to: "/admin" });
     } catch (e: any) {
       toast.error("Erreur", { description: e.message ?? "Impossible de créer l'agent" });
@@ -90,7 +90,7 @@ function NewUserPage() {
                     <Camera className="h-3 w-3" />
                   </button>
                 </div>
-                <h2 className="mt-3 text-xl font-bold">{fullName || "Nouvel Agent"}</h2>
+                <h2 className="mt-3 text-xl font-bold">{fullName || "Nouveau RH"}</h2>
                 <p className="text-sm text-muted-foreground">{form.organization || "Organisation"}</p>
               </div>
             </Card>
@@ -108,6 +108,20 @@ function NewUserPage() {
                   </label>
                 ))}
               </div>
+            </Card>
+
+            {/* Generation Select */}
+            <Card className="p-5">
+              <h3 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">Génération</h3>
+              <Select value={generation} onValueChange={setGeneration}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Sélectionner la génération" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="v1">v1</SelectItem>
+                  <SelectItem value="v2">v2</SelectItem>
+                </SelectContent>
+              </Select>
             </Card>
 
             {/* Who can tag + Permissions */}
