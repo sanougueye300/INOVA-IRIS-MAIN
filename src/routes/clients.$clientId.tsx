@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { RequireAuth } from "@/components/RequireAuth";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
-import { getClientExtendedData, downloadContractFile, ClientExtendedData } from "./clients.index";
+import { getClientExtendedData, downloadContractFile, ClientExtendedData, DEMO_CLIENTS } from "./clients.index";
 
 export const Route = createFileRoute("/clients/$clientId")({
   head: () => ({ meta: [{ title: "Console Client 360° — SOC Platform" }] }),
@@ -493,11 +493,22 @@ function ClientProfile() {
   const loadProfile = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", clientId)
-        .single();
+      let data = null;
+      let error = null;
+      
+      const isDemo = DEMO_CLIENTS.find(d => d.id === clientId);
+      
+      if (isDemo) {
+        data = isDemo;
+      } else {
+        const result = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", clientId)
+          .single();
+        data = result.data;
+        error = result.error;
+      }
         
       if (error) throw error;
       
@@ -530,15 +541,19 @@ function ClientProfile() {
     e.preventDefault();
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({
-          full_name: form.fullName,
-          organization: form.organization,
-        })
-        .eq("id", clientId);
-        
-      if (error) throw error;
+      const isDemo = DEMO_CLIENTS.some(d => d.id === clientId);
+      
+      if (!isDemo) {
+        const { error } = await supabase
+          .from("profiles")
+          .update({
+            full_name: form.fullName,
+            organization: form.organization,
+          })
+          .eq("id", clientId);
+          
+        if (error) throw error;
+      }
 
       // Sauvegarde des champs complémentaires simulés localement
       localStorage.setItem(`phone_${clientId}`, form.phone);
@@ -564,12 +579,16 @@ function ClientProfile() {
     const action = profile.is_active ? "Désactivation" : "Activation";
     const toastId = toast.loading(`${action} en cours...`);
     try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({ is_active: !profile.is_active })
-        .eq("id", clientId);
-        
-      if (error) throw error;
+      const isDemo = DEMO_CLIENTS.some(d => d.id === clientId);
+      
+      if (!isDemo) {
+        const { error } = await supabase
+          .from("profiles")
+          .update({ is_active: !profile.is_active })
+          .eq("id", clientId);
+          
+        if (error) throw error;
+      }
       toast.success(`Client ${profile.is_active ? "désactivé" : "activé"} avec succès`, { id: toastId });
       await loadProfile();
     } catch (error: any) {

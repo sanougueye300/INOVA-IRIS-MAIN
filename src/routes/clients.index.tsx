@@ -175,6 +175,12 @@ Signé numériquement par :
 }
 
 interface Profile { id: string; email: string | null; full_name: string | null; organization: string | null; is_active: boolean; created_at: string }
+export const DEMO_CLIENTS: Profile[] = [
+  { id: "demo-client-1", email: "contact@acme-corp.com", full_name: "Jean Dupont", organization: "Acme Corporation", is_active: true, created_at: new Date().toISOString() },
+  { id: "demo-client-2", email: "security@techflow.io", full_name: "Alice Martin", organization: "TechFlow Solutions", is_active: true, created_at: new Date().toISOString() },
+  { id: "demo-client-3", email: "it-admin@globex.net", full_name: "Robert Fox", organization: "Globex Network", is_active: false, created_at: new Date().toISOString() },
+];
+
 interface RoleRow { user_id: string; role: AppRole }
 
 function ClientsList() {
@@ -198,7 +204,10 @@ function ClientsList() {
       const allProfiles = (p as Profile[]) ?? [];
       const clientProfiles = allProfiles.filter(profile => clientUserIds.has(profile.id));
       
-      setProfiles(clientProfiles);
+      const existingEmails = new Set(clientProfiles.map(c => c.email));
+      const newDemos = DEMO_CLIENTS.filter(d => !existingEmails.has(d.email));
+      
+      setProfiles([...newDemos, ...clientProfiles]);
     } finally {
       setLoading(false);
     }
@@ -226,8 +235,11 @@ function ClientsList() {
   const toggleActive = async (p: Profile) => {
     const toastId = toast.loading(`${p.is_active ? "Désactivation" : "Activation"} en cours...`);
     try {
-      const { error } = await supabase.from("profiles").update({ is_active: !p.is_active }).eq("id", p.id);
-      if (error) throw error;
+      const isDemo = DEMO_CLIENTS.some(d => d.id === p.id);
+      if (!isDemo) {
+        const { error } = await supabase.from("profiles").update({ is_active: !p.is_active }).eq("id", p.id);
+        if (error) throw error;
+      }
       toast.success(`Client ${p.is_active ? "désactivé" : "activé"} avec succès`, { id: toastId });
       await load();
     } catch (error: any) {
