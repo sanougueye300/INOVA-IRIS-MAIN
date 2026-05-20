@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { User, Building, Mail, Phone, Globe, Shield, ArrowLeft, Loader2, Save, Power, PowerOff, KeyRound, Laptop, Download, UploadCloud, Copy, Check, Activity, FileText, Sparkles, Cpu, AlertTriangle, ShieldAlert } from "lucide-react";
+import { User, Building, Mail, Phone, Globe, Shield, ArrowLeft, Loader2, Save, Power, PowerOff, KeyRound, Laptop, Download, UploadCloud, Copy, Check, Activity, FileText, Sparkles, Cpu, AlertTriangle, ShieldAlert, Terminal, Network, Zap, Settings, RefreshCw, AlertCircle, CircleDot, Play, Lock, Trash2, FolderSync } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { RequireAuth } from "@/components/RequireAuth";
 import { toast } from "sonner";
@@ -38,6 +38,449 @@ function ClientProfile() {
   // États de simulation Contrat
   const [uploadingContract, setUploadingContract] = useState(false);
   const [contractUploadProgress, setContractUploadProgress] = useState(0);
+
+  // Nouveaux états de simulation temps réel EDR / Wazuh
+  const [selectedPcId, setSelectedPcId] = useState<string | null>(null);
+  const [pcTelemetry, setPcTelemetry] = useState<Record<string, {
+    cpu: number;
+    ram: number;
+    rxSpeed: number;
+    txSpeed: number;
+    procCount: number;
+    socketsCount: number;
+    packetsTotal: number;
+    wazuhStatus: "active" | "disconnected" | "alert" | "isolated";
+  }>>({});
+  const [logsStream, setLogsStream] = useState<Array<{
+    id: string;
+    time: string;
+    pcName: string;
+    source: "Wazuh" | "VirusTotal" | "MISP" | "SOAR" | "DFIR-IRIS" | "TheHive";
+    type: "info" | "warning" | "alert";
+    message: string;
+  }>>([]);
+  const [terminalHistory, setTerminalHistory] = useState<Array<{
+    type: "input" | "output" | "error" | "system";
+    text: string;
+  }>>([
+    { type: "system", text: "=== CONSOLE AGENT WAZUH EDR REMOTE SHELL v4.7.2 ===" },
+    { type: "system", text: "Tapez 'help' pour lister les commandes de diagnostic et remédiation." }
+  ]);
+  const [terminalInput, setTerminalInput] = useState("");
+  const [activePlaybook, setActivePlaybook] = useState<string | null>(null);
+  const [playbookStep, setPlaybookStep] = useState<number>(0);
+  const [playbookLogs, setPlaybookLogs] = useState<string[]>([]);
+
+  // Initialisation des données de télémétrie
+  useEffect(() => {
+    if (!extData) return;
+    
+    const initialTelemetry: typeof pcTelemetry = {};
+    extData.pcs.forEach(pc => {
+      initialTelemetry[pc.id] = {
+        cpu: pc.cpu,
+        ram: pc.ram,
+        rxSpeed: pc.status === "active" || pc.status === "alert" ? Math.floor(Math.random() * 200 + 30) : 0,
+        txSpeed: pc.status === "active" || pc.status === "alert" ? Math.floor(Math.random() * 50 + 5) : 0,
+        procCount: pc.status === "active" || pc.status === "alert" ? Math.floor(Math.random() * 30 + 50) : 0,
+        socketsCount: pc.status === "active" || pc.status === "alert" ? Math.floor(Math.random() * 10 + 4) : 0,
+        packetsTotal: pc.status === "active" || pc.status === "alert" ? Math.floor(Math.random() * 1000 + 500) : 0,
+        wazuhStatus: pc.wazuhStatus || pc.status
+      };
+    });
+    
+    setPcTelemetry(prev => {
+      const merged = { ...initialTelemetry };
+      Object.keys(prev).forEach(key => {
+        if (merged[key]) {
+          merged[key].wazuhStatus = prev[key].wazuhStatus;
+        }
+      });
+      return merged;
+    });
+
+    // Logs initiaux
+    const initialLogs = [
+      {
+        id: "log-1",
+        time: new Date(Date.now() - 30000).toLocaleTimeString("fr-FR"),
+        pcName: extData.pcs[0]?.name || "endpoint",
+        source: "Wazuh" as const,
+        type: "info" as const,
+        message: "Connexion EDR sécurisée établie avec le Wazuh Manager (AES-256-GCM)."
+      },
+      {
+        id: "log-2",
+        time: new Date(Date.now() - 25000).toLocaleTimeString("fr-FR"),
+        pcName: extData.pcs[1]?.name || "endpoint",
+        source: "VirusTotal" as const,
+        type: "info" as const,
+        message: "Scan de réputation des processus en arrière-plan : 100% de conformité."
+      },
+      {
+        id: "log-3",
+        time: new Date(Date.now() - 20000).toLocaleTimeString("fr-FR"),
+        pcName: extData.pcs[0]?.name || "endpoint",
+        source: "MISP" as const,
+        type: "info" as const,
+        message: "Corrélation de flux CTI : 1,482 signatures de menaces actives synchronisées."
+      }
+    ];
+    setLogsStream(prev => prev.length === 0 ? initialLogs : prev);
+
+    if (!selectedPcId) {
+      const firstActive = extData.pcs.find(pc => pc.status === "active" || pc.status === "alert");
+      if (firstActive) {
+        setSelectedPcId(firstActive.id);
+      }
+    }
+  }, [extData]);
+
+  // Simulation de télémétrie et logs en continu
+  useEffect(() => {
+    if (!extData || activeTab !== "pcs") return;
+
+    const interval = setInterval(() => {
+      setPcTelemetry(prev => {
+        const next = { ...prev };
+        extData.pcs.forEach(pc => {
+          if (!next[pc.id]) return;
+
+          const currentStatus = next[pc.id].wazuhStatus;
+
+          if (currentStatus === "disconnected" || currentStatus === "isolated") {
+            next[pc.id] = {
+              ...next[pc.id],
+              cpu: 0,
+              ram: currentStatus === "isolated" ? 8 : 0,
+              rxSpeed: 0,
+              txSpeed: 0,
+              procCount: currentStatus === "isolated" ? 18 : 0,
+              socketsCount: currentStatus === "isolated" ? 1 : 0,
+            };
+            return;
+          }
+
+          const cpuDrift = Math.floor(Math.random() * 8 - 4);
+          const ramDrift = Math.floor(Math.random() * 4 - 2);
+          const rxDrift = Math.floor(Math.random() * 30 - 15);
+          const txDrift = Math.floor(Math.random() * 8 - 4);
+
+          next[pc.id] = {
+            ...next[pc.id],
+            cpu: Math.max(2, Math.min(98, (next[pc.id].cpu || 15) + cpuDrift)),
+            ram: Math.max(10, Math.min(95, (next[pc.id].ram || 40) + ramDrift)),
+            rxSpeed: Math.max(5, Math.min(800, (next[pc.id].rxSpeed || 50) + rxDrift)),
+            txSpeed: Math.max(1, Math.min(200, (next[pc.id].txSpeed || 15) + txDrift)),
+            procCount: Math.max(45, Math.min(120, (next[pc.id].procCount || 65) + (Math.random() > 0.85 ? (Math.random() > 0.5 ? 1 : -1) : 0))),
+            packetsTotal: (next[pc.id].packetsTotal || 100) + Math.floor(Math.random() * 6 + 1),
+          };
+        });
+        return next;
+      });
+
+      if (Math.random() > 0.7) {
+        const activePcs = extData.pcs.filter(pc => pc.status === "active" || pc.status === "alert");
+        if (activePcs.length > 0) {
+          const randomPc = activePcs[Math.floor(Math.random() * activePcs.length)];
+          const sources: Array<"Wazuh" | "VirusTotal" | "MISP" | "SOAR" | "DFIR-IRIS" | "TheHive"> = ["Wazuh", "VirusTotal", "MISP", "SOAR"];
+          const source = sources[Math.floor(Math.random() * sources.length)];
+          
+          let message = "";
+          if (source === "Wazuh") {
+            const msgs = [
+              "Syscheck : vérification périodique d'intégrité terminée. Fichiers système OK.",
+              "Analyse Rootcheck : conformité noyau 100%. Aucun élément furtif détecté.",
+              "Agent EDR : battement de cœur (heartbeat) envoyé avec succès au SOC Hub."
+            ];
+            message = msgs[Math.floor(Math.random() * msgs.length)];
+          } else if (source === "VirusTotal") {
+            message = "Vérification des processus actifs : hashs validés propres par l'intelligence collective.";
+          } else if (source === "MISP") {
+            const socketMsgs = [
+              "DNS reputation check : requête sortante vers les APIs autorisées validée.",
+              "Socket reputation check : aucune adresse IP de commande et contrôle (C2) détectée.",
+              "CTI Correlation : socket actif analysé avec succès contre les indicateurs de compromission."
+            ];
+            message = socketMsgs[Math.floor(Math.random() * socketMsgs.length)];
+          } else if (source === "SOAR") {
+            message = "SOAR Connector : synchronisation des règles locales de pare-feu terminée.";
+          }
+
+          addGlobalLog(randomPc.name, source, "info", message);
+        }
+      }
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [extData, activeTab]);
+
+  const addGlobalLog = (pcName: string, source: any, type: "info" | "warning" | "alert", message: string) => {
+    setLogsStream(prev => [
+      {
+        id: `log-${Date.now()}-${Math.random()}`,
+        time: new Date().toLocaleTimeString("fr-FR"),
+        pcName,
+        source,
+        type,
+        message
+      },
+      ...prev.slice(0, 24)
+    ]);
+  };
+
+  const triggerSoarPlaybook = (type: string, pc: any) => {
+    if (activePlaybook) return;
+
+    setActivePlaybook(type);
+    setPlaybookStep(1);
+    setPlaybookLogs([]);
+
+    const logList: string[] = [];
+    const addPlaybookLog = (msg: string) => {
+      logList.push(`[${new Date().toLocaleTimeString("fr-FR")}] ${msg}`);
+      setPlaybookLogs([...logList]);
+    };
+
+    if (type === "ransomware") {
+      addPlaybookLog("Déclenchement du Playbook SOAR : Confinement ransomware actif.");
+      addPlaybookLog("Appel du serveur d'orchestration Shuffle (IP: 10.0.0.8)... OK.");
+
+      setTimeout(() => {
+        setPlaybookStep(2);
+        addPlaybookLog("Étape 2 : Blocage immédiat des flux réseau (Wazuh Active Response).");
+        addPlaybookLog("Application de la règle de quarantaine sur le terminal...");
+        
+        setPcTelemetry(prev => ({
+          ...prev,
+          [pc.id]: {
+            ...prev[pc.id],
+            wazuhStatus: "isolated"
+          }
+        }));
+
+        if (extData) {
+          const updatedPcs = extData.pcs.map(p => {
+            if (p.id === pc.id) {
+              return { ...p, status: "isolated" as const };
+            }
+            return p;
+          });
+          const updatedExt = { ...extData, pcs: updatedPcs };
+          setExtData(updatedExt);
+          localStorage.setItem(`client_ext_${clientId}`, JSON.stringify(updatedExt));
+        }
+
+        toast.warning("PC isolé via SOAR", {
+          description: `Le terminal ${pc.name} a été confiné par mesure de protection active.`
+        });
+        addGlobalLog(pc.name, "SOAR", "warning", "Ransomware détecté. Le terminal a été placé en isolation active.");
+      }, 1500);
+
+      setTimeout(() => {
+        setPlaybookStep(3);
+        addPlaybookLog("Étape 3 : Génération automatique d'un ticket d'incident dans TheHive.");
+        addPlaybookLog("Création de l'alerte #CASE-1042 avec sévérité CRITIQUE.");
+        addGlobalLog(pc.name, "TheHive", "alert", "Alerte de sécurité majeure #CASE-1042 générée : ransomware stoppé.");
+      }, 3000);
+
+      setTimeout(() => {
+        setPlaybookStep(4);
+        addPlaybookLog("Étape 4 : Synchronisation forensique avec DFIR-IRIS.");
+        addPlaybookLog("Exportation des journaux Sysmon de l'incident IRIS-CASE-1042.");
+        addPlaybookLog("[✓] Playbook SOAR d'isolation terminé. Menace neutralisée avec succès.");
+        setPlaybookStep(5);
+        addGlobalLog(pc.name, "DFIR-IRIS", "info", "Incident IRIS-CASE-1042 initialisé pour analyse forensique complète.");
+
+        setTimeout(() => {
+          setActivePlaybook(null);
+        }, 3000);
+      }, 4500);
+    } else if (type === "vt-audit") {
+      addPlaybookLog("Déclenchement du Playbook SOAR : Scan de réputation à grande échelle (VT).");
+      addPlaybookLog("Extraction des hashs SHA256 des processus actifs en mémoire...");
+      
+      setTimeout(() => {
+        setPlaybookStep(2);
+        addPlaybookLog("Étape 2 : Requêtes API parallélisées vers les serveurs de réputation.");
+        addPlaybookLog("Soumission de 74 signatures d'exécutables...");
+      }, 1200);
+
+      setTimeout(() => {
+        setPlaybookStep(3);
+        addPlaybookLog("Étape 3 : Corrélation des détections (Taux d'infection requis : 0).");
+        addPlaybookLog("Vérification terminée. Aucun binaire classé à risque.");
+      }, 2400);
+
+      setTimeout(() => {
+        setPlaybookStep(4);
+        addPlaybookLog("Étape 4 : Rapports archivés. Zéro menace détectée.");
+        addPlaybookLog("[✓] Audit de réputation SOAR terminé.");
+        setPlaybookStep(5);
+        setTimeout(() => {
+          setActivePlaybook(null);
+        }, 2000);
+      }, 3600);
+    } else if (type === "lockdown") {
+      addPlaybookLog("Déclenchement du Playbook SOAR : Sécurisation préventive des ports distants.");
+      addPlaybookLog("Audit des ports locaux d'accès à distance : RDP (3389), SSH (22), WinRM (5985)...");
+      
+      setTimeout(() => {
+        setPlaybookStep(2);
+        addPlaybookLog("Étape 2 : Déploiement des stratégies de filtrage par le SOC Manager.");
+        addPlaybookLog("Application de règles de pare-feu de blocage des ports SSH/RDP...");
+      }, 1500);
+
+      setTimeout(() => {
+        setPlaybookStep(3);
+        addPlaybookLog("Étape 3 : Audit de verrouillage (nmap simulation). Ports fermés.");
+      }, 3000);
+
+      setTimeout(() => {
+        setPlaybookStep(4);
+        addPlaybookLog("Étape 4 : Exportation des politiques appliquées vers DFIR-IRIS.");
+        addPlaybookLog("[✓] Playbook de fermeture des ports terminé.");
+        setPlaybookStep(5);
+        toast.success("Ports verrouillés avec succès", {
+          description: `Les ports d'administration à distance sur ${pc.name} ont été restreints.`
+        });
+        addGlobalLog(pc.name, "SOAR", "info", "Stratégie de blocage préventif des ports distants déployée.");
+        setTimeout(() => {
+          setActivePlaybook(null);
+        }, 2000);
+      }, 4500);
+    }
+  };
+
+  const executeTerminalCommand = (cmd: string) => {
+    const trimmed = cmd.trim();
+    if (!trimmed) return;
+
+    const newHistory = [...terminalHistory, { type: "input" as const, text: `$ ${trimmed}` }];
+    setTerminalHistory(newHistory);
+    setTerminalInput("");
+
+    const parts = trimmed.split(" ");
+    const primary = parts[0].toLowerCase();
+    const arg = parts.slice(1).join(" ").toLowerCase();
+
+    const activePc = extData.pcs.find(pc => pc.id === selectedPcId);
+    if (!activePc) {
+      setTerminalHistory(prev => [...prev, { type: "error" as const, text: "Erreur : Aucun terminal EDR actif sélectionné." }]);
+      return;
+    }
+
+    const telemetry = pcTelemetry[activePc.id];
+
+    setTimeout(() => {
+      if (primary === "clear") {
+        setTerminalHistory([]);
+        return;
+      }
+
+      if (primary === "help") {
+        setTerminalHistory(prev => [
+          ...prev,
+          { type: "output" as const, text: "=== COMMANDES DE DIAGNOSTIC ET REMÉDIATION DISPONIBLES ===" },
+          { type: "output" as const, text: "  wazuh status       - Statut de l'agent, clés de chiffrement et disponibilité EDR" },
+          { type: "output" as const, text: "  syscheck --verify  - Déclenche un audit d'intégrité des fichiers (FIM) à la demande" },
+          { type: "output" as const, text: "  vt-scan --running  - Recherche de menaces : analyse des hashs des processus en mémoire sur VirusTotal" },
+          { type: "output" as const, text: "  misp-check --net   - Analyse des ports et sockets réseau ouverts contre la base d'IOC MISP" },
+          { type: "output" as const, text: "  soar --remediate   - Exécute le playbook Shuffle d'isolation active ransomware" },
+          { type: "output" as const, text: "  dfir --dump-ram    - Lance une extraction légale (forensique) de la mémoire RAM" },
+          { type: "output" as const, text: "  clear              - Efface la console" }
+        ]);
+        return;
+      }
+
+      if (primary === "wazuh" && arg === "status") {
+        setTerminalHistory(prev => [
+          ...prev,
+          { type: "output" as const, text: `Connecting to Wazuh Manager (10.0.0.1:1514)... Connecté.` },
+          { type: "output" as const, text: `Statut de l'agent : ${telemetry?.wazuhStatus.toUpperCase()}` },
+          { type: "output" as const, text: `Identifiant de l'agent : WZ-${activePc.wazuhId}` },
+          { type: "output" as const, text: `Uptime : 14 jours, 3 heures, 21 minutes` },
+          { type: "output" as const, text: `Version de l'agent : Wazuh EDR v4.7.2` },
+          { type: "output" as const, text: `Canaux de surveillance : File Integrity (Actif), Rootkit Check (Actif), Process Reputation (Actif).` },
+          { type: "output" as const, text: `Clé d'authentification active : RSA-3072 Validée.` }
+        ]);
+        return;
+      }
+
+      if (primary === "syscheck" && arg === "--verify") {
+        setTerminalHistory(prev => [
+          ...prev,
+          { type: "output" as const, text: `[+] Déclenchement de l'audit d'intégrité système (Syscheck FIM)...` },
+          { type: "output" as const, text: `[+] Indexation des fichiers système dans C:\\Windows\\System32 et /bin...` },
+          { type: "output" as const, text: `[+] Calcul et comparaison des signatures MD5/SHA256 avec la base de référence...` },
+          { type: "output" as const, text: `[+] Audit terminé. 1,482 fichiers analysés.` },
+          { type: "output" as const, text: `[+] Résultat : 100% de conformité. 0 modification, 0 suppression détectée.` }
+        ]);
+        addGlobalLog(activePc.name, "Wazuh", "info", "Scan d'intégrité des fichiers système terminé - 0 anomalie.");
+        return;
+      }
+
+      if (primary === "vt-scan" && arg === "--running") {
+        setTerminalHistory(prev => [
+          ...prev,
+          { type: "output" as const, text: `[+] Récupération de la liste des hashs des binaires exécutés en mémoire...` },
+          { type: "output" as const, text: `[+] Soumission de ${telemetry?.procCount || 65} hashs d'applications à l'API de VirusTotal...` },
+          { type: "output" as const, text: `[+] Analyse d'intégrité en cours... [||||||||||||||||||||||||||||||] 100%` },
+          { type: "output" as const, text: `[+] Analyse complète achevée :` },
+          { type: "output" as const, text: `    - Binaires vérifiés : ${telemetry?.procCount || 65} processus.` },
+          { type: "output" as const, text: `    - Détections de logiciels malveillants : 0 détections / 76 moteurs antiviraux.` },
+          { type: "output" as const, text: `    - Processus validés propres : explorer.exe, svchost.exe, wazuh-agent.exe, chrome.exe.` }
+        ]);
+        addGlobalLog(activePc.name, "VirusTotal", "info", `Scan VT de la mémoire complet - ${telemetry?.procCount || 65} processus sains.`);
+        return;
+      }
+
+      if (primary === "misp-check" && arg === "--net") {
+        setTerminalHistory(prev => [
+          ...prev,
+          { type: "output" as const, text: `[+] Extraction des sockets et connexions réseau actives (netstat audit)...` },
+          { type: "output" as const, text: `[+] Découverte de ${telemetry?.socketsCount || 5} sockets TCP/UDP actives.` },
+          { type: "output" as const, text: `[+] Interrogation de la base locale de Cyber Threat Intelligence MISP...` },
+          { type: "output" as const, text: `[+] Comparaison des IPs distantes avec les flux d'IOC de menaces (12 flux actifs)...` },
+          { type: "output" as const, text: `[+] Sockets validées :` },
+          { type: "output" as const, text: `    - ${activePc.ip}:51421 -> 10.0.0.1:1514 (Wazuh SOC Server) -> [PROPRE]` },
+          { type: "output" as const, text: `    - ${activePc.ip}:49204 -> 142.250.178.14 (DNS Google) -> [PROPRE]` },
+          { type: "output" as const, text: `[+] Résultat : Aucun indicateur de compromission (IOC) détecté sur les flux réseau.` }
+        ]);
+        addGlobalLog(activePc.name, "MISP", "info", "Sockets corrélés avec les bases MISP - Aucune adresse IP suspecte détectée.");
+        return;
+      }
+
+      if (primary === "soar" && arg === "--remediate") {
+        setTerminalHistory(prev => [
+          ...prev,
+          { type: "error" as const, text: `[!] ALERTE CRITIQUE : Déclenchement de l'isolation active à la demande !` }
+        ]);
+        triggerSoarPlaybook("ransomware", activePc);
+        return;
+      }
+
+      if (primary === "dfir" && arg === "--dump-ram") {
+        setTerminalHistory(prev => [
+          ...prev,
+          { type: "output" as const, text: `[+] Lancement de l'outil d'acquisition mémoire forensics à distance (DFIR)...` },
+          { type: "output" as const, text: `[+] Établissement du buffer mémoire local (Fichier cible: C:\\Temp\\Forensics\\RAM.raw)...` },
+          { type: "output" as const, text: `[+] Capture de la mémoire RAM en cours... [|||||||||||||||||||||||||] 100%` },
+          { type: "output" as const, text: `[+] Compression de l'image et calcul de la somme de contrôle SHA256...` },
+          { type: "output" as const, text: `[+] Hash SHA256 : 7f83b2a0c8d1e4e2a7b8e918239ac82d17482810a7b4819e917d23a7b8b2e10a` },
+          { type: "output" as const, text: `[+] Transfert sécurisé de l'image vers le dépôt DFIR-IRIS Case Manager...` },
+          { type: "output" as const, text: `[+] Rapport d'extraction forensique sauvegardé sous l'identifiant IRIS-CASE-${activePc.wazuhId}.` }
+        ]);
+        addGlobalLog(activePc.name, "DFIR-IRIS", "info", "Acquisition de la mémoire RAM effectuée avec succès - Exportée vers IRIS.");
+        return;
+      }
+
+      setTerminalHistory(prev => [
+        ...prev,
+        { type: "error" as const, text: `Commande inconnue : '${primary}'. Tapez 'help' pour voir la liste des commandes.` }
+      ]);
+    }, 300);
+  };
 
   const [form, setForm] = useState({
     fullName: "",
@@ -602,20 +1045,270 @@ UDP   0.0.0.0:123            *:*
         {activeTab === "pcs" && (
           <div className="space-y-6">
             
-            {/* Tableau des PC Connectés */}
+            {/* Topologie et Flux de Logs Temps Réel (Grid 2 Colonnes) */}
+            <div className="grid gap-6 md:grid-cols-3">
+              
+              {/* Carte Topologique EDR/Wazuh (2/3 de large sur desktop) */}
+              <Card className="md:col-span-2 shadow-lg border-border/50 bg-card/60 backdrop-blur-sm p-5 relative overflow-hidden flex flex-col justify-between min-h-[350px]">
+                <div className="absolute top-4 left-4 z-10">
+                  <h3 className="text-lg font-bold flex items-center gap-2 text-foreground">
+                    <Network className="h-5 w-5 text-primary" /> Topologie de Protection Endpoint
+                  </h3>
+                  <p className="text-xs text-muted-foreground">Cartographie dynamique des agents Wazuh & Connecteurs</p>
+                </div>
+                <div className="absolute top-4 right-4 z-10 flex gap-2">
+                  <Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/10 border-none font-bold text-[10px] px-2 py-0.5 rounded-md flex items-center gap-1 animate-pulse">
+                    <span className="h-1.5 w-1.5 bg-emerald-500 rounded-full"></span> 10.0.0.1 SOC HUB CONNECTÉ
+                  </Badge>
+                </div>
+
+                {/* SVG Visual Node Graph */}
+                <div className="flex-1 flex items-center justify-center min-h-[260px] relative pt-12">
+                  <svg className="w-full h-full max-w-[550px] min-h-[220px]" viewBox="0 0 500 240">
+                    <defs>
+                      <radialGradient id="hubGlow" cx="50%" cy="50%" r="50%">
+                        <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.4" />
+                        <stop offset="100%" stopColor="var(--primary)" stopOpacity="0" />
+                      </radialGradient>
+                    </defs>
+
+                    {/* Central Hub lines to outside nodes */}
+                    {extData.pcs.map((pc, idx) => {
+                      const telemetry = pcTelemetry[pc.id];
+                      const status = telemetry?.wazuhStatus || pc.status;
+                      
+                      // Positions radiales autour du centre (250, 120)
+                      const total = extData.pcs.length;
+                      const angle = (idx * 2 * Math.PI) / total;
+                      const radiusX = 170;
+                      const radiusY = 75;
+                      const targetX = 250 + radiusX * Math.cos(angle);
+                      const targetY = 120 + radiusY * Math.sin(angle);
+
+                      // Style des lignes selon l'état
+                      let strokeColor = "stroke-slate-300 dark:stroke-slate-800";
+                      let strokeDash = "";
+                      let isPulsing = false;
+
+                      if (status === "active") {
+                        strokeColor = "stroke-emerald-500/40 dark:stroke-emerald-500/30";
+                        isPulsing = true;
+                      } else if (status === "alert") {
+                        strokeColor = "stroke-amber-500/50 dark:stroke-amber-500/40";
+                        strokeDash = "3,3";
+                        isPulsing = true;
+                      } else if (status === "isolated") {
+                        strokeColor = "stroke-rose-500/40 dark:stroke-rose-500/35";
+                        strokeDash = "4,4";
+                      }
+
+                      return (
+                        <g key={`line-${pc.id}`}>
+                          {/* Ligne principale */}
+                          <line 
+                            x1="250" 
+                            y1="120" 
+                            x2={targetX} 
+                            y2={targetY} 
+                            className={`stroke-2 transition-all duration-1000 ${strokeColor}`}
+                            strokeDasharray={strokeDash}
+                          />
+
+                          {/* Petite particule de données animée sur les lignes actives */}
+                          {isPulsing && (
+                            <circle r="3" className="fill-primary dark:fill-sky-400">
+                              <animateMotion 
+                                dur={`${1.5 + idx * 0.4}s`} 
+                                repeatCount="indefinite" 
+                                path={`M250,120 L${targetX},${targetY}`}
+                              />
+                            </circle>
+                          )}
+                        </g>
+                      );
+                    })}
+
+                    {/* Central Wazuh SOC HUB Node */}
+                    <g className="cursor-pointer" onClick={() => setSelectedPcId(null)}>
+                      <circle cx="250" cy="120" r="32" fill="url(#hubGlow)" />
+                      <circle cx="250" cy="120" r="22" className="fill-slate-900 stroke-2 stroke-primary/80" />
+                      <circle cx="250" cy="120" r="6" className="fill-primary animate-ping" />
+                      <circle cx="250" cy="120" r="4" className="fill-primary" />
+                      <text x="250" y="148" textAnchor="middle" className="text-[9px] font-bold fill-primary tracking-wider font-mono">SOC MANAGER</text>
+                    </g>
+
+                    {/* Endpoint Nodes */}
+                    {extData.pcs.map((pc, idx) => {
+                      const telemetry = pcTelemetry[pc.id];
+                      const status = telemetry?.wazuhStatus || pc.status;
+                      const isSelected = selectedPcId === pc.id;
+
+                      const total = extData.pcs.length;
+                      const angle = (idx * 2 * Math.PI) / total;
+                      const radiusX = 170;
+                      const radiusY = 75;
+                      const targetX = 250 + radiusX * Math.cos(angle);
+                      const targetY = 120 + radiusY * Math.sin(angle);
+
+                      // Détermination des couleurs de node
+                      let fillNode = "fill-slate-900";
+                      let strokeNode = "stroke-slate-400";
+                      let glowNode = "";
+
+                      if (status === "active") {
+                        strokeNode = "stroke-emerald-500";
+                        glowNode = "shadow-[0_0_10px_rgba(16,185,129,0.5)]";
+                      } else if (status === "alert") {
+                        strokeNode = "stroke-amber-500 animate-pulse";
+                      } else if (status === "isolated") {
+                        strokeNode = "stroke-rose-500";
+                      } else if (status === "disconnected") {
+                        strokeNode = "stroke-slate-500/40";
+                      }
+
+                      if (isSelected) {
+                        strokeNode = `${strokeNode} stroke-[3px]`;
+                      }
+
+                      return (
+                        <g 
+                          key={`node-${pc.id}`} 
+                          className="cursor-pointer group"
+                          onClick={() => setSelectedPcId(pc.id)}
+                        >
+                          {/* Halo de sélection */}
+                          {isSelected && (
+                            <circle cx={targetX} cy={targetY} r="18" className="fill-primary/10 stroke-none animate-ping" />
+                          )}
+                          
+                          {/* Node principal */}
+                          <circle 
+                            cx={targetX} 
+                            cy={targetY} 
+                            r="12" 
+                            className={`fill-slate-950 stroke-2 transition-all duration-500 hover:scale-110 ${strokeNode}`} 
+                          />
+                          
+                          {/* Mini icône OS simplifiée au centre */}
+                          <text 
+                            x={targetX} 
+                            y={targetY + 3.5} 
+                            textAnchor="middle" 
+                            className="text-[9px] select-none pointer-events-none fill-slate-300 font-bold"
+                          >
+                            {pc.os === "windows" ? "W" : pc.os === "linux" ? "L" : "M"}
+                          </text>
+
+                          {/* Label sous le node */}
+                          <text 
+                            x={targetX} 
+                            y={targetY + 24} 
+                            textAnchor="middle" 
+                            className={`text-[9px] font-mono select-none font-semibold ${isSelected ? "fill-primary font-bold scale-105" : "fill-muted-foreground group-hover:fill-foreground"} transition-all`}
+                          >
+                            {pc.name.length > 15 ? `${pc.name.slice(0, 12)}...` : pc.name}
+                          </text>
+                        </g>
+                      );
+                    })}
+                  </svg>
+                </div>
+
+                <div className="flex justify-between items-center text-[10px] text-muted-foreground border-t border-border/30 pt-3 mt-2">
+                  <div className="flex gap-4">
+                    <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500"></span> En Ligne</span>
+                    <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse"></span> Alerte SOC</span>
+                    <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-rose-500"></span> Quarantaine</span>
+                    <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-slate-500/50"></span> Hors Ligne</span>
+                  </div>
+                  <div className="font-mono text-xs">Télémétrie : Chiffrement TLSv1.3 Actif</div>
+                </div>
+              </Card>
+
+              {/* Flux de logs en temps réel (1/3 de large sur desktop) */}
+              <Card className="shadow-lg border-border/50 bg-card/60 backdrop-blur-sm p-4 relative overflow-hidden flex flex-col justify-between min-h-[350px]">
+                <div className="pb-2 border-b border-border/30">
+                  <h3 className="text-md font-bold flex items-center gap-2 text-foreground">
+                    <Activity className="h-4.5 w-4.5 text-primary animate-pulse" /> Flux des Menaces Temps Réel
+                  </h3>
+                  <p className="text-[11px] text-muted-foreground">Agrégation en continu des signaux EDR & CTI</p>
+                </div>
+
+                {/* Console Log Flowing Area */}
+                <div className="flex-1 overflow-y-auto font-mono text-[10px] space-y-2.5 my-3 pr-1.5 scrollbar-thin scrollbar-thumb-slate-800 max-h-[250px] leading-relaxed">
+                  {logsStream.length === 0 ? (
+                    <div className="h-full flex items-center justify-center text-muted-foreground/60 italic text-center">
+                      En attente de paquets de télémétrie...
+                    </div>
+                  ) : (
+                    logsStream.map((log) => {
+                      let tagColor = "bg-primary/10 text-primary border-primary/20";
+                      let messageColor = "text-slate-300";
+                      
+                      if (log.source === "VirusTotal") tagColor = "bg-purple-500/10 text-purple-400 border-purple-500/20";
+                      else if (log.source === "MISP") tagColor = "bg-blue-500/10 text-blue-400 border-blue-500/20";
+                      else if (log.source === "SOAR") tagColor = "bg-orange-500/10 text-orange-400 border-orange-500/20";
+                      else if (log.source === "TheHive") {
+                        tagColor = "bg-red-500/10 text-red-400 border-red-500/20";
+                        messageColor = "text-rose-300 font-bold";
+                      } else if (log.source === "DFIR-IRIS") tagColor = "bg-teal-500/10 text-teal-400 border-teal-500/20";
+
+                      return (
+                        <div key={log.id} className="border-b border-border/10 pb-1.5 flex flex-col gap-0.5 animate-fadeIn">
+                          <div className="flex items-center justify-between text-[9px] text-muted-foreground">
+                            <span className="font-semibold text-primary/80">{log.time} · {log.pcName}</span>
+                            <Badge variant="outline" className={`text-[8px] font-bold px-1 py-0 border rounded ${tagColor}`}>
+                              {log.source}
+                            </Badge>
+                          </div>
+                          <p className={`mt-0.5 ${messageColor}`}>{log.message}</p>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                <div className="border-t border-border/30 pt-2 flex items-center justify-between">
+                  <span className="text-[10px] text-muted-foreground flex items-center gap-1.5 font-semibold">
+                    <span className="h-1.5 w-1.5 bg-emerald-500 rounded-full animate-ping"></span> 
+                    {logsStream.length} événements capturés
+                  </span>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-6 text-[10px] text-muted-foreground hover:text-foreground rounded-lg"
+                    onClick={() => setLogsStream([])}
+                  >
+                    Effacer flux
+                  </Button>
+                </div>
+              </Card>
+
+            </div>
+
+            {/* Tableau principal des PC Connectés */}
             <Card className="shadow-lg border-border/50 bg-card/60 backdrop-blur-sm overflow-hidden">
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between gap-4 flex-wrap">
                   <div>
                     <CardTitle className="text-xl font-bold flex items-center gap-2">
                       <Laptop className="h-5 w-5 text-primary" />
-                      Console de terminaux EDR connectés
+                      Console de terminaux EDR connectés ({extData.pcs.length})
                     </CardTitle>
-                    <CardDescription>Pilotez à distance la protection active des postes clients.</CardDescription>
+                    <CardDescription>Pilotez à distance la protection active des postes clients et exécutez des playbooks SOAR.</CardDescription>
                   </div>
-                  <Badge className="bg-primary/10 text-primary hover:bg-primary/10 font-bold px-3 py-1 text-sm border-none">
-                    {connectedPcs} / {extData.pcs.length} PC Surveillés
-                  </Badge>
+                  <div className="flex gap-2">
+                    {selectedPcId && (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="rounded-lg text-xs"
+                        onClick={() => setSelectedPcId(null)}
+                      >
+                        Désélectionner PC
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="p-0">
@@ -626,32 +1319,49 @@ UDP   0.0.0.0:123            *:*
                         <th className="px-5 py-3.5">Terminal</th>
                         <th className="px-5 py-3.5">Système / OS</th>
                         <th className="px-5 py-3.5">Adresse IP</th>
-                        <th className="px-5 py-3.5">Agent EDR</th>
-                        <th className="px-5 py-3.5">Activité</th>
-                        <th className="px-5 py-3.5">Ressources</th>
-                        <th className="px-5 py-3.5 text-right">Actions de Sécurité</th>
+                        <th className="px-5 py-3.5">Flux Réseau (Temps réel)</th>
+                        <th className="px-5 py-3.5">Télémétrie CPU/RAM</th>
+                        <th className="px-5 py-3.5">État Wazuh</th>
+                        <th className="px-5 py-3.5 text-right">Action Directe</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/20">
                       {extData.pcs.map((pc) => {
-                        const isScanning = scansProgress[pc.id] !== undefined;
-                        const scanVal = scansProgress[pc.id] ?? 0;
-                        const scanMsg = scansStatus[pc.id] ?? "";
-                        
+                        const isSelected = selectedPcId === pc.id;
+                        const telemetry = pcTelemetry[pc.id] || {
+                          cpu: pc.cpu,
+                          ram: pc.ram,
+                          rxSpeed: 0,
+                          txSpeed: 0,
+                          procCount: 0,
+                          packetsTotal: 0,
+                          wazuhStatus: pc.status
+                        };
+
+                        const status = telemetry.wazuhStatus;
+
                         return (
-                          <tr key={pc.id} className={`hover:bg-muted/30 transition-all ${pc.status === "isolated" ? "bg-red-500/5" : ""}`}>
-                            
+                          <tr 
+                            key={pc.id} 
+                            className={`hover:bg-muted/30 transition-all cursor-pointer ${isSelected ? "bg-primary/5 dark:bg-primary/10 border-l-4 border-l-primary" : ""} ${status === "isolated" ? "bg-red-500/5" : ""}`}
+                            onClick={() => setSelectedPcId(pc.id)}
+                          >
                             {/* Terminal Name */}
                             <td className="px-5 py-4 font-semibold text-foreground flex flex-col">
                               <span className="flex items-center gap-1.5">
                                 {pc.name}
-                                {pc.status === "isolated" && (
-                                  <Badge className="bg-rose-500 text-white font-extrabold border-none text-[10px] rounded-md px-1.5 py-0.5 gap-0.5 animate-pulse">
+                                {status === "isolated" && (
+                                  <Badge className="bg-rose-500 text-white font-extrabold border-none text-[9px] rounded-md px-1.5 py-0.5 gap-0.5 animate-pulse">
                                     <ShieldAlert className="h-3 w-3" /> ISOLÉ
                                   </Badge>
                                 )}
+                                {status === "alert" && (
+                                  <Badge className="bg-amber-500 text-slate-950 font-extrabold border-none text-[9px] rounded-md px-1.5 py-0.5 gap-0.5 animate-bounce">
+                                    <AlertTriangle className="h-3 w-3" /> ALERTE
+                                  </Badge>
+                                )}
                               </span>
-                              <span className="text-[10px] text-muted-foreground font-mono mt-0.5">ID: {pc.id.slice(-8)}</span>
+                              <span className="text-[10px] text-muted-foreground font-mono mt-0.5">WZ-ID: {pc.wazuhId} · Processus: {telemetry.procCount || "—"}</span>
                             </td>
 
                             {/* OS Type */}
@@ -664,32 +1374,33 @@ UDP   0.0.0.0:123            *:*
                             {/* IP */}
                             <td className="px-5 py-4 font-mono text-xs">{pc.ip}</td>
 
-                            {/* EDR Agent ID */}
-                            <td className="px-5 py-4 font-mono text-xs text-primary font-bold">WZ-{pc.wazuhId}</td>
-
-                            {/* Connection Status */}
-                            <td className="px-5 py-4">
-                              {pc.status === "active" ? (
-                                <Badge className="bg-green-500/10 text-green-500 font-bold border-none rounded-lg px-2">En Ligne</Badge>
-                              ) : pc.status === "alert" ? (
-                                <Badge className="bg-amber-500/10 text-amber-500 font-bold border-none rounded-lg px-2 animate-bounce">Alerte SOC</Badge>
-                              ) : pc.status === "isolated" ? (
-                                <Badge className="bg-red-500/10 text-red-500 font-bold border-none rounded-lg px-2">Quarantaine</Badge>
+                            {/* Live Bandwidth */}
+                            <td className="px-5 py-4 font-mono text-xs">
+                              {status === "active" || status === "alert" ? (
+                                <div className="flex flex-col gap-0.5 text-emerald-500 dark:text-emerald-400 font-semibold">
+                                  <span className="flex items-center gap-1">↓ {telemetry.rxSpeed} KB/s</span>
+                                  <span className="text-[10px] text-muted-foreground flex items-center gap-1">↑ {telemetry.txSpeed} KB/s · PKTS: {telemetry.packetsTotal}</span>
+                                </div>
+                              ) : status === "isolated" ? (
+                                <span className="text-rose-500 font-bold flex items-center gap-1">🚫 LOCKDOWN</span>
                               ) : (
-                                <Badge className="bg-slate-300 text-slate-700 dark:bg-slate-800 dark:text-slate-400 font-medium border-none rounded-lg px-2">Déconnecté</Badge>
+                                <span className="text-muted-foreground text-xs">—</span>
                               )}
                             </td>
 
-                            {/* RAM/CPU load */}
+                            {/* Telemetry cpu / ram */}
                             <td className="px-5 py-4">
-                              {pc.status !== "disconnected" ? (
-                                <div className="space-y-1.5 w-24">
-                                  <div className="flex items-center justify-between text-[10px] font-mono">
-                                    <span>CPU: {pc.cpu}%</span>
-                                    <span>RAM: {pc.ram}%</span>
+                              {status !== "disconnected" ? (
+                                <div className="space-y-1.5 w-32">
+                                  <div className="flex items-center justify-between text-[10px] font-mono font-semibold">
+                                    <span className={telemetry.cpu > 75 ? "text-rose-500 font-bold" : "text-slate-600 dark:text-slate-400"}>CPU: {telemetry.cpu}%</span>
+                                    <span className={telemetry.ram > 80 ? "text-rose-500 font-bold" : "text-slate-600 dark:text-slate-400"}>RAM: {telemetry.ram}%</span>
                                   </div>
-                                  <div className="h-1 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
-                                    <div className="h-full bg-primary" style={{ width: `${Math.max(pc.cpu, pc.ram)}%` }} />
+                                  <div className="h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                                    <div 
+                                      className={`h-full transition-all duration-1000 ${telemetry.cpu > 75 ? "bg-rose-500 animate-pulse" : "bg-primary"}`} 
+                                      style={{ width: `${Math.max(telemetry.cpu, telemetry.ram)}%` }} 
+                                    />
                                   </div>
                                 </div>
                               ) : (
@@ -697,60 +1408,66 @@ UDP   0.0.0.0:123            *:*
                               )}
                             </td>
 
-                            {/* Security Actions */}
-                            <td className="px-5 py-4 text-right">
-                              {pc.status === "disconnected" ? (
-                                <span className="text-muted-foreground text-xs">Aucune action (Hors Ligne)</span>
+                            {/* Connection Status */}
+                            <td className="px-5 py-4">
+                              {status === "active" ? (
+                                <Badge className="bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/10 font-bold border-none rounded-lg px-2 py-0.5">En Ligne</Badge>
+                              ) : status === "alert" ? (
+                                <Badge className="bg-amber-500/10 text-amber-500 hover:bg-amber-500/10 font-bold border-none rounded-lg px-2 py-0.5 animate-pulse">Alerte SOC</Badge>
+                              ) : status === "isolated" ? (
+                                <Badge className="bg-rose-500/10 text-rose-500 hover:bg-rose-500/10 font-bold border-none rounded-lg px-2 py-0.5">Quarantaine</Badge>
                               ) : (
-                                <div className="flex flex-col gap-1.5 items-end justify-end">
-                                  {isScanning ? (
-                                    <div className="w-40 space-y-1 text-left">
-                                      <div className="flex justify-between text-[10px] font-semibold">
-                                        <span>{scanMsg}</span>
-                                        <span>{scanVal}%</span>
-                                      </div>
-                                      <div className="h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
-                                        <div className="h-full bg-indigo-500 animate-pulse transition-all duration-300" style={{ width: `${scanVal}%` }} />
-                                      </div>
-                                    </div>
+                                <Badge className="bg-slate-300 text-slate-700 dark:bg-slate-800 dark:text-slate-400 font-medium border-none rounded-lg px-2 py-0.5">Déconnecté</Badge>
+                              )}
+                            </td>
+
+                            {/* Quick Actions */}
+                            <td className="px-5 py-4 text-right" onClick={(e) => e.stopPropagation()}>
+                              {status === "disconnected" ? (
+                                <span className="text-muted-foreground text-xs">—</span>
+                              ) : (
+                                <div className="flex justify-end gap-1.5">
+                                  {status === "isolated" ? (
+                                    <Button 
+                                      variant="default" 
+                                      size="sm"
+                                      className="h-8 rounded-lg text-xs font-semibold px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                                      onClick={() => {
+                                        setPcTelemetry(prev => ({
+                                          ...prev,
+                                          [pc.id]: { ...prev[pc.id], wazuhStatus: "active" }
+                                        }));
+                                        if (extData) {
+                                          const updatedPcs = extData.pcs.map(p => {
+                                            if (p.id === pc.id) return { ...p, status: "active" as const };
+                                            return p;
+                                          });
+                                          const updatedExt = { ...extData, pcs: updatedPcs };
+                                          setExtData(updatedExt);
+                                          localStorage.setItem(`client_ext_${clientId}`, JSON.stringify(updatedExt));
+                                        }
+                                        toast.success("Terminal reconnecté", {
+                                          description: `L'accès réseau a été entièrement rétabli pour ${pc.name}.`
+                                        });
+                                        addGlobalLog(pc.name, "SOAR", "info", "Endpoint reconnecté au réseau. Quarantaine désactivée.");
+                                      }}
+                                    >
+                                      Reconnecter
+                                    </Button>
                                   ) : (
-                                    <div className="flex items-center gap-1">
-                                      {/* Bouton EDR : Lancer un scan */}
-                                      <Button 
-                                        variant="outline" 
-                                        size="sm"
-                                        className="h-8 rounded-lg text-xs bg-slate-50 dark:bg-zinc-900 border-slate-200 hover:bg-slate-100"
-                                        onClick={() => triggerScan(pc.id, pc.name)}
-                                      >
-                                        Lancer scan
-                                      </Button>
-
-                                      {/* Bouton EDR : Collecte logs */}
-                                      <Button 
-                                        variant="outline" 
-                                        size="sm"
-                                        className="h-8 w-8 p-0 rounded-lg bg-slate-50 dark:bg-zinc-900 border-slate-200"
-                                        onClick={() => downloadDfirLogs(pc.name, pc.ip, pc.os)}
-                                        title="Récupérer rapports logs DFIR"
-                                      >
-                                        <Download className="h-3.5 w-3.5" />
-                                      </Button>
-
-                                      {/* Bouton EDR : Isolation EDR */}
-                                      <Button 
-                                        variant={pc.status === "isolated" ? "default" : "destructive"} 
-                                        size="sm"
-                                        className="h-8 rounded-lg text-xs shadow-sm font-semibold"
-                                        onClick={() => toggleIsolatePc(pc.id)}
-                                      >
-                                        {pc.status === "isolated" ? "Reconnecter" : "Isoler PC"}
-                                      </Button>
-                                    </div>
+                                    <Button 
+                                      variant="destructive" 
+                                      size="sm"
+                                      className="h-8 rounded-lg text-xs font-semibold px-2.5"
+                                      onClick={() => triggerSoarPlaybook("ransomware", pc)}
+                                      disabled={activePlaybook !== null}
+                                    >
+                                      Isoler EDR
+                                    </Button>
                                   )}
                                 </div>
                               )}
                             </td>
-
                           </tr>
                         );
                       })}
@@ -759,6 +1476,281 @@ UDP   0.0.0.0:123            *:*
                 </div>
               </CardContent>
             </Card>
+
+            {/* Panneau de détails EDR & Technologie (S'affiche si un PC est sélectionné) */}
+            {selectedPcId && extData.pcs.find(pc => pc.id === selectedPcId) && (() => {
+              const pc = extData.pcs.find(p => p.id === selectedPcId)!;
+              const telemetry = pcTelemetry[pc.id] || {
+                cpu: pc.cpu,
+                ram: pc.ram,
+                rxSpeed: 0,
+                txSpeed: 0,
+                procCount: 0,
+                socketsCount: 0,
+                packetsTotal: 0,
+                wazuhStatus: pc.status
+              };
+
+              return (
+                <div className="grid gap-6 md:grid-cols-2 animate-fadeIn border-t border-border/40 pt-6">
+                  
+                  {/* Colonne de Gauche : Console Terminal Shell Remote */}
+                  <Card className="shadow-lg border-border/50 bg-slate-950 dark:bg-black text-slate-100 rounded-xl overflow-hidden flex flex-col justify-between min-h-[380px] p-0 font-mono">
+                    <CardHeader className="bg-slate-900 border-b border-slate-800 py-3 px-4 flex flex-row justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <Terminal className="h-4.5 w-4.5 text-primary animate-pulse" />
+                        <span className="text-xs font-bold text-slate-200">EDR Shell Terminal : {pc.name}</span>
+                      </div>
+                      <Badge variant="outline" className="font-mono text-[9px] text-primary border-primary/20 bg-primary/5 rounded px-1.5">
+                        WZ-AGENT v4.7.2
+                      </Badge>
+                    </CardHeader>
+                    
+                    <CardContent className="flex-1 p-4 overflow-y-auto text-xs space-y-2 max-h-[250px] scrollbar-thin scrollbar-thumb-slate-800">
+                      {terminalHistory.map((line, idx) => {
+                        let lineStyle = "text-slate-300";
+                        if (line.type === "input") lineStyle = "text-sky-400 font-bold";
+                        else if (line.type === "error") lineStyle = "text-rose-500 font-bold";
+                        else if (line.type === "system") lineStyle = "text-emerald-400/90 font-bold border-b border-slate-800/50 pb-1";
+
+                        return (
+                          <pre key={idx} className={`whitespace-pre-wrap ${lineStyle}`}>
+                            {line.text}
+                          </pre>
+                        );
+                      })}
+                    </CardContent>
+
+                    {/* Quick Command Shortcuts bar */}
+                    <div className="bg-slate-900/60 border-t border-slate-800/80 px-3 py-2 flex flex-wrap gap-1.5 text-[9px] text-slate-400 items-center">
+                      <span className="font-bold mr-1">Raccourcis :</span>
+                      <button 
+                        className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-0.5 rounded border border-slate-700 transition-all"
+                        onClick={() => executeTerminalCommand("wazuh status")}
+                      >
+                        wazuh status
+                      </button>
+                      <button 
+                        className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-0.5 rounded border border-slate-700 transition-all"
+                        onClick={() => executeTerminalCommand("syscheck --verify")}
+                      >
+                        syscheck --verify
+                      </button>
+                      <button 
+                        className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-0.5 rounded border border-slate-700 transition-all"
+                        onClick={() => executeTerminalCommand("vt-scan --running")}
+                      >
+                        vt-scan --running
+                      </button>
+                      <button 
+                        className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-0.5 rounded border border-slate-700 transition-all"
+                        onClick={() => executeTerminalCommand("misp-check --net")}
+                      >
+                        misp-check --net
+                      </button>
+                    </div>
+
+                    {/* Console input form */}
+                    <form 
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        executeTerminalCommand(terminalInput);
+                      }}
+                      className="border-t border-slate-800/80 bg-slate-900 p-2 flex gap-2 items-center"
+                    >
+                      <span className="text-sky-400 font-bold pl-2 select-none">$</span>
+                      <Input
+                        value={terminalInput}
+                        onChange={(e) => setTerminalInput(e.target.value)}
+                        placeholder="Tapez votre commande EDR..."
+                        className="flex-1 bg-transparent border-none text-slate-100 text-xs focus-visible:ring-0 focus-visible:ring-offset-0 h-8 pl-1 placeholder-slate-600"
+                        autoComplete="off"
+                        disabled={telemetry.wazuhStatus === "disconnected" || telemetry.wazuhStatus === "isolated"}
+                      />
+                      <Button 
+                        type="submit" 
+                        size="sm" 
+                        className="h-8 text-xs font-semibold rounded bg-sky-600 hover:bg-sky-700 text-white"
+                        disabled={telemetry.wazuhStatus === "disconnected" || telemetry.wazuhStatus === "isolated"}
+                      >
+                        Exécuter
+                      </Button>
+                    </form>
+                  </Card>
+
+                  {/* Colonne de Droite : Playbooks SOAR & HUD Technologies */}
+                  <div className="space-y-6">
+                    
+                    {/* HUD Technologies Sync Status */}
+                    <Card className="shadow-lg border-border/50 bg-card/60 backdrop-blur-sm p-4">
+                      <h3 className="text-sm font-bold flex items-center gap-2 mb-3">
+                        <Settings className="h-4.5 w-4.5 text-primary" /> Matrice d'Intégration Technologie
+                      </h3>
+                      
+                      <div className="grid grid-cols-3 gap-2.5">
+                        
+                        {/* Wazuh */}
+                        <div className="border border-border/40 rounded-xl p-2.5 text-center bg-slate-50/50 dark:bg-slate-900/30">
+                          <span className="text-[10px] text-muted-foreground block font-bold">Wazuh EDR</span>
+                          <Badge variant="outline" className={`text-[9px] font-bold mt-1.5 border-none px-2 rounded-full ${telemetry.wazuhStatus === "active" ? "bg-emerald-500/10 text-emerald-500" : telemetry.wazuhStatus === "isolated" ? "bg-rose-500/10 text-rose-500" : telemetry.wazuhStatus === "alert" ? "bg-amber-500/10 text-amber-500" : "bg-slate-500/10 text-slate-500"}`}>
+                            ✓ {telemetry.wazuhStatus === "isolated" ? "Confiné" : "Connecté"}
+                          </Badge>
+                        </div>
+
+                        {/* VirusTotal */}
+                        <div className="border border-border/40 rounded-xl p-2.5 text-center bg-slate-50/50 dark:bg-slate-900/30">
+                          <span className="text-[10px] text-muted-foreground block font-bold">VirusTotal</span>
+                          <Badge variant="outline" className="text-[9px] font-bold mt-1.5 border-none bg-purple-500/10 text-purple-400 px-2 rounded-full font-mono">
+                            ✓ Actif (VT API)
+                          </Badge>
+                        </div>
+
+                        {/* MISP */}
+                        <div className="border border-border/40 rounded-xl p-2.5 text-center bg-slate-50/50 dark:bg-slate-900/30">
+                          <span className="text-[10px] text-muted-foreground block font-bold">MISP Threat Intel</span>
+                          <Badge variant="outline" className="text-[9px] font-bold mt-1.5 border-none bg-blue-500/10 text-blue-400 px-2 rounded-full">
+                            ✓ 1.4K Feeds
+                          </Badge>
+                        </div>
+
+                        {/* Shuffle */}
+                        <div className="border border-border/40 rounded-xl p-2.5 text-center bg-slate-50/50 dark:bg-slate-900/30">
+                          <span className="text-[10px] text-muted-foreground block font-bold">Shuffle SOAR</span>
+                          <Badge variant="outline" className={`text-[9px] font-bold mt-1.5 border-none px-2 rounded-full ${activePlaybook ? "bg-orange-500/15 text-orange-500 animate-pulse" : "bg-orange-500/10 text-orange-400"}`}>
+                            {activePlaybook ? "Playbook..." : "✓ Prêt"}
+                          </Badge>
+                        </div>
+
+                        {/* TheHive */}
+                        <div className="border border-border/40 rounded-xl p-2.5 text-center bg-slate-50/50 dark:bg-slate-900/30">
+                          <span className="text-[10px] text-muted-foreground block font-bold">TheHive Alerts</span>
+                          <Badge variant="outline" className="text-[9px] font-bold mt-1.5 border-none bg-rose-500/10 text-rose-500 px-2 rounded-full">
+                            ✓ Synced Case
+                          </Badge>
+                        </div>
+
+                        {/* DFIR-IRIS */}
+                        <div className="border border-border/40 rounded-xl p-2.5 text-center bg-slate-50/50 dark:bg-slate-900/30">
+                          <span className="text-[10px] text-muted-foreground block font-bold">DFIR-IRIS</span>
+                          <Badge variant="outline" className="text-[9px] font-bold mt-1.5 border-none bg-teal-500/10 text-teal-400 px-2 rounded-full">
+                            ✓ Case Manager
+                          </Badge>
+                        </div>
+
+                      </div>
+                    </Card>
+
+                    {/* Automation Center: Shuffle SOAR Playbooks */}
+                    <Card className="shadow-lg border-border/50 bg-card/60 backdrop-blur-sm p-4 relative overflow-hidden flex-1">
+                      <div className="flex justify-between items-center border-b border-border/30 pb-2 mb-3">
+                        <div>
+                          <h3 className="text-sm font-bold flex items-center gap-2 text-foreground">
+                            <Zap className="h-4.5 w-4.5 text-orange-500 animate-pulse" /> Centre d'Automatisation SOAR
+                          </h3>
+                          <p className="text-[10px] text-muted-foreground">Pilotez des réponses d'incident orchestrées complexes</p>
+                        </div>
+                      </div>
+
+                      {activePlaybook ? (
+                        // Stepper de playbook actif
+                        <div className="space-y-4 animate-fadeIn">
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="font-bold text-orange-500 uppercase tracking-wide">Playbook en cours...</span>
+                            <span className="font-mono bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded font-bold">Étape {playbookStep}/4</span>
+                          </div>
+
+                          {/* Stepper Graphic */}
+                          <div className="flex justify-between items-center relative my-3 px-4">
+                            <div className="absolute top-1/2 left-0 right-0 h-1 bg-border -translate-y-1/2 -z-10"></div>
+                            <div 
+                              className="absolute top-1/2 left-0 h-1 bg-emerald-500 -translate-y-1/2 -z-10 transition-all duration-1000"
+                              style={{ width: `${(Math.min(playbookStep, 4) - 1) * 33.3}%` }}
+                            ></div>
+
+                            {[1, 2, 3, 4].map((stepNum) => {
+                              const isCompleted = playbookStep > stepNum || playbookStep === 5;
+                              const isActive = playbookStep === stepNum;
+                              
+                              return (
+                                <div 
+                                  key={stepNum} 
+                                  className={`h-7 w-7 rounded-full flex items-center justify-center font-bold text-xs border-2 transition-all ${isCompleted ? "bg-emerald-600 border-emerald-500 text-white" : isActive ? "bg-slate-900 border-primary text-primary animate-pulse" : "bg-card border-border text-muted-foreground"}`}
+                                >
+                                  {isCompleted ? "✓" : stepNum}
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          {/* Playbook logs panel */}
+                          <div className="border border-border/40 bg-slate-950 p-3 rounded-xl font-mono text-[9px] text-slate-300 space-y-1 max-h-[100px] overflow-y-auto leading-relaxed shadow-inner">
+                            {playbookLogs.map((logLine, logIdx) => (
+                              <div key={logIdx} className="text-emerald-400">
+                                {logLine}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        // Boutons de déclenchement des playbooks
+                        <div className="space-y-2.5">
+                          <div className="grid grid-cols-2 gap-2">
+                            
+                            <Button 
+                              variant="outline"
+                              className="justify-start text-left text-xs font-semibold py-4 border-rose-500/20 hover:bg-rose-500/5 text-rose-500 rounded-xl"
+                              onClick={() => triggerSoarPlaybook("ransomware", pc)}
+                              disabled={telemetry.wazuhStatus === "disconnected" || telemetry.wazuhStatus === "isolated"}
+                            >
+                              <ShieldAlert className="h-4 w-4 mr-2" />
+                              Isoler & Contenir (Ransomware)
+                            </Button>
+
+                            <Button 
+                              variant="outline"
+                              className="justify-start text-left text-xs font-semibold py-4 border-purple-500/20 hover:bg-purple-500/5 text-purple-400 rounded-xl"
+                              onClick={() => triggerSoarPlaybook("vt-audit", pc)}
+                              disabled={telemetry.wazuhStatus === "disconnected" || telemetry.wazuhStatus === "isolated"}
+                            >
+                              <FolderSync className="h-4 w-4 mr-2" />
+                              Scan Réputation complet (VT)
+                            </Button>
+
+                            <Button 
+                              variant="outline"
+                              className="justify-start text-left text-xs font-semibold py-4 border-amber-500/20 hover:bg-amber-500/5 text-amber-500 rounded-xl"
+                              onClick={() => triggerSoarPlaybook("lockdown", pc)}
+                              disabled={telemetry.wazuhStatus === "disconnected" || telemetry.wazuhStatus === "isolated"}
+                            >
+                              <Lock className="h-4 w-4 mr-2" />
+                              Verrouiller les ports distants
+                            </Button>
+
+                            <Button 
+                              variant="outline"
+                              className="justify-start text-left text-xs font-semibold py-4 border-blue-500/20 hover:bg-blue-500/5 text-blue-400 rounded-xl"
+                              onClick={() => executeTerminalCommand("syscheck --verify")}
+                              disabled={telemetry.wazuhStatus === "disconnected" || telemetry.wazuhStatus === "isolated"}
+                            >
+                              <RefreshCw className="h-4 w-4 mr-2" />
+                              Lancer Audit Syscheck
+                            </Button>
+
+                          </div>
+
+                          <p className="text-[10px] text-muted-foreground flex items-center gap-1.5">
+                            <AlertCircle className="h-3.5 w-3.5 text-amber-500" />
+                            Note : L'exécution d'un playbook SOAR orchestre automatiquement des actions sur Wazuh, VirusTotal, MISP, TheHive et IRIS.
+                          </p>
+                        </div>
+                      )}
+                    </Card>
+
+                  </div>
+
+                </div>
+              );
+            })()}
 
             {/* EDR Installation Helper */}
             <Card className="shadow-lg border-border/50 bg-card/60 backdrop-blur-sm">

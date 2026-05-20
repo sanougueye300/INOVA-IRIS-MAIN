@@ -55,6 +55,8 @@ export function SocSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const [clientsOpen, setClientsOpen] = useState(
     pathname.startsWith("/clients") || pathname === "/facturation"
   );
+  const [authOpen, setAuthOpen] = useState(pathname.startsWith("/auth"));
+  const [splitOpen, setSplitOpen] = useState(pathname.startsWith("/auth"));
 
   const isDarker = sidebarAppearance === "darker";
 
@@ -101,6 +103,64 @@ export function SocSidebar({ onNavigate }: { onNavigate?: () => void }) {
             {renderItem({ to: "/settings", label: "Paramètres Globaux", icon: Sliders })}
             {renderItem({ to: "/integrations", label: "Connecteurs & API", icon: Plug })}
             {renderItem({ to: "/audit", label: "Journaux d'Audit", icon: FileText })}
+
+            {/* ── Authentification dropdown ── */}
+            <button
+              onClick={() => setAuthOpen(o => !o)}
+              className={`group flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors ${
+                pathname.startsWith("/auth")
+                  ? "border-l-4 border-primary bg-accent font-semibold text-accent-foreground"
+                  : "border-l-4 border-transparent text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+              }`}
+            >
+              <Fingerprint className="h-4 w-4 shrink-0" />
+              <span className="flex-1 text-left">{t("Authentification")}</span>
+              {authOpen
+                ? <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+                : <ChevronRight className="h-3.5 w-3.5 opacity-60" />}
+            </button>
+
+            {authOpen && (
+              <div className="ml-4 space-y-0.5 border-l pl-2" style={{ borderColor: isDarker ? "#3f3f46" : "hsl(var(--border))" }}>
+                <div className="space-y-0.5">
+                  <button
+                    onClick={() => setSplitOpen(o => !o)}
+                    className="flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+                  >
+                    <span className="flex-1 text-left">{t("Split")}</span>
+                    {splitOpen
+                      ? <ChevronDown className="h-3 opacity-60" />
+                      : <ChevronRight className="h-3 opacity-60" />}
+                  </button>
+                  {splitOpen && (
+                    <div className="ml-3 space-y-0.5 border-l pl-2 border-dashed" style={{ borderColor: isDarker ? "#27272a" : "hsl(var(--border))" }}>
+                      {[
+                        { to: "/auth/login", label: "Sign in" },
+                        { to: "/auth/signup", label: "Sign up" },
+                        { to: "/auth/forgot-password", label: "Forgot password" },
+                        { to: "/auth/reset-password", label: "Reset password" },
+                        { to: "/auth/lock", label: "Lock screen" },
+                        { to: "/auth/2fa", label: "2FA" },
+                        { to: "/auth/logout", label: "Sign out" },
+                      ].map((sub) => (
+                        <Link
+                          key={sub.to}
+                          to={sub.to}
+                          onClick={onNavigate}
+                          className={`flex items-center gap-2 rounded-md px-3 py-1 text-xs transition-colors ${
+                            pathname === sub.to
+                              ? "bg-accent font-semibold text-accent-foreground"
+                              : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                          }`}
+                        >
+                          {t(sub.label)}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* ── Clients dropdown ── */}
             <button

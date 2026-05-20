@@ -20,6 +20,7 @@ import { Route as IntegrationsRouteImport } from './routes/integrations'
 import { Route as FacturationRouteImport } from './routes/facturation'
 import { Route as DeploiementRouteImport } from './routes/deploiement'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuditRouteImport } from './routes/audit'
 import { Route as AssistantRouteImport } from './routes/assistant'
 import { Route as ArchitectureRouteImport } from './routes/architecture'
@@ -27,8 +28,18 @@ import { Route as AlertesRouteImport } from './routes/alertes'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ClientsIndexRouteImport } from './routes/clients.index'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as ClientsNewRouteImport } from './routes/clients.new'
 import { Route as ClientsClientIdRouteImport } from './routes/clients.$clientId'
+import { Route as AuthSignupRouteImport } from './routes/auth.signup'
+import { Route as AuthResetPasswordRouteImport } from './routes/auth.reset-password'
+import { Route as AuthLogoutRouteImport } from './routes/auth.logout'
+import { Route as AuthLoginRouteImport } from './routes/auth.login'
+import { Route as AuthLockRouteImport } from './routes/auth.lock'
+import { Route as AuthForgotPasswordRouteImport } from './routes/auth.forgot-password'
+import { Route as Auth2faRouteImport } from './routes/auth.2fa'
+import { Route as AdminNewRouteImport } from './routes/admin.new'
+import { Route as AdminUserIdRouteImport } from './routes/admin.$userId'
 
 const WorkflowRoute = WorkflowRouteImport.update({
   id: '/workflow',
@@ -85,6 +96,11 @@ const DashboardRoute = DashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuditRoute = AuditRouteImport.update({
   id: '/audit',
   path: '/audit',
@@ -120,6 +136,11 @@ const ClientsIndexRoute = ClientsIndexRouteImport.update({
   path: '/clients/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRoute,
+} as any)
 const ClientsNewRoute = ClientsNewRouteImport.update({
   id: '/clients/new',
   path: '/clients/new',
@@ -130,14 +151,60 @@ const ClientsClientIdRoute = ClientsClientIdRouteImport.update({
   path: '/clients/$clientId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthSignupRoute = AuthSignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthResetPasswordRoute = AuthResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthLogoutRoute = AuthLogoutRouteImport.update({
+  id: '/logout',
+  path: '/logout',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthLoginRoute = AuthLoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthLockRoute = AuthLockRouteImport.update({
+  id: '/lock',
+  path: '/lock',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthForgotPasswordRoute = AuthForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
+  getParentRoute: () => AuthRoute,
+} as any)
+const Auth2faRoute = Auth2faRouteImport.update({
+  id: '/2fa',
+  path: '/2fa',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AdminNewRoute = AdminNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminUserIdRoute = AdminUserIdRouteImport.update({
+  id: '/$userId',
+  path: '/$userId',
+  getParentRoute: () => AdminRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/alertes': typeof AlertesRoute
   '/architecture': typeof ArchitectureRoute
   '/assistant': typeof AssistantRoute
   '/audit': typeof AuditRoute
+  '/auth': typeof AuthRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/deploiement': typeof DeploiementRoute
   '/facturation': typeof FacturationRoute
@@ -149,17 +216,27 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/threat-map': typeof ThreatMapRoute
   '/workflow': typeof WorkflowRoute
+  '/admin/$userId': typeof AdminUserIdRoute
+  '/admin/new': typeof AdminNewRoute
+  '/auth/2fa': typeof Auth2faRoute
+  '/auth/forgot-password': typeof AuthForgotPasswordRoute
+  '/auth/lock': typeof AuthLockRoute
+  '/auth/login': typeof AuthLoginRoute
+  '/auth/logout': typeof AuthLogoutRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
+  '/auth/signup': typeof AuthSignupRoute
   '/clients/$clientId': typeof ClientsClientIdRoute
   '/clients/new': typeof ClientsNewRoute
+  '/admin/': typeof AdminIndexRoute
   '/clients/': typeof ClientsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
   '/alertes': typeof AlertesRoute
   '/architecture': typeof ArchitectureRoute
   '/assistant': typeof AssistantRoute
   '/audit': typeof AuditRoute
+  '/auth': typeof AuthRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/deploiement': typeof DeploiementRoute
   '/facturation': typeof FacturationRoute
@@ -171,18 +248,29 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/threat-map': typeof ThreatMapRoute
   '/workflow': typeof WorkflowRoute
+  '/admin/$userId': typeof AdminUserIdRoute
+  '/admin/new': typeof AdminNewRoute
+  '/auth/2fa': typeof Auth2faRoute
+  '/auth/forgot-password': typeof AuthForgotPasswordRoute
+  '/auth/lock': typeof AuthLockRoute
+  '/auth/login': typeof AuthLoginRoute
+  '/auth/logout': typeof AuthLogoutRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
+  '/auth/signup': typeof AuthSignupRoute
   '/clients/$clientId': typeof ClientsClientIdRoute
   '/clients/new': typeof ClientsNewRoute
+  '/admin': typeof AdminIndexRoute
   '/clients': typeof ClientsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/alertes': typeof AlertesRoute
   '/architecture': typeof ArchitectureRoute
   '/assistant': typeof AssistantRoute
   '/audit': typeof AuditRoute
+  '/auth': typeof AuthRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/deploiement': typeof DeploiementRoute
   '/facturation': typeof FacturationRoute
@@ -194,8 +282,18 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/threat-map': typeof ThreatMapRoute
   '/workflow': typeof WorkflowRoute
+  '/admin/$userId': typeof AdminUserIdRoute
+  '/admin/new': typeof AdminNewRoute
+  '/auth/2fa': typeof Auth2faRoute
+  '/auth/forgot-password': typeof AuthForgotPasswordRoute
+  '/auth/lock': typeof AuthLockRoute
+  '/auth/login': typeof AuthLoginRoute
+  '/auth/logout': typeof AuthLogoutRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
+  '/auth/signup': typeof AuthSignupRoute
   '/clients/$clientId': typeof ClientsClientIdRoute
   '/clients/new': typeof ClientsNewRoute
+  '/admin/': typeof AdminIndexRoute
   '/clients/': typeof ClientsIndexRoute
 }
 export interface FileRouteTypes {
@@ -207,6 +305,7 @@ export interface FileRouteTypes {
     | '/architecture'
     | '/assistant'
     | '/audit'
+    | '/auth'
     | '/dashboard'
     | '/deploiement'
     | '/facturation'
@@ -218,17 +317,27 @@ export interface FileRouteTypes {
     | '/settings'
     | '/threat-map'
     | '/workflow'
+    | '/admin/$userId'
+    | '/admin/new'
+    | '/auth/2fa'
+    | '/auth/forgot-password'
+    | '/auth/lock'
+    | '/auth/login'
+    | '/auth/logout'
+    | '/auth/reset-password'
+    | '/auth/signup'
     | '/clients/$clientId'
     | '/clients/new'
+    | '/admin/'
     | '/clients/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/admin'
     | '/alertes'
     | '/architecture'
     | '/assistant'
     | '/audit'
+    | '/auth'
     | '/dashboard'
     | '/deploiement'
     | '/facturation'
@@ -240,8 +349,18 @@ export interface FileRouteTypes {
     | '/settings'
     | '/threat-map'
     | '/workflow'
+    | '/admin/$userId'
+    | '/admin/new'
+    | '/auth/2fa'
+    | '/auth/forgot-password'
+    | '/auth/lock'
+    | '/auth/login'
+    | '/auth/logout'
+    | '/auth/reset-password'
+    | '/auth/signup'
     | '/clients/$clientId'
     | '/clients/new'
+    | '/admin'
     | '/clients'
   id:
     | '__root__'
@@ -251,6 +370,7 @@ export interface FileRouteTypes {
     | '/architecture'
     | '/assistant'
     | '/audit'
+    | '/auth'
     | '/dashboard'
     | '/deploiement'
     | '/facturation'
@@ -262,18 +382,29 @@ export interface FileRouteTypes {
     | '/settings'
     | '/threat-map'
     | '/workflow'
+    | '/admin/$userId'
+    | '/admin/new'
+    | '/auth/2fa'
+    | '/auth/forgot-password'
+    | '/auth/lock'
+    | '/auth/login'
+    | '/auth/logout'
+    | '/auth/reset-password'
+    | '/auth/signup'
     | '/clients/$clientId'
     | '/clients/new'
+    | '/admin/'
     | '/clients/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AdminRoute: typeof AdminRoute
+  AdminRoute: typeof AdminRouteWithChildren
   AlertesRoute: typeof AlertesRoute
   ArchitectureRoute: typeof ArchitectureRoute
   AssistantRoute: typeof AssistantRoute
   AuditRoute: typeof AuditRoute
+  AuthRoute: typeof AuthRouteWithChildren
   DashboardRoute: typeof DashboardRoute
   DeploiementRoute: typeof DeploiementRoute
   FacturationRoute: typeof FacturationRoute
@@ -369,6 +500,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/audit': {
       id: '/audit'
       path: '/audit'
@@ -418,6 +556,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ClientsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/clients/new': {
       id: '/clients/new'
       path: '/clients/new'
@@ -432,16 +577,116 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ClientsClientIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth/signup': {
+      id: '/auth/signup'
+      path: '/signup'
+      fullPath: '/auth/signup'
+      preLoaderRoute: typeof AuthSignupRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/auth/reset-password': {
+      id: '/auth/reset-password'
+      path: '/reset-password'
+      fullPath: '/auth/reset-password'
+      preLoaderRoute: typeof AuthResetPasswordRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/auth/logout': {
+      id: '/auth/logout'
+      path: '/logout'
+      fullPath: '/auth/logout'
+      preLoaderRoute: typeof AuthLogoutRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/auth/login': {
+      id: '/auth/login'
+      path: '/login'
+      fullPath: '/auth/login'
+      preLoaderRoute: typeof AuthLoginRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/auth/lock': {
+      id: '/auth/lock'
+      path: '/lock'
+      fullPath: '/auth/lock'
+      preLoaderRoute: typeof AuthLockRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/auth/forgot-password': {
+      id: '/auth/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/auth/forgot-password'
+      preLoaderRoute: typeof AuthForgotPasswordRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/auth/2fa': {
+      id: '/auth/2fa'
+      path: '/2fa'
+      fullPath: '/auth/2fa'
+      preLoaderRoute: typeof Auth2faRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/admin/new': {
+      id: '/admin/new'
+      path: '/new'
+      fullPath: '/admin/new'
+      preLoaderRoute: typeof AdminNewRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/$userId': {
+      id: '/admin/$userId'
+      path: '/$userId'
+      fullPath: '/admin/$userId'
+      preLoaderRoute: typeof AdminUserIdRouteImport
+      parentRoute: typeof AdminRoute
+    }
   }
 }
 
+interface AdminRouteChildren {
+  AdminUserIdRoute: typeof AdminUserIdRoute
+  AdminNewRoute: typeof AdminNewRoute
+  AdminIndexRoute: typeof AdminIndexRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminUserIdRoute: AdminUserIdRoute,
+  AdminNewRoute: AdminNewRoute,
+  AdminIndexRoute: AdminIndexRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
+interface AuthRouteChildren {
+  Auth2faRoute: typeof Auth2faRoute
+  AuthForgotPasswordRoute: typeof AuthForgotPasswordRoute
+  AuthLockRoute: typeof AuthLockRoute
+  AuthLoginRoute: typeof AuthLoginRoute
+  AuthLogoutRoute: typeof AuthLogoutRoute
+  AuthResetPasswordRoute: typeof AuthResetPasswordRoute
+  AuthSignupRoute: typeof AuthSignupRoute
+}
+
+const AuthRouteChildren: AuthRouteChildren = {
+  Auth2faRoute: Auth2faRoute,
+  AuthForgotPasswordRoute: AuthForgotPasswordRoute,
+  AuthLockRoute: AuthLockRoute,
+  AuthLoginRoute: AuthLoginRoute,
+  AuthLogoutRoute: AuthLogoutRoute,
+  AuthResetPasswordRoute: AuthResetPasswordRoute,
+  AuthSignupRoute: AuthSignupRoute,
+}
+
+const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AdminRoute: AdminRoute,
+  AdminRoute: AdminRouteWithChildren,
   AlertesRoute: AlertesRoute,
   ArchitectureRoute: ArchitectureRoute,
   AssistantRoute: AssistantRoute,
   AuditRoute: AuditRoute,
+  AuthRoute: AuthRouteWithChildren,
   DashboardRoute: DashboardRoute,
   DeploiementRoute: DeploiementRoute,
   FacturationRoute: FacturationRoute,

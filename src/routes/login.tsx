@@ -8,6 +8,6 @@ export const Route = createFileRoute("/login")({
 
 function LoginRedirect() {
   const navigate = useNavigate();
-  useEffect(() => { navigate({ to: "/dashboard", replace: true }); }, [navigate]);
+  useEffect(() => { navigate({ to: "/auth/login", replace: true }); }, [navigate]);
   return null;
 }

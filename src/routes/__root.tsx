@@ -131,6 +131,18 @@ function AppFrame() {
       </SocShell>
     );
   }
+  
+  const isAuth = pathname === "/login" || pathname === "/auth" || pathname.startsWith("/auth/");
+  if (isAuth) {
+    return (
+      <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
+        <main className="flex-1 min-h-0">
+          <Outlet />
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
       <SiteHeader />

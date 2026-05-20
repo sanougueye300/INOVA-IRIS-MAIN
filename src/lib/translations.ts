@@ -31,6 +31,15 @@ export const translations: Record<string, Record<string, string>> = {
     "Shuffle": "Shuffle",
     "Orchestrateur": "Orchestrateur",
     "Djib'son IA": "Djib'son IA",
+    "Authentification": "Authentification",
+    "Split": "Split Screen",
+    "Sign in": "Connexion",
+    "Sign up": "Inscription",
+    "Forgot password": "Mot de passe oublié",
+    "Reset password": "Réinitialiser",
+    "Lock screen": "Écran de verrouillage",
+    "2FA": "Double Facteur",
+    "Sign out": "Déconnexion",
 
     // Dashboard Page
     "Suivi d'activité": "Suivi d'activité",
@@ -148,6 +157,15 @@ export const translations: Record<string, Record<string, string>> = {
     "Shuffle": "Shuffle",
     "Orchestrateur": "Orchestrator",
     "Djib'son IA": "Djib'son IA",
+    "Authentification": "Authentication",
+    "Split": "Split Screen",
+    "Sign in": "Sign In",
+    "Sign up": "Sign Up",
+    "Forgot password": "Forgot Password",
+    "Reset password": "Reset Password",
+    "Lock screen": "Lock Screen",
+    "2FA": "Two-Factor (2FA)",
+    "Sign out": "Sign Out",
 
     // Dashboard Page
     "Suivi d'activité": "Activity Monitoring",
@@ -265,6 +283,15 @@ export const translations: Record<string, Record<string, string>> = {
     "Shuffle": "Shuffle",
     "Orchestrateur": "Orchestrateur",
     "Djib'son IA": "Djib'son IA",
+    "Authentification": "Dëgëral nit",
+    "Split": "Split Screen",
+    "Sign in": "Duggu",
+    "Sign up": "Mbindu",
+    "Forgot password": "Fatte baatu-pass",
+    "Reset password": "Yessal baatu-pass",
+    "Lock screen": "Tëj xët",
+    "2FA": "Double Facteur",
+    "Sign out": "Genn",
 
     // Dashboard Page
     "Suivi d'activité": "Toftofal liggéey",
@@ -382,6 +409,15 @@ export const translations: Record<string, Record<string, string>> = {
     "Shuffle": "Shuffle",
     "Orchestrateur": "منسق العمليات",
     "Djib'son IA": "جيبسون الذكاء الاصطناعي",
+    "Authentification": "التحقق من الهوية",
+    "Split": "شاشة مقسمة",
+    "Sign in": "تسجيل الدخول",
+    "Sign up": "إنشاء حساب",
+    "Forgot password": "نسيت كلمة المرور",
+    "Reset password": "إعادة تعيين",
+    "Lock screen": "شاشة القفل",
+    "2FA": "التحقق الثنائي",
+    "Sign out": "تسجيل الخروج",
 
     // Dashboard Page
     "Suivi d'activité": "مراقبة النشاط",
