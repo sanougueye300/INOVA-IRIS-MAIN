@@ -38,6 +38,7 @@ function NewUserPage() {
     facebook: "", twitter: "", linkedin: "", youtube: "",
   });
   const [isActive, setIsActive] = useState(true);
+  const [generation, setGeneration] = useState("v1");
   const [permissions, setPermissions] = useState({ dispatching: false, showExperiences: false, showFollowers: true });
   const [tagPolicy, setTagPolicy] = useState<"group" | "everyone">("group");
 

@@ -36,11 +36,11 @@ const mainItems: Item[] = [
   { to: "/iocs", label: "IOC", icon: Database },
   { to: "/threat-map", label: "Threat Map", icon: Globe2 },
   { to: "/assistant", label: "Assistant IA", icon: Brain },
-  { to: "/outils", label: "Outils SOC", icon: Layers, hash: "orchestrator" },
   { to: "/iris", label: "DFIR-IRIS", icon: Fingerprint },
 ];
 
 const toolItems: Item[] = [
+  { to: "/outils", label: "Orchestrateur", icon: Layers, hash: "orchestrator" },
   { to: "/outils", label: "Wazuh", icon: Shield, hash: "wazuh" },
   { to: "/outils", label: "TheHive", icon: Bug, hash: "thehive" },
   { to: "/outils", label: "MISP", icon: ServerCog, hash: "misp" },
@@ -58,8 +58,9 @@ export function SocSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const [authOpen, setAuthOpen] = useState(pathname.startsWith("/auth"));
   const [splitOpen, setSplitOpen] = useState(pathname.startsWith("/auth"));
   const [navOpen, setNavOpen] = useState(true);
+  const [outilsOpen, setOutilsOpen] = useState(pathname === "/outils");
   const [adminOpen, setAdminOpen] = useState(
-    pathname === "/admin" || pathname === "/settings" || pathname === "/integrations" || pathname === "/audit"
+    pathname.startsWith("/admin") || pathname === "/settings" || pathname === "/integrations" || pathname === "/audit"
   );
 
   const isDarker = sidebarAppearance === "darker";
@@ -185,6 +186,7 @@ export function SocSidebar({ onNavigate }: { onNavigate?: () => void }) {
                 {renderItem({ to: "/admin", label: "Gestion des agents", icon: UserCog })}
                 {renderItem({ to: "/admin/new", label: "Nouveau RH", icon: UserPlus })}
                 {renderItem({ to: "/admin/profiles", label: "Gestion des profils", icon: Shield })}
+                {renderItem({ to: "/admin/offres", label: "Catalogues Offres", icon: CreditCard })}
                 {renderItem({ to: "/settings", label: "Paramètres Globaux", icon: Sliders })}
                 {renderItem({ to: "/integrations", label: "Connecteurs & API", icon: Plug })}
                 {renderItem({ to: "/audit", label: "Journaux d'Audit", icon: FileText })}
@@ -193,10 +195,31 @@ export function SocSidebar({ onNavigate }: { onNavigate?: () => void }) {
           </nav>
         </div>
 
-        {/* ── Outils Section ── */}
+        {/* ── Module Outils Section ── */}
         <div className="px-3">
-          <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("Outils (détail)")}</p>
-          <nav className="space-y-1">{toolItems.map(renderItem)}</nav>
+          <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("Module Outils")}</p>
+          <nav className="space-y-1">
+            {/* ── Outils dropdown ── */}
+            <button
+              onClick={() => setOutilsOpen(o => !o)}
+              className={`group flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors ${pathname === "/outils"
+                ? "border-l-4 border-primary bg-accent font-semibold text-accent-foreground"
+                : "border-l-4 border-transparent text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                }`}
+            >
+              <Layers className="h-4 w-4 shrink-0" />
+              <span className="flex-1 text-left">{t("Outils SOC")}</span>
+              {outilsOpen
+                ? <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+                : <ChevronRight className="h-3.5 w-3.5 opacity-60" />}
+            </button>
+
+            {outilsOpen && (
+              <div className="ml-4 space-y-0.5 border-l pl-2" style={{ borderColor: isDarker ? "#3f3f46" : "hsl(var(--border))" }}>
+                {toolItems.map(renderItem)}
+              </div>
+            )}
+          </nav>
         </div>
 
         {/* ── Module Clients Section ── */}

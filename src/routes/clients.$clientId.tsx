@@ -85,7 +85,7 @@ function ClientProfile() {
         procCount: pc.status === "active" || pc.status === "alert" ? Math.floor(Math.random() * 30 + 50) : 0,
         socketsCount: pc.status === "active" || pc.status === "alert" ? Math.floor(Math.random() * 10 + 4) : 0,
         packetsTotal: pc.status === "active" || pc.status === "alert" ? Math.floor(Math.random() * 1000 + 500) : 0,
-        wazuhStatus: pc.wazuhStatus || pc.status
+        wazuhStatus: (pc as any).wazuhStatus || pc.status
       };
     });
     
@@ -364,7 +364,7 @@ function ClientProfile() {
     const primary = parts[0].toLowerCase();
     const arg = parts.slice(1).join(" ").toLowerCase();
 
-    const activePc = extData.pcs.find(pc => pc.id === selectedPcId);
+    const activePc = extData?.pcs.find(pc => pc.id === selectedPcId);
     if (!activePc) {
       setTerminalHistory(prev => [...prev, { type: "error" as const, text: "Erreur : Aucun terminal EDR actif sélectionné." }]);
       return;
@@ -512,6 +512,7 @@ function ClientProfile() {
         
       if (error) throw error;
       
+      if (!data) throw new Error("Aucune donnée renvoyée");
       setProfile(data);
       
       // Récupérer ou générer les données EDR / Contrat depuis notre localStorage

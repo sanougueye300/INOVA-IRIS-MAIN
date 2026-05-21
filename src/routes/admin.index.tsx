@@ -314,7 +314,7 @@ function Admin() {
                         </Avatar>
                       </TableCell>
                       <TableCell className="font-medium">
-              <Link to={`/admin/${p.id}`} className="text-primary hover:underline">
+              <Link to="/admin/$userId" params={{ userId: p.id }} className="text-primary hover:underline">
                 {p.full_name ?? "—"}
               </Link>
             </TableCell>
