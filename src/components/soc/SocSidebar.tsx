@@ -25,8 +25,16 @@ import {
   Plug,
   FileText,
   UserCog,
+  BarChart3,
+  Briefcase,
+  BellRing,
+  ThumbsUp,
+  ShieldCheck,
+  Laptop,
+  ArrowLeft,
 } from "lucide-react";
 import { useSocPreferences } from "@/lib/soc-preferences";
+import { getClientExtendedData, DEMO_CLIENTS } from "@/routes/clients.index";
 
 type Item = { to: string; label: string; icon: LucideIcon; hash?: string };
 
@@ -53,8 +61,9 @@ export function SocSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const hash = useRouterState({ select: (s) => (s.location.hash ?? "").replace(/^#/, "") });
   const { sidebarAppearance, t } = useSocPreferences();
   const [clientsOpen, setClientsOpen] = useState(
-    pathname.startsWith("/clients") || pathname === "/facturation"
+    pathname.startsWith("/clients")
   );
+  const [facturationOpen, setFacturationOpen] = useState(pathname === "/facturation");
   const [authOpen, setAuthOpen] = useState(pathname.startsWith("/auth"));
   const [splitOpen, setSplitOpen] = useState(pathname.startsWith("/auth"));
   const [navOpen, setNavOpen] = useState(true);
@@ -62,6 +71,17 @@ export function SocSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const [adminOpen, setAdminOpen] = useState(
     pathname.startsWith("/admin") || pathname === "/settings" || pathname === "/integrations" || pathname === "/audit"
   );
+
+  const search = useRouterState({ select: (s) => s.location.search }) as any;
+  const activeTabSearch = search?.tab || "overview";
+
+  const pathParts = pathname.split("/");
+  const isClientDetail = pathParts.length >= 3 && pathParts[1] === "clients" && !["new", "satisfaction", "sla", "inventory"].includes(pathParts[2]);
+  const clientId = isClientDetail ? pathParts[2] : null;
+
+  const clientProfile = DEMO_CLIENTS.find(c => c.id === clientId);
+  const clientName = clientProfile?.organization || "Client SOC";
+  const extData = clientId ? getClientExtendedData(clientId, clientName) : null;
 
   const isDarker = sidebarAppearance === "darker";
 
@@ -91,7 +111,7 @@ export function SocSidebar({ onNavigate }: { onNavigate?: () => void }) {
     );
   };
 
-  const isClientSubActive = pathname.startsWith("/clients") || pathname === "/facturation";
+  const isClientSubActive = pathname.startsWith("/clients");
 
   return (
     <aside className={`flex h-full w-64 flex-col border-r ${isDarker
@@ -266,15 +286,111 @@ export function SocSidebar({ onNavigate }: { onNavigate?: () => void }) {
                   {t("Nouveau client")}
                 </Link>
                 <Link
-                  to="/facturation"
+                  to="/clients/satisfaction"
                   onClick={onNavigate}
-                  className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors ${pathname === "/facturation"
+                  className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors ${pathname === "/clients/satisfaction"
                     ? "bg-accent font-semibold text-accent-foreground"
                     : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                     }`}
                 >
-                  <CreditCard className="h-3.5 w-3.5" />
-                  {t("Facturation")}
+                  <ThumbsUp className="h-3.5 w-3.5" />
+                  {t("Satisfaction & NPS")}
+                </Link>
+                <Link
+                  to="/clients/sla"
+                  onClick={onNavigate}
+                  className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors ${pathname === "/clients/sla"
+                    ? "bg-accent font-semibold text-accent-foreground"
+                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                    }`}
+                >
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  {t("SLA & Performance")}
+                </Link>
+                <Link
+                  to="/clients/inventory"
+                  onClick={onNavigate}
+                  className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors ${pathname === "/clients/inventory"
+                    ? "bg-accent font-semibold text-accent-foreground"
+                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                    }`}
+                >
+                  <Laptop className="h-3.5 w-3.5" />
+                  {t("Parc & Inventaire EDR")}
+                </Link>
+              </div>
+            )}
+          </nav>
+        </div>
+
+        {/* ── Module Facturation Section ── */}
+        <div className="px-3">
+          <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("Module Facturation")}</p>
+          <nav className="space-y-1">
+            {/* ── Facturation dropdown ── */}
+            <button
+              onClick={() => setFacturationOpen(o => !o)}
+              className={`group flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors ${pathname === "/facturation"
+                ? "border-l-4 border-primary bg-accent font-semibold text-accent-foreground"
+                : "border-l-4 border-transparent text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                }`}
+            >
+              <CreditCard className="h-4 w-4 shrink-0" />
+              <span className="flex-1 text-left">{t("Module Facturation")}</span>
+              {facturationOpen
+                ? <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+                : <ChevronRight className="h-3.5 w-3.5 opacity-60" />}
+            </button>
+
+            {facturationOpen && (
+              <div className="ml-4 space-y-0.5 border-l pl-2" style={{ borderColor: isDarker ? "#3f3f46" : "hsl(var(--border))" }}>
+                <Link
+                  to="/facturation"
+                  hash="dashboard"
+                  onClick={onNavigate}
+                  className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors ${pathname === "/facturation" && (!hash || hash === "dashboard")
+                    ? "bg-accent font-semibold text-accent-foreground"
+                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                    }`}
+                >
+                  <BarChart3 className="h-3.5 w-3.5" />
+                  {t("Tableau de Bord")}
+                </Link>
+                <Link
+                  to="/facturation"
+                  hash="invoices"
+                  onClick={onNavigate}
+                  className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors ${pathname === "/facturation" && hash === "invoices"
+                    ? "bg-accent font-semibold text-accent-foreground"
+                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                    }`}
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                  {t("Factures & Écheancier")}
+                </Link>
+                <Link
+                  to="/facturation"
+                  hash="contracts"
+                  onClick={onNavigate}
+                  className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors ${pathname === "/facturation" && hash === "contracts"
+                    ? "bg-accent font-semibold text-accent-foreground"
+                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                    }`}
+                >
+                  <Briefcase className="h-3.5 w-3.5" />
+                  {t("Contrats Clients")}
+                </Link>
+                <Link
+                  to="/facturation"
+                  hash="reminders"
+                  onClick={onNavigate}
+                  className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors ${pathname === "/facturation" && hash === "reminders"
+                    ? "bg-accent font-semibold text-accent-foreground"
+                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                    }`}
+                >
+                  <BellRing className="h-3.5 w-3.5" />
+                  {t("Relances & Rappels")}
                 </Link>
               </div>
             )}

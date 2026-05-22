@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, MoreVertical, CheckCircle, XCircle, Users, Building2, ExternalLink, CreditCard, Download, ShieldAlert, Laptop, Sparkles, FileText } from "lucide-react";
+import { Search, MoreVertical, CheckCircle, XCircle, Users, Building2, ExternalLink, CreditCard, Download, ShieldAlert, Laptop, Sparkles, FileText, Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { RequireAuth } from "@/components/RequireAuth";
 import { toast } from "sonner";
@@ -421,21 +421,27 @@ function ClientsList() {
                     return (
                       <TableRow key={p.id} className="hover:bg-muted/30 transition-colors border-b border-border/20">
                         <TableCell>
-                          <Avatar className="h-10 w-10 border border-primary/10">
-                            <AvatarFallback className="bg-primary/5 text-primary font-bold">
-                              {getInitials(p.organization || p.full_name)}
-                            </AvatarFallback>
-                          </Avatar>
+                          <Link to="/clients/$clientId" params={{ clientId: p.id }}>
+                            <Avatar className="h-10 w-10 border border-primary/10 cursor-pointer">
+                              <AvatarFallback className="bg-primary/5 text-primary font-bold">
+                                {getInitials(p.organization || p.full_name)}
+                              </AvatarFallback>
+                            </Avatar>
+                          </Link>
                         </TableCell>
                         <TableCell className="py-4">
-                          <div className="font-semibold text-foreground">{p.full_name ?? "—"}</div>
-                          <div className="text-xs text-muted-foreground mt-0.5">{p.email}</div>
+                          <Link to="/clients/$clientId" params={{ clientId: p.id }} className="hover:underline cursor-pointer group block">
+                            <div className="font-semibold text-foreground group-hover:text-primary transition-colors">{p.full_name ?? "—"}</div>
+                            <div className="text-xs text-muted-foreground mt-0.5">{p.email}</div>
+                          </Link>
                         </TableCell>
                         <TableCell>
-                          <div className="font-medium flex items-center gap-1.5">
-                            <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
-                            {p.organization ?? <span className="text-muted-foreground text-sm font-normal">—</span>}
-                          </div>
+                          <Link to="/clients/$clientId" params={{ clientId: p.id }} className="hover:underline cursor-pointer group block">
+                            <div className="font-medium flex items-center gap-1.5 group-hover:text-primary transition-colors">
+                              <Building2 className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
+                              {p.organization ?? <span className="text-muted-foreground text-sm font-normal">—</span>}
+                            </div>
+                          </Link>
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline" className={`px-2.5 py-1 rounded-lg border font-bold flex items-center w-fit gap-1 ${getScoreColor(extData.cyberScore)}`}>
@@ -467,6 +473,19 @@ function ClientsList() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">
+                            {/* Bouton d'accès rapide au tableau de bord */}
+                            <Button
+                              asChild
+                              variant="ghost"
+                              size="icon"
+                              className="h-9 w-9 rounded-xl hover:bg-primary/10 hover:text-primary transition-all"
+                              title="Voir la console 360° / Tableau de bord"
+                            >
+                              <Link to="/clients/$clientId" params={{ clientId: p.id }}>
+                                <Eye className="h-4.5 w-4.5 text-primary" />
+                              </Link>
+                            </Button>
+
                             {/* Bouton de téléchargement de contrat direct */}
                             <Button
                               variant="ghost"

@@ -29,7 +29,10 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ClientsIndexRouteImport } from './routes/clients.index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as ClientsSlaRouteImport } from './routes/clients.sla'
+import { Route as ClientsSatisfactionRouteImport } from './routes/clients.satisfaction'
 import { Route as ClientsNewRouteImport } from './routes/clients.new'
+import { Route as ClientsInventoryRouteImport } from './routes/clients.inventory'
 import { Route as ClientsClientIdRouteImport } from './routes/clients.$clientId'
 import { Route as AuthSignupRouteImport } from './routes/auth.signup'
 import { Route as AuthResetPasswordRouteImport } from './routes/auth.reset-password'
@@ -143,9 +146,24 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminRoute,
 } as any)
+const ClientsSlaRoute = ClientsSlaRouteImport.update({
+  id: '/clients/sla',
+  path: '/clients/sla',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClientsSatisfactionRoute = ClientsSatisfactionRouteImport.update({
+  id: '/clients/satisfaction',
+  path: '/clients/satisfaction',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ClientsNewRoute = ClientsNewRouteImport.update({
   id: '/clients/new',
   path: '/clients/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClientsInventoryRoute = ClientsInventoryRouteImport.update({
+  id: '/clients/inventory',
+  path: '/clients/inventory',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ClientsClientIdRoute = ClientsClientIdRouteImport.update({
@@ -240,7 +258,10 @@ export interface FileRoutesByFullPath {
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/signup': typeof AuthSignupRoute
   '/clients/$clientId': typeof ClientsClientIdRoute
+  '/clients/inventory': typeof ClientsInventoryRoute
   '/clients/new': typeof ClientsNewRoute
+  '/clients/satisfaction': typeof ClientsSatisfactionRoute
+  '/clients/sla': typeof ClientsSlaRoute
   '/admin/': typeof AdminIndexRoute
   '/clients/': typeof ClientsIndexRoute
 }
@@ -274,7 +295,10 @@ export interface FileRoutesByTo {
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/signup': typeof AuthSignupRoute
   '/clients/$clientId': typeof ClientsClientIdRoute
+  '/clients/inventory': typeof ClientsInventoryRoute
   '/clients/new': typeof ClientsNewRoute
+  '/clients/satisfaction': typeof ClientsSatisfactionRoute
+  '/clients/sla': typeof ClientsSlaRoute
   '/admin': typeof AdminIndexRoute
   '/clients': typeof ClientsIndexRoute
 }
@@ -310,7 +334,10 @@ export interface FileRoutesById {
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/signup': typeof AuthSignupRoute
   '/clients/$clientId': typeof ClientsClientIdRoute
+  '/clients/inventory': typeof ClientsInventoryRoute
   '/clients/new': typeof ClientsNewRoute
+  '/clients/satisfaction': typeof ClientsSatisfactionRoute
+  '/clients/sla': typeof ClientsSlaRoute
   '/admin/': typeof AdminIndexRoute
   '/clients/': typeof ClientsIndexRoute
 }
@@ -347,7 +374,10 @@ export interface FileRouteTypes {
     | '/auth/reset-password'
     | '/auth/signup'
     | '/clients/$clientId'
+    | '/clients/inventory'
     | '/clients/new'
+    | '/clients/satisfaction'
+    | '/clients/sla'
     | '/admin/'
     | '/clients/'
   fileRoutesByTo: FileRoutesByTo
@@ -381,7 +411,10 @@ export interface FileRouteTypes {
     | '/auth/reset-password'
     | '/auth/signup'
     | '/clients/$clientId'
+    | '/clients/inventory'
     | '/clients/new'
+    | '/clients/satisfaction'
+    | '/clients/sla'
     | '/admin'
     | '/clients'
   id:
@@ -416,7 +449,10 @@ export interface FileRouteTypes {
     | '/auth/reset-password'
     | '/auth/signup'
     | '/clients/$clientId'
+    | '/clients/inventory'
     | '/clients/new'
+    | '/clients/satisfaction'
+    | '/clients/sla'
     | '/admin/'
     | '/clients/'
   fileRoutesById: FileRoutesById
@@ -441,7 +477,10 @@ export interface RootRouteChildren {
   ThreatMapRoute: typeof ThreatMapRoute
   WorkflowRoute: typeof WorkflowRoute
   ClientsClientIdRoute: typeof ClientsClientIdRoute
+  ClientsInventoryRoute: typeof ClientsInventoryRoute
   ClientsNewRoute: typeof ClientsNewRoute
+  ClientsSatisfactionRoute: typeof ClientsSatisfactionRoute
+  ClientsSlaRoute: typeof ClientsSlaRoute
   ClientsIndexRoute: typeof ClientsIndexRoute
 }
 
@@ -587,11 +626,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/clients/sla': {
+      id: '/clients/sla'
+      path: '/clients/sla'
+      fullPath: '/clients/sla'
+      preLoaderRoute: typeof ClientsSlaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/clients/satisfaction': {
+      id: '/clients/satisfaction'
+      path: '/clients/satisfaction'
+      fullPath: '/clients/satisfaction'
+      preLoaderRoute: typeof ClientsSatisfactionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/clients/new': {
       id: '/clients/new'
       path: '/clients/new'
       fullPath: '/clients/new'
       preLoaderRoute: typeof ClientsNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/clients/inventory': {
+      id: '/clients/inventory'
+      path: '/clients/inventory'
+      fullPath: '/clients/inventory'
+      preLoaderRoute: typeof ClientsInventoryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/clients/$clientId': {
@@ -741,7 +801,10 @@ const rootRouteChildren: RootRouteChildren = {
   ThreatMapRoute: ThreatMapRoute,
   WorkflowRoute: WorkflowRoute,
   ClientsClientIdRoute: ClientsClientIdRoute,
+  ClientsInventoryRoute: ClientsInventoryRoute,
   ClientsNewRoute: ClientsNewRoute,
+  ClientsSatisfactionRoute: ClientsSatisfactionRoute,
+  ClientsSlaRoute: ClientsSlaRoute,
   ClientsIndexRoute: ClientsIndexRoute,
 }
 export const routeTree = rootRouteImport
