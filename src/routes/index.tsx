@@ -1,22 +1,14 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { LandingHero } from "@/components/landing/LandingHero";
-import { LandingStack } from "@/components/landing/LandingStack";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/")(  {
   head: () => ({
     meta: [
-      { title: "INOVA-IRIS — Plateforme SOC de Cyberdéfense Nouvelle Génération" },
-      { name: "description", content: "Plateforme SOC intégrée combinant Wazuh, Shuffle, TheHive, MISP et VirusTotal pour la détection et réponse automatisée aux incidents cyber. Sonatel Group." },
+      { title: "INOVA-IRIS — Connexion SOC" },
+      { name: "description", content: "Plateforme SOC intégrée — Authentification sécurisée. Sonatel Group." },
     ],
   }),
-  component: Index,
+  beforeLoad: () => {
+    throw redirect({ to: "/auth/login", replace: true });
+  },
+  component: () => null,
 });
-
-function Index() {
-  return (
-    <div className="landing-dark">
-      <LandingHero />
-      <LandingStack />
-    </div>
-  );
-}
