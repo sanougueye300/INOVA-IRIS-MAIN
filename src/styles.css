@@ -193,3 +193,55 @@
   --primary: oklch(0.60 0.22 15);
   --ring: oklch(0.60 0.22 15);
 }
+
+/* ═══ Landing Page Animations ═══ */
+@keyframes float-slow { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-20px)} }
+@keyframes float-delay { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-15px)} }
+@keyframes pulse-glow { 0%,100%{opacity:.4;transform:scale(1)} 50%{opacity:.8;transform:scale(1.05)} }
+@keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
+@keyframes scan-line { 0%{top:-2px} 100%{top:100%} }
+@keyframes gradient-shift { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
+@keyframes typing { 0%{width:0} 100%{width:100%} }
+@keyframes fade-up { 0%{opacity:0;transform:translateY(30px)} 100%{opacity:1;transform:translateY(0)} }
+@keyframes count-up { 0%{opacity:0;transform:translateY(10px)} 100%{opacity:1;transform:translateY(0)} }
+
+.animate-float-slow { animation: float-slow 6s ease-in-out infinite; }
+.animate-float-delay { animation: float-delay 8s ease-in-out infinite 1s; }
+.animate-pulse-glow { animation: pulse-glow 3s ease-in-out infinite; }
+.animate-shimmer { background-size:200% 100%; animation: shimmer 3s linear infinite; }
+.animate-gradient-shift { background-size:200% 200%; animation: gradient-shift 4s ease infinite; }
+.animate-fade-up { animation: fade-up 0.8s ease-out both; }
+.animate-fade-up-1 { animation: fade-up 0.8s ease-out 0.1s both; }
+.animate-fade-up-2 { animation: fade-up 0.8s ease-out 0.2s both; }
+.animate-fade-up-3 { animation: fade-up 0.8s ease-out 0.3s both; }
+.animate-fade-up-4 { animation: fade-up 0.8s ease-out 0.4s both; }
+.animate-fade-up-5 { animation: fade-up 0.8s ease-out 0.5s both; }
+
+.glass-card {
+  background: rgba(255,255,255,0.03);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.landing-dark {
+  background: #050a15;
+  color: #e2e8f0;
+}
+
+.text-gradient-cyber {
+  background: linear-gradient(135deg, #f97316, #fb923c, #fbbf24, #f97316);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradient-shift 4s ease infinite;
+}
+
+.scan-line::after {
+  content:'';
+  position:absolute;
+  left:0;right:0;
+  height:2px;
+  background:linear-gradient(90deg,transparent,rgba(249,115,22,0.3),transparent);
+  animation: scan-line 4s linear infinite;
+}
