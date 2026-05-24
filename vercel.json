@@ -1,7 +1,16 @@
 {
   "framework": "tanstack-start",
-  "buildCommand": "npm run build",
+  "redirects": [
+    {
+      "source": "/",
+      "destination": "/auth/login",
+      "permanent": false
+    }
+  ],
   "rewrites": [
-    { "source": "/(.*)", "destination": "/" }
+    {
+      "source": "/(.*)",
+      "destination": "/"
+    }
   ]
 }
