@@ -1,16 +1,3 @@
 {
-  "framework": "tanstack-start",
-  "redirects": [
-    {
-      "source": "/",
-      "destination": "/auth/login",
-      "permanent": false
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/"
-    }
-  ]
+  "buildCommand": "npm run build && node scripts/vercel-build.mjs"
 }

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Shield, Mail, Lock, Eye, EyeOff, Fingerprint, Chrome, ShieldAlert, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/auth/login")({
   component: LoginPage,
@@ -17,7 +18,7 @@ function LoginPage() {
   const [isBioScanning, setIsBioScanning] = useState(false);
   const [bioSuccess, setBioSuccess] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
       toast.error("Veuillez remplir tous les champs.");
@@ -25,11 +26,25 @@ function LoginPage() {
     }
 
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        throw error;
+      }
+
       toast.success("Connexion réussie ! Bienvenue sur la plateforme Sonatel SOC.");
       navigate({ to: "/dashboard", replace: true });
-    }, 1500);
+    } catch (err: any) {
+      toast.error("Échec de l'authentification", {
+        description: err.message || "Email ou mot de passe incorrect.",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleBiometrics = () => {

@@ -84,6 +84,8 @@ function NewUserPage() {
     city: "",
     role: "client" as AppRole,
     generation: "v1",
+    password: "",
+    confirmPassword: "",
   });
 
   const [isActive, setIsActive]       = useState(true);
@@ -109,6 +111,20 @@ function NewUserPage() {
       if (!form.organization)        { toast.error("Organisation requise");       return false; }
       if (!form.physicalAddress)     { toast.error("Site / adresse requis");      return false; }
     }
+    if (step === 2) {
+      if (!form.password) {
+        toast.error("Mot de passe requis");
+        return false;
+      }
+      if (form.password.length < 6) {
+        toast.error("Le mot de passe doit contenir au moins 6 caractères");
+        return false;
+      }
+      if (form.password !== form.confirmPassword) {
+        toast.error("Les mots de passe ne correspondent pas");
+        return false;
+      }
+    }
     return true;
   };
 
@@ -116,20 +132,45 @@ function NewUserPage() {
   const handlePrev = () => setActiveStep(p => p - 1);
 
   const handleCreate = async () => {
-    if (!validateStep(1)) return;
+    if (!validateStep(1) || !validateStep(2)) return;
     setBusy(true);
     try {
-      const site = SITES.find(s => s.value === form.physicalAddress);
-      const org  = ORGANIZATIONS.find(o => o.value === form.organization);
+      const org = ORGANIZATIONS.find(o => o.value === form.organization);
       const body = {
-        email:        form.email,
+        email:           form.email,
         fullName,
-        organization: org?.label ?? form.organization,
-        role:         form.role,
-        generation:   form.generation,
+        organization:    org?.label ?? form.organization,
+        role:            form.role,
+        generation:      form.generation,
+        phone:           form.phone,
+        matricule:       form.matricule,
+        physicalAddress: form.physicalAddress,
+        city:            form.city,
+        info:            form.info,
+        tagPolicy,
+        isActive,
+        permissions,
+        password:        form.password,
       };
-      const { error } = await supabase.functions.invoke("admin-create-user", { body });
-      if (error) throw error;
+      const { data, error } = await supabase.functions.invoke("admin-create-user", { body });
+      if (error) {
+        let errMsg = error.message;
+        // Attempt to extract details from the HTTP response
+        if (error.context && typeof error.context.json === "function") {
+          try {
+            const errBody = await error.context.json();
+            if (errBody && errBody.error) {
+              errMsg = errBody.error;
+            }
+          } catch (_) {
+            try {
+              const text = await error.context.text();
+              if (text) errMsg = text;
+            } catch (__) {}
+          }
+        }
+        throw new Error(errMsg);
+      }
       toast.success("Agent créé avec succès !", { description: `OTP envoyé à ${form.email}` });
       navigate({ to: "/admin" });
     } catch (e: any) {
@@ -459,6 +500,24 @@ function NewUserPage() {
                         </div>
                       </div>
                     </div>
+
+                    <Separator className="my-6 border-slate-100 dark:border-zinc-800" />
+
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-9 h-9 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                        <Lock className="h-4.5 w-4.5 text-amber-500" />
+                      </div>
+                      <div>
+                        <h2 className="text-sm font-black text-slate-800 dark:text-zinc-100 uppercase tracking-wider">Sécurité du Compte</h2>
+                        <p className="text-[11px] text-slate-400 font-medium">Définissez un mot de passe initial pour l'agent (minimum 6 caractères)</p>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-x-8 gap-y-1 md:grid-cols-2">
+                      {renderInput("Mot de passe", form.password, v => setForm({ ...form, password: v }), "••••••••", <Lock className="h-4 w-4" />, "password")}
+                      {renderInput("Confirmer le mot de passe", form.confirmPassword, v => setForm({ ...form, confirmPassword: v }), "••••••••", <Lock className="h-4 w-4" />, "password")}
+                    </div>
+
                   </div>
                 </div>
               </div>

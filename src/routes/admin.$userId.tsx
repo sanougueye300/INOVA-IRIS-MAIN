@@ -20,8 +20,8 @@ import {
   Activity, Clock, Fingerprint, KeyRound, Globe, Power, PowerOff,
   Save, Loader2, ShieldAlert, LogOut, RotateCcw, Download,
   User as UserIcon, Palette, Sparkles, Lock, Key, Info, Phone,
-  Facebook, Twitter, Linkedin, Youtube, ChevronLeft, ChevronRight,
-  Sliders, Users, AlertCircle, RefreshCw, Send, Check
+  Facebook, Twitter, Linkedin, Youtube, ChevronLeft, ChevronRight, ChevronDown,
+  Sliders, Users, AlertCircle, RefreshCw, Send, Check, Zap
 } from "lucide-react";
 
 export const Route = createFileRoute("/admin/$userId")({
@@ -34,7 +34,7 @@ const DEFAULT_ADMIN_USER = {
   id: "default-sanou",
   email: "sanou.gueye@sonatel.com",
   full_name: "Sanou Gueye",
-  organization: "Sonatel",
+  organization: "SONATEL/CYBER",
   is_active: true,
   created_at: "2025-01-15T08:00:00Z",
 };
@@ -53,13 +53,36 @@ function generateMockActivity(userId: string): Array<{ date: string; type: strin
   ];
 }
 
-const ROLES_LIST = [
-  { value: "VTB", label: "VTB Analyste", desc: "Suivi des alertes de premier niveau et dispatch" },
-  { value: "PVT", label: "PVT Référent", desc: "Analyste cyber senior, validation et escalades" },
-  { value: "BO VTB", label: "BO VTB Manager", desc: "Supervision des processus de surveillance" },
-  { value: "Manager", label: "Manager Cyber", desc: "Planification d'équipes et gouvernance opérationnelle" },
-  { value: "Admin", label: "Administrateur SOC", desc: "Administration des plateformes intégrées" },
-  { value: "Super Admin", label: "Super Admin Global", desc: "Habilitation totale sur l'ensemble de la structure" }
+const ROLES: { value: AppRole; label: string; desc: string; icon: React.ReactNode; color: string }[] = [
+  { value: "client",   label: "Client",          desc: "Accès limité aux tableaux de bord de son organisation",    icon: <Users className="h-4 w-4" />,       color: "text-sky-500"     },
+  { value: "analyste", label: "Analyste Cyber",   desc: "Gestion des alertes, audits de sécurité et SOC",           icon: <Zap className="h-4 w-4" />,         color: "text-violet-500"  },
+  { value: "manager",  label: "Manager SOC",      desc: "Supervision des processus et répartition des tâches",      icon: <Sliders className="h-4 w-4" />,     color: "text-amber-500"   },
+  { value: "admin",    label: "Administrateur",   desc: "Contrôle total sur la plateforme et les utilisateurs",     icon: <Shield className="h-4 w-4" />,      color: "text-rose-500"    },
+];
+
+const ORGANIZATIONS = [
+  { value: "SONATEL/DSI",   label: "SONATEL / DSI",   sub: "Direction des Systèmes d'Information" },
+  { value: "SONATEL/DDE",   label: "SONATEL / DDE",   sub: "Direction du Développement et des Études" },
+  { value: "SONATEL/CYBER", label: "SONATEL / CYBER", sub: "Direction Cybersécurité SOC" },
+  { value: "SONATEL/DTI",   label: "SONATEL / DTI",   sub: "Direction Technologies & Innovation" },
+  { value: "SONATEL/DCF",   label: "SONATEL / DCF",   sub: "Direction Commerciale et Finance" },
+  { value: "SONATEL/DRH",   label: "SONATEL / DRH",   sub: "Direction des Ressources Humaines" },
+  { value: "SONATEL/DTC",   label: "SONATEL / DTC",   sub: "Direction Technique et Construction" },
+  { value: "SONATEL/DAC",   label: "SONATEL / DAC",   sub: "Direction Administrative et Comptable" },
+  { value: "ORANGE/BSS",    label: "ORANGE / BSS",    sub: "Orange Business Services Sénégal" },
+];
+
+const SITES = [
+  { value: "technopole",      label: "Technopole, Immeuble Sonatel",         city: "Dakar" },
+  { value: "liberte6",        label: "Liberté 6, Tour D — Sonatel",           city: "Dakar" },
+  { value: "zone-teleport",   label: "Zone Téléport, Plateau",                city: "Dakar" },
+  { value: "parcelles",       label: "Parcelles Assainies, Zone Sonatel",     city: "Dakar" },
+  { value: "grand-yoff",      label: "Grand-Yoff, Centre Technique",          city: "Dakar" },
+  { value: "thies",           label: "Agence Régionale de Thiès",             city: "Thiès" },
+  { value: "saint-louis",     label: "Agence Régionale de Saint-Louis",       city: "Saint-Louis" },
+  { value: "ziguinchor",      label: "Agence Régionale de Ziguinchor",        city: "Ziguinchor" },
+  { value: "kaolack",         label: "Agence Régionale de Kaolack",           city: "Kaolack" },
+  { value: "tambacounda",     label: "Agence Régionale de Tambacounda",       city: "Tambacounda" },
 ];
 
 function UserCockpit360() {
@@ -91,21 +114,15 @@ function UserCockpit360() {
     email: "",
     organization: "",
     phone: "",
-    department: "",
+    matricule: "",
+    physicalAddress: "",
+    city: "",
     info: "",
-    website: "",
-    oldPassword: "",
+    generation: "v1",
     newPassword: "",
     confirmPassword: "",
-    facebook: "",
-    twitter: "",
-    linkedin: "",
-    youtube: "",
-    generation: "v2",
-    budgetCode: "DEPT-CYBER-OBS"
   });
 
-  const [selectedProfil, setSelectedProfil] = useState<string>("Admin");
   const [tagPolicy, setTagPolicy] = useState<string>("group");
   const [permissions, setPermissions] = useState({
     dispatching: false,
@@ -125,58 +142,35 @@ function UserCockpit360() {
     try {
       let data: any = null;
 
-      // 1. Check localStorage for locally-saved profile
-      const localProfile = localStorage.getItem(`profile_${userId}`);
-      if (localProfile) {
-        try { data = JSON.parse(localProfile); } catch (e) {}
-      }
-
-      // 2. Check if it's the default admin user
-      if (!data && userId === "default-sanou") {
-        data = DEFAULT_ADMIN_USER;
-      }
-
-      // 3. Otherwise fetch from Supabase
-      if (!data) {
-        const { data: db, error } = await supabase.from("profiles").select("*").eq("id", userId).single();
-        if (error) throw error;
+      // 1. Fetch from Supabase
+      const { data: db, error } = await supabase.from("profiles").select("*").eq("id", userId).single();
+      if (error) {
+        if (userId === "default-sanou") {
+          data = DEFAULT_ADMIN_USER;
+        } else {
+          throw error;
+        }
+      } else {
         data = db;
       }
 
       setProfile(data);
 
       // Load role
-      if (userId === "default-sanou") {
-        setRole("admin");
+      let dbRole: AppRole = "client";
+      if (userId === "default-sanou" && !db) {
+        dbRole = "admin";
       } else {
         const { data: r } = await supabase.from("user_roles").select("role").eq("user_id", userId);
-        if (r && r.length > 0) setRole(r[0].role as AppRole);
+        if (r && r.length > 0) {
+          dbRole = r[0].role as AppRole;
+        }
       }
+      setRole(dbRole);
 
-      // Load or generate activity
-      const storedActivity = localStorage.getItem(`activity_${userId}`);
-      if (storedActivity) {
-        setActivity(JSON.parse(storedActivity));
-      } else {
-        const mock = generateMockActivity(userId);
-        setActivity(mock);
-      }
-
-      const localPhone = localStorage.getItem(`phone_user_${userId}`) || "";
-      const localDept = localStorage.getItem(`dept_user_${userId}`) || (userId === "default-sanou" ? "SNT/DDE/DDO/CLF" : "");
-      const localInfo = localStorage.getItem(`info_user_${userId}`) || (userId === "default-sanou" ? "Ingénieur Cyberdéfense & Administrateur Principal du SOC Sonatel." : "");
-      const localWebsite = localStorage.getItem(`website_user_${userId}`) || "https://sonatel.sn";
-      
-      const localFacebook = localStorage.getItem(`fb_user_${userId}`) || "";
-      const localTwitter = localStorage.getItem(`tw_user_${userId}`) || "";
-      const localLinkedin = localStorage.getItem(`li_user_${userId}`) || "";
-      const localYoutube = localStorage.getItem(`yt_user_${userId}`) || "";
-      
-      const localProfil = localStorage.getItem(`profil_role_${userId}`) || (userId === "default-sanou" ? "Admin" : "VTB");
-      const localTagPolicy = localStorage.getItem(`tag_policy_${userId}`) || "group";
-      const localPermissions = localStorage.getItem(`perms_user_${userId}`) 
-        ? JSON.parse(localStorage.getItem(`perms_user_${userId}`)!) 
-        : { dispatching: false, experiences: false, followers: true };
+      // Generate activity
+      const mock = generateMockActivity(userId);
+      setActivity(mock);
 
       const parts = (data.full_name || "").split(" ");
       const prenom = parts[0] || "";
@@ -188,24 +182,22 @@ function UserCockpit360() {
         fullName: data.full_name || "",
         email: data.email || "",
         organization: data.organization || "",
-        phone: localPhone,
-        department: localDept,
-        info: localInfo,
-        website: localWebsite,
-        oldPassword: "",
+        phone: data.phone || "",
+        matricule: data.matricule || "",
+        physicalAddress: data.physical_address || "",
+        city: data.city || "",
+        info: data.info || "",
+        generation: data.generation || "v1",
         newPassword: "",
         confirmPassword: "",
-        facebook: localFacebook,
-        twitter: localTwitter,
-        linkedin: localLinkedin,
-        youtube: localYoutube,
-        generation: localStorage.getItem(`gen_user_${userId}`) || "v2",
-        budgetCode: localStorage.getItem(`budget_user_${userId}`) || "DEPT-CYBER-" + Math.floor(Math.random() * 9000 + 1000)
       });
 
-      setSelectedProfil(localProfil);
-      setTagPolicy(localTagPolicy);
-      setPermissions(localPermissions);
+      setTagPolicy(data.tag_policy || "group");
+      setPermissions({
+        dispatching: data.perm_dispatching || false,
+        experiences: data.perm_show_experiences || false,
+        followers: data.perm_show_followers || false,
+      });
     } catch (e: any) {
       toast.error("Erreur", { description: "Impossible de charger le profil utilisateur" });
       navigate({ to: "/admin" });
@@ -221,33 +213,61 @@ function UserCockpit360() {
     setSaving(true);
     try {
       const mergedFullName = `${form.prenom} ${form.nom}`.trim() || form.fullName;
-      const updatedProfile = { ...profile, full_name: mergedFullName, organization: form.organization };
+      const updatedProfile = { 
+        ...profile, 
+        full_name: mergedFullName, 
+        organization: form.organization,
+        phone: form.phone || null,
+        matricule: form.matricule || null,
+        physical_address: form.physicalAddress || null,
+        city: form.city || null,
+        info: form.info || null,
+        generation: form.generation || "v1",
+        tag_policy: tagPolicy,
+        perm_dispatching: permissions.dispatching,
+        perm_show_experiences: permissions.experiences,
+        perm_show_followers: permissions.followers,
+      };
 
-      if (userId === "default-sanou" || localStorage.getItem(`profile_${userId}`)) {
-        localStorage.setItem(`profile_${userId}`, JSON.stringify(updatedProfile));
+      if (userId === "default-sanou" && profile.id === "default-sanou") {
+        setProfile(updatedProfile);
       } else {
+        // 1. Update Profile in Supabase
         const { error } = await supabase.from("profiles").update({
           full_name: mergedFullName,
           organization: form.organization,
+          phone: form.phone || null,
+          matricule: form.matricule || null,
+          physical_address: form.physicalAddress || null,
+          city: form.city || null,
+          info: form.info || null,
+          generation: form.generation || "v1",
+          tag_policy: tagPolicy,
+          perm_dispatching: permissions.dispatching,
+          perm_show_experiences: permissions.experiences,
+          perm_show_followers: permissions.followers,
         }).eq("id", userId);
+        
         if (error) throw error;
+
+        // 2. Update Role in Supabase
+        await supabase.from("user_roles").delete().eq("user_id", userId);
+        await supabase.from("user_roles").insert({ user_id: userId, role });
       }
 
-      localStorage.setItem(`phone_user_${userId}`, form.phone);
-      localStorage.setItem(`dept_user_${userId}`, form.department);
-      localStorage.setItem(`info_user_${userId}`, form.info);
-      localStorage.setItem(`website_user_${userId}`, form.website);
-      
-      localStorage.setItem(`fb_user_${userId}`, form.facebook);
-      localStorage.setItem(`tw_user_${userId}`, form.twitter);
-      localStorage.setItem(`li_user_${userId}`, form.linkedin);
-      localStorage.setItem(`yt_user_${userId}`, form.youtube);
-
-      localStorage.setItem(`profil_role_${userId}`, selectedProfil);
-      localStorage.setItem(`tag_policy_${userId}`, tagPolicy);
-      localStorage.setItem(`perms_user_${userId}`, JSON.stringify(permissions));
-      localStorage.setItem(`gen_user_${userId}`, form.generation);
-      localStorage.setItem(`budget_user_${userId}`, form.budgetCode);
+      // 3. Update password if provided (via Edge Function with service role)
+      if (form.newPassword) {
+        if (form.newPassword.length < 6) {
+          throw new Error("Le mot de passe doit contenir au moins 6 caractères");
+        }
+        if (form.newPassword !== form.confirmPassword) {
+          throw new Error("Les mots de passe ne correspondent pas");
+        }
+        const { error: passError } = await supabase.functions.invoke("admin-update-password", {
+          body: { userId, password: form.newPassword },
+        });
+        if (passError) throw passError;
+      }
 
       setProfile(updatedProfile);
       toast.success("Profil et préférences mis à jour avec succès");
@@ -266,8 +286,8 @@ function UserCockpit360() {
     const toastId = toast.loading(`${profile.is_active ? "Désactivation" : "Activation"} en cours...`);
     try {
       const updatedProfile = { ...profile, is_active: !profile.is_active };
-      if (userId === "default-sanou" || localStorage.getItem(`profile_${userId}`)) {
-        localStorage.setItem(`profile_${userId}`, JSON.stringify(updatedProfile));
+      if (userId === "default-sanou" && profile.id === "default-sanou") {
+        setProfile(updatedProfile);
       } else {
         const { error } = await supabase.from("profiles").update({ is_active: !profile.is_active }).eq("id", userId);
         if (error) throw error;
@@ -310,7 +330,7 @@ function UserCockpit360() {
     setTimeout(() => {
       let reply = "Requête non reconnue par le noyau de diagnostic.";
       if (prompt.includes("permissions")) {
-        reply = `[AUDIT DJIB'SON IA] : Analyse des privilèges pour ${form.prenom} ${form.nom}. Profil SOC sélectionné : ${selectedProfil}. Habilitations : Dispatching=${permissions.dispatching ? 'OUI' : 'NON'}, Expériences=${permissions.experiences ? 'OUI' : 'NON'}. Score de conformité : 100%. Aucun risque détecté.`;
+        reply = `[AUDIT DJIB'SON IA] : Analyse des privilèges pour ${form.prenom} ${form.nom}. Rôle SOC sélectionné : ${role}. Habilitations : Dispatching=${permissions.dispatching ? 'OUI' : 'NON'}, Expériences=${permissions.experiences ? 'OUI' : 'NON'}. Score de conformité : 100%. Aucun risque détecté.`;
       } else if (prompt.includes("rotation")) {
         reply = `[SCRIPT DE ROTATION API GENERATED] :\n# Automatique rotation script for ${form.email}\nimport requests\nresponse = requests.post('https://soc.sonatel.sn/api/v1/rotate-keys',\n  headers={'Authorization': 'Bearer MFA_SESSION_TOKEN'},\n  json={'user_id': '${userId}'})\nprint("Rotation statut :", response.json().get('status'))`;
       } else if (prompt.includes("MFA")) {
@@ -360,6 +380,38 @@ function UserCockpit360() {
             placeholder={placeholder}
             className="w-full bg-transparent border-none outline-none p-0 text-slate-800 dark:text-zinc-100 placeholder-slate-400 text-sm font-semibold mt-1 focus:ring-0 focus:outline-none"
           />
+        </div>
+      </div>
+    </div>
+  );
+
+  /* Reusable dropdown field */
+  const renderSelect = (
+    label: string, value: string, onValueChange: (v: string) => void,
+    placeholder: string, icon: React.ReactNode,
+    options: { value: string; label: string; sub?: string }[]
+  ) => (
+    <div className="group">
+      <div className="flex items-start gap-3 border-b border-slate-200 dark:border-zinc-800 focus-within:border-amber-500 py-2.5 transition-all duration-300">
+        <div className="text-slate-400 group-focus-within:text-amber-500 transition-colors shrink-0 mt-3">{icon}</div>
+        <div className="flex-1">
+          <span className="block text-[10px] font-extrabold text-slate-400 dark:text-zinc-500 uppercase tracking-widest mb-1">{label}</span>
+          <Select value={value} onValueChange={onValueChange}>
+            <SelectTrigger className="w-full bg-transparent border-none shadow-none p-0 h-auto text-sm font-semibold text-slate-800 dark:text-zinc-100 focus:ring-0 focus:outline-none [&>span]:flex [&>span]:items-center">
+              <SelectValue placeholder={<span className="text-slate-350 dark:text-zinc-600 font-normal">{placeholder}</span>} />
+              <ChevronDown className="h-3.5 w-3.5 text-slate-400 ml-auto shrink-0" />
+            </SelectTrigger>
+            <SelectContent className="bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-xl shadow-2xl">
+              {options.map(opt => (
+                <SelectItem key={opt.value} value={opt.value} className="rounded-lg cursor-pointer hover:bg-amber-50 dark:hover:bg-amber-500/10 focus:bg-amber-50 dark:focus:bg-amber-500/10">
+                  <div>
+                    <div className="text-xs font-bold text-slate-800 dark:text-zinc-100">{opt.label}</div>
+                    {opt.sub && <div className="text-[10px] text-slate-400 dark:text-zinc-500 font-normal mt-0.5">{opt.sub}</div>}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
     </div>
@@ -431,9 +483,9 @@ function UserCockpit360() {
             />
 
             {[
-              { num: 1, label: "Addresses" },
-              { num: 2, label: "Données Facturation" },
-              { num: 3, label: "Accès et Produits" },
+              { num: 1, label: "Identité & Adresse" },
+              { num: 2, label: "Accès & Rôles" },
+              { num: 3, label: "Permissions & Statut" },
               { num: 4, label: "Activité & Audit" },
               { num: 5, label: "Validation" }
             ].map((st) => (
@@ -483,32 +535,40 @@ function UserCockpit360() {
                 </CardHeader>
                 <CardContent className="space-y-6 pt-2">
                   <div className="grid gap-6 md:grid-cols-2">
-                    {renderInput("PRENOM DE L'AGENT", form.prenom, (v) => setForm({...form, prenom: v}), "Prenom", <UserIcon className="h-4 w-4" />)}
-                    {renderInput("NOM DE L'AGENT", form.nom, (v) => setForm({...form, nom: v}), "Nom", <UserIcon className="h-4 w-4" />)}
+                    {renderInput("Prénom de l'Agent", form.prenom, (v) => setForm({...form, prenom: v}), "Prenom", <UserIcon className="h-4 w-4" />)}
+                    {renderInput("Nom de l'Agent", form.nom, (v) => setForm({...form, nom: v}), "Nom", <UserIcon className="h-4 w-4" />)}
                   </div>
                   <div className="grid gap-6 md:grid-cols-2">
                     {renderInput("EMAIL PROFESSIONNEL (Lecture seule)", form.email, () => {}, "email@sonatel.sn", <Mail className="h-4 w-4" />, "email", true)}
                     {renderInput("CONTACT TÉLÉPHONIQUE", form.phone, (v) => setForm({...form, phone: v}), "+221 77 123 45 67", <Phone className="h-4 w-4" />, "tel")}
                   </div>
                   <div className="grid gap-6 md:grid-cols-2">
-                    {renderInput("ORGANISATION / DIVISION", form.organization, (v) => setForm({...form, organization: v}), "Sonatel", <Building className="h-4 w-4" />)}
-                    {renderInput("SITE INTERNET DE LA DIVISION", form.website, (v) => setForm({...form, website: v}), "https://sonatel.sn", <Globe className="h-4 w-4" />, "url")}
+                    {renderInput("Matricule Agent", form.matricule, (v) => setForm({...form, matricule: v}), "SON-CYBER-2024", <Lock className="h-4 w-4" />)}
+                    {renderSelect(
+                      "Organisation / Direction",
+                      form.organization,
+                      v => setForm({ ...form, organization: v }),
+                      "Sélectionnez une direction...",
+                      <Building className="h-4 w-4" />,
+                      ORGANIZATIONS
+                    )}
                   </div>
 
                   <Separator className="border-slate-100 dark:border-zinc-800" />
 
-                  <div className="space-y-4">
-                    <h3 className="text-xs font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
-                      <Globe className="h-4 w-4" /> Bureau physique & Implantation
-                    </h3>
-                    <div className="grid gap-4 sm:grid-cols-3">
-                      <div className="sm:col-span-2">
-                        {renderInput("Adresse physique du bureau", form.department, (v) => setForm({...form, department: v}), "Technopole, Dakar", <Globe className="h-4 w-4" />)}
-                      </div>
-                      <div>
-                        {renderInput("Code Division Bureau", form.department.split("/")[0] || "SNT", () => {}, "SNT", <Sliders className="h-4 w-4" />, "text", true)}
-                      </div>
-                    </div>
+                  <div className="grid gap-6 md:grid-cols-2">
+                    {renderSelect(
+                      "Site / Adresse physique du bureau",
+                      form.physicalAddress,
+                      (siteValue) => {
+                        const site = SITES.find(s => s.value === siteValue);
+                        setForm({ ...form, physicalAddress: siteValue, city: site?.city ?? "" });
+                      },
+                      "Sélectionnez un site...",
+                      <Globe className="h-4 w-4" />,
+                      SITES.map(s => ({ value: s.value, label: s.label, sub: `Ville : ${s.city}` }))
+                    )}
+                    {renderInput("Ville de résidence", form.city, (v) => setForm({...form, city: v}), "Dakar", <Globe className="h-4 w-4" />)}
                   </div>
 
                   <div className="relative pt-2">
@@ -533,21 +593,50 @@ function UserCockpit360() {
               </Card>
             )}
 
-            {/* Step 2: Division & Security Credentials */}
+            {/* Step 2: Accès & Rôles */}
             {activeStep === 2 && (
               <Card className="bg-white/80 dark:bg-zinc-900/60 backdrop-blur-md border border-slate-100 dark:border-zinc-800/80 shadow-xl rounded-2xl overflow-hidden animate-in fade-in duration-300">
-                <div className="h-1.5 bg-gradient-to-r from-amber-500 to-yellow-400" />
+                <div className="h-1.5 bg-gradient-to-r from-violet-500 to-indigo-500" />
                 <CardHeader className="pb-4">
                   <CardTitle className="text-lg flex items-center gap-3 font-bold dark:text-zinc-100">
-                    <Key className="h-5 w-5 text-amber-500" />
-                    Codes division, Generation & Sécurité
+                    <Key className="h-5 w-5 text-violet-500" />
+                    Rôle & Accès Applicatif
                   </CardTitle>
                   <CardDescription className="text-xs">
-                    Mettez à jour les codes budgétaires et le mot de passe d'authentification de l'agent.
+                    Définissez le niveau de privilège de l'agent et mettez à jour ses identifiants.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6 pt-2">
                   
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {ROLES.map(r => (
+                      <div
+                        key={r.value}
+                        onClick={() => setRole(r.value)}
+                        className={`
+                          cursor-pointer rounded-2xl p-4 border-2 transition-all duration-300 relative overflow-hidden group
+                          ${role === r.value
+                            ? "border-amber-500 bg-amber-500/8 shadow-[0_0_20px_rgba(245,158,11,0.15)]"
+                            : "border-slate-100 dark:border-zinc-800 bg-slate-50/60 dark:bg-zinc-800/20 hover:border-amber-300 hover:bg-amber-50/50 dark:hover:bg-amber-500/5"
+                          }
+                        `}
+                      >
+                        {role === r.value && (
+                          <div className="absolute top-3 right-3">
+                            <span className="w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center">
+                              <Check className="h-3 w-3 text-white stroke-[3]" />
+                            </span>
+                          </div>
+                        )}
+                        <div className={`flex items-center gap-2 mb-2 ${r.color}`}>{r.icon}</div>
+                        <div className="text-sm font-black text-slate-800 dark:text-zinc-100 mb-1">{r.label}</div>
+                        <p className="text-[11px] text-slate-400 dark:text-zinc-500 leading-snug">{r.desc}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <Separator className="my-6 border-slate-100 dark:border-zinc-800" />
+
                   <div className="grid gap-6 md:grid-cols-2">
                     {/* Generation select */}
                     <div className="space-y-2">
@@ -556,15 +645,35 @@ function UserCockpit360() {
                         <SelectTrigger className="w-full bg-slate-50 dark:bg-zinc-950 border-slate-200 dark:border-zinc-800 rounded-lg text-xs font-semibold focus:ring-1 focus:ring-amber-500">
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent className="bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-850">
+                        <SelectContent className="bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-850 rounded-xl">
                           <SelectItem value="v1" className="text-xs font-semibold">Génération 1 (Legacy Console)</SelectItem>
                           <SelectItem value="v2" className="text-xs font-semibold">Génération 2 (Premium High-Tech Engine)</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
 
-                    {/* Department budget code */}
-                    {renderInput("Code Division Budgétaire", form.budgetCode, (v) => setForm({...form, budgetCode: v}), "DEPT-CYBER-OBS", <Sliders className="h-4 w-4" />)}
+                    {/* Tagging policy */}
+                    <div>
+                      <Label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-2 block">Politique d'étiquetage</Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {[
+                          { id: "group", label: "Groupe seulement" },
+                          { id: "everyone", label: "Tout le monde" },
+                        ].map(t => (
+                          <div
+                            key={t.id}
+                            onClick={() => setTagPolicy(t.id as any)}
+                            className={`cursor-pointer rounded-xl p-3 border text-[11px] font-bold text-center transition-all duration-300 ${
+                              tagPolicy === t.id
+                                ? "bg-amber-500/10 border-amber-500 text-amber-600 dark:text-amber-400"
+                                : "border-slate-200 dark:border-zinc-800 text-slate-500 hover:border-amber-300"
+                            }`}
+                          >
+                            {t.label}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
 
                   <Separator className="border-slate-100 dark:border-zinc-800" />
@@ -572,56 +681,39 @@ function UserCockpit360() {
                   {/* Password modifier */}
                   <div className="space-y-4">
                     <h3 className="text-xs font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
-                      <Lock className="h-4 w-4" /> Changement du mot de passe d'agent
+                      <Lock className="h-4 w-4 text-amber-500" /> Changement du mot de passe d'agent
                     </h3>
                     <div className="grid gap-4 md:grid-cols-2">
-                      {renderInput("Ancien mot de passe", form.oldPassword, (v) => setForm({...form, oldPassword: v}), "••••••••••••", <Lock className="h-4 w-4" />, "password")}
-                      
-                      {/* Password strength */}
-                      <div className="space-y-1.5">
-                        {renderInput("Nouveau mot de passe", form.newPassword, (v) => setForm({...form, newPassword: v}), "••••••••••••", <KeyRound className="h-4 w-4" />, "password")}
-                        {form.newPassword && (
-                          <div className="px-1.5">
-                            <div className="flex justify-between text-[9px] mb-1 font-bold uppercase tracking-wider">
-                              <span className="text-slate-400">Complexité</span>
-                              <span className={strength.score === 3 ? "text-emerald-500 animate-pulse" : strength.score === 2 ? "text-amber-500" : "text-red-500"}>
-                                {strength.text}
-                              </span>
-                            </div>
-                            <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                              <div className={`h-full ${strength.color} rounded-full transition-all duration-300`} style={{ width: strength.score === 3 ? "100%" : strength.score === 2 ? "60%" : "30%" }} />
-                            </div>
-                          </div>
-                        )}
+                      {renderInput("Nouveau mot de passe", form.newPassword, (v) => setForm({...form, newPassword: v}), "••••••••••••", <KeyRound className="h-4 w-4" />, "password")}
+                      {renderInput("Confirmer le mot de passe", form.confirmPassword, (v) => setForm({...form, confirmPassword: v}), "••••••••••••", <Lock className="h-4 w-4" />, "password")}
+                    </div>
+                    {form.newPassword && (
+                      <div className="px-1.5">
+                        <div className="flex justify-between text-[9px] mb-1 font-bold uppercase tracking-wider">
+                          <span className="text-slate-400">Complexité</span>
+                          <span className={strength.score === 3 ? "text-emerald-500 animate-pulse" : strength.score === 2 ? "text-amber-500" : "text-red-500"}>
+                            {strength.text}
+                          </span>
+                        </div>
+                        <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                          <div className={`h-full ${strength.color} rounded-full transition-all duration-300`} style={{ width: strength.score === 3 ? "100%" : strength.score === 2 ? "60%" : "30%" }} />
+                        </div>
                       </div>
-                    </div>
-                  </div>
-
-                  <Separator className="border-slate-100 dark:border-zinc-800" />
-
-                  {/* Social Networks */}
-                  <div className="space-y-4">
-                    <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Comptes & Réseaux Sociaux</Label>
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      {renderInput("Profil Linkedin", form.linkedin, (v) => setForm({...form, linkedin: v}), "https://linkedin.com/in/sanou-gueye", <Linkedin className="h-4 w-4 text-blue-700" />)}
-                      {renderInput("Profil Twitter / X", form.twitter, (v) => setForm({...form, twitter: v}), "@sanou_cyber", <Twitter className="h-4 w-4 text-sky-500" />)}
-                      {renderInput("Profil Facebook", form.facebook, (v) => setForm({...form, facebook: v}), "Sanou Gueye", <Facebook className="h-4 w-4 text-blue-600" />)}
-                      {renderInput("Profil Youtube", form.youtube, (v) => setForm({...form, youtube: v}), "Cyber Sanou", <Youtube className="h-4 w-4 text-red-600" />)}
-                    </div>
+                    )}
                   </div>
 
                 </CardContent>
               </Card>
             )}
 
-            {/* Step 3: Accès et Produits */}
+            {/* Step 3: Permissions & Statut */}
             {activeStep === 3 && (
               <Card className="bg-white/80 dark:bg-zinc-900/60 backdrop-blur-md border border-slate-100 dark:border-zinc-800/80 shadow-xl rounded-2xl overflow-hidden animate-in fade-in duration-300">
-                <div className="h-1.5 bg-gradient-to-r from-amber-500 to-yellow-400" />
+                <div className="h-1.5 bg-gradient-to-r from-emerald-500 to-teal-500" />
                 <CardHeader className="pb-4">
                   <CardTitle className="text-lg flex items-center gap-3 font-bold dark:text-zinc-100">
-                    <Shield className="h-5 w-5 text-amber-500" />
-                    Profil d'accès, Politique de Taggage & Permissions
+                    <Shield className="h-5 w-5 text-emerald-500" />
+                    Permissions & Statut Opérationnel
                   </CardTitle>
                   <CardDescription className="text-xs">
                     Configurez le rôle de surveillance cyber, la politique d'étiquetage et les permissions applicatives.
@@ -630,64 +722,6 @@ function UserCockpit360() {
                 <CardContent className="space-y-6 pt-2">
 
                   <div className="space-y-3">
-                    <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Rôle opérationnel (Profil)</Label>
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                      {ROLES_LIST.map((r) => (
-                        <div
-                          key={r.value}
-                          onClick={() => setSelectedProfil(r.value)}
-                          className={`cursor-pointer rounded-2xl p-4 border transition-all duration-300 flex flex-col justify-between ${
-                            selectedProfil === r.value
-                              ? "bg-amber-500/10 border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.15)]"
-                              : "border-slate-100 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-950/20 hover:border-slate-350 hover:bg-slate-50 dark:hover:bg-zinc-900/40"
-                          }`}
-                        >
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-xs font-black">{r.label}</span>
-                            {selectedProfil === r.value && (
-                              <span className="p-1 bg-amber-500 text-white rounded-full">
-                                <Check className="h-3 w-3 stroke-[3]" />
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-[10px] text-muted-foreground leading-snug">
-                            {r.desc}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <Separator className="border-slate-100 dark:border-zinc-800" />
-
-                  {/* Who can tag you */}
-                  <div className="space-y-3">
-                    <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Politique d'étiquetage collaboratif (Tagging Policy)</Label>
-                    <div className="grid grid-cols-2 gap-4">
-                      {[
-                        { id: "group", label: "Membres du groupe uniquement", desc: "Brider l'étiquetage aux analystes affectés" },
-                        { id: "everyone", label: "Tout le monde", desc: "Permettre l'étiquetage global sur le réseau" }
-                      ].map((t) => (
-                        <div
-                          key={t.id}
-                          onClick={() => setTagPolicy(t.id)}
-                          className={`cursor-pointer rounded-xl p-3.5 border transition-all duration-300 ${
-                            tagPolicy === t.id
-                              ? "bg-amber-500/10 border-amber-500"
-                              : "border-slate-100 dark:border-zinc-800 hover:border-slate-300 dark:hover:border-zinc-700 bg-slate-50/50 dark:bg-zinc-950/20"
-                          }`}
-                        >
-                          <div className="text-xs font-bold dark:text-zinc-200">{t.label}</div>
-                          <div className="text-[10px] text-muted-foreground mt-1 leading-tight">{t.desc}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <Separator className="border-slate-100 dark:border-zinc-800" />
-
-                  {/* Permissions */}
-                  <div className="space-y-4">
                     <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Permissions cyber-défense granulaires</Label>
                     <div className="grid gap-3">
                       {[
@@ -711,6 +745,26 @@ function UserCockpit360() {
                           </div>
                         </div>
                       ))}
+                    </div>
+                  </div>
+
+                  <Separator className="border-slate-100 dark:border-zinc-800" />
+
+                  <Label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-3 block">Statut opérationnel</Label>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className={`flex items-center justify-between p-4 rounded-2xl border-2 cursor-pointer transition-all ${profile.is_active ? "border-emerald-500/40 bg-emerald-500/5" : "border-slate-100 dark:border-zinc-800"}`} onClick={() => { if (!profile.is_active) toggleActive(); }}>
+                      <div>
+                        <div className="text-xs font-bold text-slate-800 dark:text-zinc-200">Compte Actif</div>
+                        <div className="text-[11px] text-slate-400">Accès instantané disponible</div>
+                      </div>
+                      <Switch checked={profile.is_active} onCheckedChange={() => {}} className="data-[state=checked]:bg-emerald-500 animate-none pointer-events-none" />
+                    </div>
+                    <div className={`flex items-center justify-between p-4 rounded-2xl border-2 cursor-pointer transition-all ${!profile.is_active ? "border-red-500/40 bg-red-500/5" : "border-slate-100 dark:border-zinc-800"}`} onClick={() => { if (profile.is_active) toggleActive(); }}>
+                      <div>
+                        <div className="text-xs font-bold text-slate-800 dark:text-zinc-200">Mode Suspendu</div>
+                        <div className="text-[11px] text-slate-400">Bloquer toute connexion</div>
+                      </div>
+                      <Switch checked={!profile.is_active} onCheckedChange={() => {}} className="data-[state=checked]:bg-red-500 animate-none pointer-events-none" />
                     </div>
                   </div>
 
@@ -879,22 +933,22 @@ function UserCockpit360() {
 
                     <div className="p-4 bg-slate-50 dark:bg-zinc-950/40 rounded-2xl border border-slate-100 dark:border-zinc-850 space-y-2">
                       <div className="text-[10px] font-black uppercase text-muted-foreground tracking-widest flex items-center gap-1.5">
-                        <Building className="h-3.5 w-3.5 text-amber-500" /> Bureau & Division
+                        <Building className="h-3.5 w-3.5 text-amber-500" /> Bureau & Direction
                       </div>
-                      <div className="text-sm font-extrabold text-slate-800 dark:text-zinc-100">{form.organization}</div>
-                      <div className="text-xs text-muted-foreground">Département : {form.department}</div>
-                      <div className="text-xs text-muted-foreground">Url : {form.website || "—"}</div>
+                      <div className="text-sm font-extrabold text-slate-800 dark:text-zinc-100">{ORGANIZATIONS.find(o => o.value === form.organization)?.label ?? form.organization}</div>
+                      <div className="text-xs text-muted-foreground">Site : {SITES.find(s => s.value === form.physicalAddress)?.label ?? form.physicalAddress ?? "—"}</div>
+                      <div className="text-xs text-muted-foreground">Ville : {form.city || "—"}</div>
                     </div>
 
                     <div className="p-4 bg-slate-50 dark:bg-zinc-950/40 rounded-2xl border border-slate-100 dark:border-zinc-850 space-y-2">
                       <div className="text-[10px] font-black uppercase text-muted-foreground tracking-widest flex items-center gap-1.5">
-                        <Sliders className="h-3.5 w-3.5 text-amber-500" /> Rôle, Version & Division
+                        <Sliders className="h-3.5 w-3.5 text-amber-500" /> Rôle, Version & Matricule
                       </div>
                       <div className="text-sm font-extrabold text-slate-800 dark:text-zinc-100">
-                        Profil : <span className="uppercase text-amber-600 dark:text-amber-500">{selectedProfil}</span>
+                        Rôle : <span className="uppercase text-amber-600 dark:text-amber-500">{role}</span>
                       </div>
-                      <div className="text-xs text-muted-foreground">Génération : {form.generation}</div>
-                      <div className="text-[10px] text-muted-foreground font-mono">Code Division : {form.budgetCode}</div>
+                      <div className="text-xs text-muted-foreground">Génération : {form.generation === "v1" ? "Génération 1 — Legacy Console" : "Génération 2 — Premium Engine"}</div>
+                      <div className="text-[10px] text-muted-foreground font-mono">Matricule : {form.matricule || "—"}</div>
                     </div>
 
                     <div className="p-4 bg-slate-50 dark:bg-zinc-950/40 rounded-2xl border border-slate-100 dark:border-zinc-850 space-y-2">
@@ -1036,10 +1090,12 @@ function UserCockpit360() {
                 <h2 className="mt-3 text-lg font-black tracking-tight text-slate-800 dark:text-zinc-100">
                   {form.prenom || form.nom ? `${form.prenom} ${form.nom}` : profile.full_name || "Utilisateur"}
                 </h2>
-                <p className="text-xs text-muted-foreground/80 font-bold">{form.organization || "Sonatel SOC"}</p>
+                <p className="text-xs text-muted-foreground/80 font-bold">
+                  {ORGANIZATIONS.find(o => o.value === form.organization)?.label ?? form.organization ?? "Sonatel SOC"}
+                </p>
                 <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 text-amber-500 border border-amber-500/20 rounded-full text-[9px] font-black uppercase tracking-wider">
                   <Users className="h-3.5 w-3.5" />
-                  Profil : {selectedProfil}
+                  Rôle : {role}
                 </div>
               </div>
             </Card>
@@ -1055,11 +1111,11 @@ function UserCockpit360() {
                 </div>
                 <div className="flex justify-between">
                   <span>Version Moteur :</span>
-                  <span className="text-amber-500">Génération {form.generation}</span>
+                  <span className="text-amber-500">Génération {form.generation === "v1" ? "Génération 1" : "Génération 2"}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Division :</span>
-                  <span className="text-amber-500 font-mono text-[10px]">{form.budgetCode}</span>
+                  <span>Matricule :</span>
+                  <span className="text-amber-500 font-mono text-[10px]">{form.matricule || "—"}</span>
                 </div>
               </div>
             </Card>

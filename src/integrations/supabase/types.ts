@@ -115,30 +115,60 @@ export type Database = {
       }
       profiles: {
         Row: {
+          city: string | null
           created_at: string
           email: string | null
           full_name: string | null
+          generation: string | null
           id: string
+          info: string | null
           is_active: boolean
+          matricule: string | null
           organization: string | null
+          perm_dispatching: boolean | null
+          perm_show_experiences: boolean | null
+          perm_show_followers: boolean | null
+          phone: string | null
+          physical_address: string | null
+          tag_policy: string | null
           updated_at: string
         }
         Insert: {
+          city?: string | null
           created_at?: string
           email?: string | null
           full_name?: string | null
+          generation?: string | null
           id: string
+          info?: string | null
           is_active?: boolean
+          matricule?: string | null
           organization?: string | null
+          perm_dispatching?: boolean | null
+          perm_show_experiences?: boolean | null
+          perm_show_followers?: boolean | null
+          phone?: string | null
+          physical_address?: string | null
+          tag_policy?: string | null
           updated_at?: string
         }
         Update: {
+          city?: string | null
           created_at?: string
           email?: string | null
           full_name?: string | null
+          generation?: string | null
           id?: string
+          info?: string | null
           is_active?: boolean
+          matricule?: string | null
           organization?: string | null
+          perm_dispatching?: boolean | null
+          perm_show_experiences?: boolean | null
+          perm_show_followers?: boolean | null
+          phone?: string | null
+          physical_address?: string | null
+          tag_policy?: string | null
           updated_at?: string
         }
         Relationships: []

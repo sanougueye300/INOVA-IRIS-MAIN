@@ -163,10 +163,30 @@ function Admin() {
     setEditForm({ fullName: user.full_name || "", email: user.email || "", organization: user.organization || "" });
   };
 
-  const handleUpdateUser = () => {
-    setProfiles(prev => prev.map(p => p.id === editingUser?.id ? { ...p, full_name: editForm.fullName, email: editForm.email, organization: editForm.organization } : p));
-    toast.success("Informations modifiées", { description: "Les informations de l'utilisateur ont été mises à jour avec succès." });
-    setEditingUser(null);
+  const handleUpdateUser = async () => {
+    if (!editingUser) return;
+    const toastId = toast.loading("Mise à jour en cours...");
+    try {
+      if (editingUser.id !== "default-sanou") {
+        const { error } = await supabase.from("profiles").update({
+          full_name: editForm.fullName,
+          organization: editForm.organization,
+        }).eq("id", editingUser.id);
+        if (error) throw error;
+      }
+      setProfiles(prev => prev.map(p =>
+        p.id === editingUser.id
+          ? { ...p, full_name: editForm.fullName, email: editForm.email, organization: editForm.organization }
+          : p
+      ));
+      toast.success("Informations modifiées", {
+        id: toastId,
+        description: "Les informations de l'utilisateur ont été mises à jour avec succès.",
+      });
+      setEditingUser(null);
+    } catch (e: any) {
+      toast.error("Erreur", { id: toastId, description: e.message ?? "Impossible de mettre à jour l'utilisateur" });
+    }
   };
 
   return (
