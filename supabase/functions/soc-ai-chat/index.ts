@@ -15,16 +15,35 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const apiKey = Deno.env.get("LOVABLE_API_KEY");
-    if (!apiKey) throw new Error("LOVABLE_API_KEY manquant");
+    const apiKey =
+      Deno.env.get("LOVABLE_API_KEY") ??
+      Deno.env.get("OPENAI_API_KEY");
+    if (!apiKey) {
+      throw new Error(
+        "LOVABLE_API_KEY manquant. Définissez le secret sur Supabase : npx supabase secrets set LOVABLE_API_KEY=...",
+      );
+    }
 
+    const gatewayUrl =
+      Deno.env.get("LOVABLE_AI_GATEWAY_URL") ??
+      "https://ai.gateway.lovable.dev/v1/chat/completions";
+    const model =
+      Deno.env.get("LOVABLE_AI_MODEL") ?? "google/gemini-2.5-flash";
     const { messages = [] } = await req.json();
+    const chatMessages = Array.isArray(messages)
+      ? messages.filter(
+          (m: { role?: string; content?: string }) =>
+            (m.role === "user" || m.role === "assistant") &&
+            typeof m.content === "string",
+        )
+      : [];
+
     const payload = {
-      model: "google/gemini-2.5-flash",
-      messages: [{ role: "system", content: SYSTEM_PROMPT }, ...messages],
+      model,
+      messages: [{ role: "system", content: SYSTEM_PROMPT }, ...chatMessages],
     };
 
-    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const resp = await fetch(gatewayUrl, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,

@@ -16,7 +16,9 @@
     "supabase:start": "supabase start",
     "supabase:db-push": "supabase db push",
     "vercel:env": "node scripts/sync-vercel-env.mjs",
-    "vercel:deploy": "npm run build && npx vercel deploy --prebuilt --prod"
+    "vercel:deploy": "npm run build && npx vercel deploy --prebuilt --prod",
+    "test:ai": "node scripts/test-soc-ai-chat.mjs",
+    "supabase:deploy-ai": "npx supabase functions deploy soc-ai-chat --project-ref pdzxabmqrlukhngnrkki"
   },
   "dependencies": {
     "@cloudflare/vite-plugin": "^1.25.5",

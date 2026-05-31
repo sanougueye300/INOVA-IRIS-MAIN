@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Brain, Send, Sparkles } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { sendSocAiChat } from "@/lib/soc-ai-chat";
 
 interface Msg { role: "user" | "assistant"; content: string }
 
@@ -33,11 +33,8 @@ export function AIAssistant() {
     setMessages(next);
     setBusy(true);
     try {
-      const { data, error } = await supabase.functions.invoke("soc-ai-chat", {
-        body: { messages: next },
-      });
-      if (error) throw error;
-      setMessages([...next, { role: "assistant", content: data?.reply ?? "(réponse vide)" }]);
+      const reply = await sendSocAiChat(next);
+      setMessages([...next, { role: "assistant", content: reply }]);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Erreur inconnue";
       setMessages([...next, { role: "assistant", content: "⚠️ " + msg }]);

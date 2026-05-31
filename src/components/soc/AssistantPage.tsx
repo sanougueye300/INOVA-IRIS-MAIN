@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { supabase } from "@/integrations/supabase/client";
+import { sendSocAiChat } from "@/lib/soc-ai-chat";
 import { toast } from "sonner";
 import { Brain, FileText, Sparkles, Zap } from "lucide-react";
 
@@ -42,7 +42,7 @@ export function AssistantPage() {
     {
       role: "assistant",
       content:
-        "Assistant SOC spécialisé Wazuh / TheHive / MISP / IRIS. Utilisez les actions rapides ou posez votre question. Les réponses peuvent passer par l'API `soc-ai-chat` si configurée.",
+        "Assistant SOC Wazuh / TheHive / MISP / IRIS. Posez une question ou utilisez une action rapide. Si l'API cloud n'est pas déployée, des réponses de démonstration s'affichent automatiquement.",
     },
   ]);
   const [input, setInput] = useState("");
@@ -56,16 +56,15 @@ export function AssistantPage() {
     setMessages(next);
     setBusy(true);
     try {
-      const { data, error } = await supabase.functions.invoke("soc-ai-chat", { body: { messages: next } });
-      if (error) throw error;
-      setMessages([...next, { role: "assistant", content: data?.reply ?? "(réponse vide)" }]);
+      const reply = await sendSocAiChat(next);
+      setMessages([...next, { role: "assistant", content: reply }]);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Erreur";
       setMessages([
         ...next,
         {
           role: "assistant",
-          content: `⚠️ API indisponible (${msg}). Réponse locale : prioriser tri MITRE, enrichissement MISP, ouverture cas TheHive si impact.`,
+          content: `⚠️ ${msg}`,
         },
       ]);
     } finally {
