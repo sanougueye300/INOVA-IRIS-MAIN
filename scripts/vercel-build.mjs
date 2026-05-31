@@ -53,12 +53,9 @@ writeFileSync(
           status: 302,
           headers: { Location: "/auth/login" },
         },
-        // Serve static assets directly
-        {
-          src: "^/assets/(.+)$",
-          dest: "/assets/$1",
-        },
-        // Everything else → SSR edge function
+        // Serve static files from .vercel/output/static (dist/client)
+        { handle: "filesystem" },
+        // Everything else → SSR Node.js serverless function
         {
           src: "^/(.*)$",
           dest: "/index",

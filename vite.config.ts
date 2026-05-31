@@ -16,4 +16,9 @@ export default defineConfig({
       preset: "vercel",
     },
   },
+  vite: {
+    build: {
+      chunkSizeWarningLimit: 1000, // 1 MB (default: 500 kB)
+    },
+  },
 });
