@@ -12,7 +12,11 @@ export function AIAssistant() {
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([
-    { role: "assistant", content: "Bonjour 👋 Je suis l'analyste IA du SOC Sonatel. Posez-moi une question sur les alertes, les IOC ou les bonnes pratiques de réponse à incident." },
+    {
+      role: "assistant",
+      content:
+        "Bonjour. Je suis Djib'son, analyste IA du SOC Sonatel. Je peux vous aider sur les alertes, les IOC, les règles de détection et les procédures de réponse à incident.",
+    },
   ]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -36,8 +40,14 @@ export function AIAssistant() {
       const reply = await sendSocAiChat(next);
       setMessages([...next, { role: "assistant", content: reply }]);
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Erreur inconnue";
-      setMessages([...next, { role: "assistant", content: "⚠️ " + msg }]);
+      const msg = e instanceof Error ? e.message : "Une erreur est survenue.";
+      setMessages([
+        ...next,
+        {
+          role: "assistant",
+          content: `Je n'ai pas pu traiter votre demande (${msg}). Veuillez réessayer ou reformuler votre question dans un contexte SOC.`,
+        },
+      ]);
     } finally {
       setBusy(false);
     }

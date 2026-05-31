@@ -42,7 +42,7 @@ export function AssistantPage() {
     {
       role: "assistant",
       content:
-        "Assistant SOC Wazuh / TheHive / MISP / IRIS. Posez une question ou utilisez une action rapide. Si l'API cloud n'est pas déployée, des réponses de démonstration s'affichent automatiquement.",
+        "Bonjour. Je suis Djib'son, analyste IA du SOC Sonatel. Décrivez votre alerte, IOC ou besoin d'investigation — ou utilisez une action rapide ci-dessous.",
     },
   ]);
   const [input, setInput] = useState("");
@@ -59,12 +59,12 @@ export function AssistantPage() {
       const reply = await sendSocAiChat(next);
       setMessages([...next, { role: "assistant", content: reply }]);
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Erreur";
+      const msg = e instanceof Error ? e.message : "erreur technique";
       setMessages([
         ...next,
         {
           role: "assistant",
-          content: `⚠️ ${msg}`,
+          content: `Je n'ai pas pu traiter votre demande (${msg}). Veuillez réessayer ou préciser le contexte d'alerte ou d'incident.`,
         },
       ]);
     } finally {
