@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { LogOut, RefreshCw, CheckCircle2, ShieldCheck, Activity, Key } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/auth/logout")({
   component: LogoutPage,
@@ -19,6 +20,9 @@ function LogoutPage() {
   ];
 
   useEffect(() => {
+    // Immediately trigger backend logout in Supabase
+    void supabase.auth.signOut();
+
     const interval = setInterval(() => {
       setProgress((prev) => {
         if (prev >= 100) {

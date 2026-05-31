@@ -8,10 +8,15 @@ import {
 import { useSocPreferences } from "@/lib/soc-preferences";
 import { useState } from "react";
 import { SocCyberGlobe } from "@/components/soc/SocCyberGlobe";
+import { RequireAuth } from "@/components/RequireAuth";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({ meta: [{ title: "Tableau de Bord — INOVA-IRIS" }] }),
-  component: Dashboard,
+  component: () => (
+    <RequireAuth>
+      <Dashboard />
+    </RequireAuth>
+  ),
 });
 
 const STATS = [

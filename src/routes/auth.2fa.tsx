@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import { ShieldCheck, QrCode, Copy, Check, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/auth/2fa")({
   component: TwoFactorPage,
@@ -45,15 +46,53 @@ function TwoFactorPage() {
     }
   };
 
-  const handleVerify = (enteredCode: string) => {
+  const handleVerify = async (enteredCode: string) => {
     setIsLoading(true);
     toast.info("Vérification du code de sécurité...");
     
-    setTimeout(() => {
+    try {
+      // 1. Get active session factors
+      const { data: factorData, error: listError } = await supabase.auth.mfa.listFactors();
+      
+      if (listError) throw listError;
+
+      const activeFactor = factorData?.all?.find(
+        (f) => f.status === "verified" && f.factor_type === "totp"
+      );
+
+      if (activeFactor) {
+        // 2. Challenge the TOTP factor
+        const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({
+          factorId: activeFactor.id,
+        });
+
+        if (challengeError) throw challengeError;
+
+        // 3. Verify the challenge
+        const { error: verifyError } = await supabase.auth.mfa.verify({
+          factorId: activeFactor.id,
+          challengeId: challengeData.id,
+          code: enteredCode,
+        });
+
+        if (verifyError) throw verifyError;
+
+        toast.success("Authentification double facteur validée !");
+        navigate({ to: "/dashboard", replace: true });
+      } else {
+        // Fallback for demo / users without active MFA setup
+        setTimeout(() => {
+          setIsLoading(false);
+          toast.success("Authentification double facteur validée (Mode Démo) !");
+          navigate({ to: "/dashboard", replace: true });
+        }, 1200);
+      }
+    } catch (err: any) {
+      toast.error("Erreur de vérification 2FA", {
+        description: err.message || "Code invalide ou expiré.",
+      });
       setIsLoading(false);
-      toast.success("Authentification double facteur validée !");
-      navigate({ to: "/dashboard", replace: true });
-    }, 1500);
+    }
   };
 
   const handleCopyCodes = () => {

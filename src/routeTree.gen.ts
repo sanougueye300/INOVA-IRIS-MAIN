@@ -34,7 +34,6 @@ import { Route as ClientsSatisfactionRouteImport } from './routes/clients.satisf
 import { Route as ClientsNewRouteImport } from './routes/clients.new'
 import { Route as ClientsInventoryRouteImport } from './routes/clients.inventory'
 import { Route as ClientsClientIdRouteImport } from './routes/clients.$clientId'
-import { Route as AuthSignupRouteImport } from './routes/auth.signup'
 import { Route as AuthResetPasswordRouteImport } from './routes/auth.reset-password'
 import { Route as AuthLogoutRouteImport } from './routes/auth.logout'
 import { Route as AuthLoginRouteImport } from './routes/auth.login'
@@ -171,11 +170,6 @@ const ClientsClientIdRoute = ClientsClientIdRouteImport.update({
   path: '/clients/$clientId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthSignupRoute = AuthSignupRouteImport.update({
-  id: '/signup',
-  path: '/signup',
-  getParentRoute: () => AuthRoute,
-} as any)
 const AuthResetPasswordRoute = AuthResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
@@ -256,7 +250,6 @@ export interface FileRoutesByFullPath {
   '/auth/login': typeof AuthLoginRoute
   '/auth/logout': typeof AuthLogoutRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
-  '/auth/signup': typeof AuthSignupRoute
   '/clients/$clientId': typeof ClientsClientIdRoute
   '/clients/inventory': typeof ClientsInventoryRoute
   '/clients/new': typeof ClientsNewRoute
@@ -293,7 +286,6 @@ export interface FileRoutesByTo {
   '/auth/login': typeof AuthLoginRoute
   '/auth/logout': typeof AuthLogoutRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
-  '/auth/signup': typeof AuthSignupRoute
   '/clients/$clientId': typeof ClientsClientIdRoute
   '/clients/inventory': typeof ClientsInventoryRoute
   '/clients/new': typeof ClientsNewRoute
@@ -332,7 +324,6 @@ export interface FileRoutesById {
   '/auth/login': typeof AuthLoginRoute
   '/auth/logout': typeof AuthLogoutRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
-  '/auth/signup': typeof AuthSignupRoute
   '/clients/$clientId': typeof ClientsClientIdRoute
   '/clients/inventory': typeof ClientsInventoryRoute
   '/clients/new': typeof ClientsNewRoute
@@ -372,7 +363,6 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/logout'
     | '/auth/reset-password'
-    | '/auth/signup'
     | '/clients/$clientId'
     | '/clients/inventory'
     | '/clients/new'
@@ -409,7 +399,6 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/logout'
     | '/auth/reset-password'
-    | '/auth/signup'
     | '/clients/$clientId'
     | '/clients/inventory'
     | '/clients/new'
@@ -447,7 +436,6 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/logout'
     | '/auth/reset-password'
-    | '/auth/signup'
     | '/clients/$clientId'
     | '/clients/inventory'
     | '/clients/new'
@@ -661,13 +649,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ClientsClientIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/auth/signup': {
-      id: '/auth/signup'
-      path: '/signup'
-      fullPath: '/auth/signup'
-      preLoaderRoute: typeof AuthSignupRouteImport
-      parentRoute: typeof AuthRoute
-    }
     '/auth/reset-password': {
       id: '/auth/reset-password'
       path: '/reset-password'
@@ -766,7 +747,6 @@ interface AuthRouteChildren {
   AuthLoginRoute: typeof AuthLoginRoute
   AuthLogoutRoute: typeof AuthLogoutRoute
   AuthResetPasswordRoute: typeof AuthResetPasswordRoute
-  AuthSignupRoute: typeof AuthSignupRoute
 }
 
 const AuthRouteChildren: AuthRouteChildren = {
@@ -776,7 +756,6 @@ const AuthRouteChildren: AuthRouteChildren = {
   AuthLoginRoute: AuthLoginRoute,
   AuthLogoutRoute: AuthLogoutRoute,
   AuthResetPasswordRoute: AuthResetPasswordRoute,
-  AuthSignupRoute: AuthSignupRoute,
 }
 
 const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)

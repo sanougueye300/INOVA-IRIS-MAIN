@@ -155,7 +155,6 @@ export function SocSidebar({ onNavigate }: { onNavigate?: () => void }) {
                     <div className="ml-3 space-y-0.5 border-l pl-2 border-dashed" style={{ borderColor: isDarker ? "#27272a" : "hsl(var(--border))" }}>
                       {[
                         { to: "/auth/login", label: "Sign in" },
-                        { to: "/auth/signup", label: "Sign up" },
                         { to: "/auth/forgot-password", label: "Forgot password" },
                         { to: "/auth/reset-password", label: "Reset password" },
                         { to: "/auth/lock", label: "Lock screen" },

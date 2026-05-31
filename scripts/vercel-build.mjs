@@ -1,6 +1,11 @@
-import { cpSync, mkdirSync, writeFileSync, existsSync } from "fs";
+import { cpSync, mkdirSync, writeFileSync, existsSync, rmSync } from "fs";
 
 const root = process.cwd();
+
+console.log("🔧 Cleaning old Vercel output structure...");
+if (existsSync(".vercel/output")) {
+  rmSync(".vercel/output", { recursive: true, force: true });
+}
 
 console.log("🔧 Building Vercel output structure...");
 
@@ -11,7 +16,7 @@ if (existsSync("dist/client")) {
   console.log("✅ Static assets copied from dist/client/");
 }
 
-// ── 2. Edge function (.vercel/output/functions/index.func) ────────────────
+// ── 2. Serverless function (.vercel/output/functions/index.func) ───────────
 mkdirSync(".vercel/output/functions/index.func", { recursive: true });
 if (existsSync("dist/server")) {
   cpSync("dist/server", ".vercel/output/functions/index.func", {
@@ -20,13 +25,15 @@ if (existsSync("dist/server")) {
   console.log("✅ Server bundle copied from dist/server/");
 }
 
-// Edge function metadata — use Edge runtime (Web Fetch API compatible)
+// Node.js serverless function metadata — supports standard fetch handler
 writeFileSync(
   ".vercel/output/functions/index.func/.vc-config.json",
   JSON.stringify(
     {
-      runtime: "edge",
-      entrypoint: "server.js",
+      runtime: "nodejs20.x",
+      handler: "server.js",
+      launcherType: "Nodejs",
+      shouldAddHelpers: true,
     },
     null,
     2

@@ -1,21 +1,23 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { Mail, CheckCircle2, AlertTriangle, ArrowRight, ShieldQuestion } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/auth/forgot-password")({
   component: ForgotPasswordPage,
 });
 
 function ForgotPasswordPage() {
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [isSent, setIsSent] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [useBackup, setUseBackup] = useState(false);
   const [securityAnswer, setSecurityAnswer] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) {
       toast.error("Veuillez saisir votre e-mail.");
@@ -23,11 +25,21 @@ function ForgotPasswordPage() {
     }
 
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/reset-password`,
+      });
+      if (error) throw error;
+      
       setIsSent(true);
       toast.success("Lien de récupération envoyé ! Vérifiez votre boîte de réception.");
-    }, 1500);
+    } catch (err: any) {
+      toast.error("Erreur de récupération", {
+        description: err.message || "Une erreur est survenue lors de l'envoi de l'e-mail.",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleBackupSubmit = (e: React.FormEvent) => {
@@ -41,7 +53,7 @@ function ForgotPasswordPage() {
     setTimeout(() => {
       setIsLoading(false);
       toast.success("Réponses de sécurité validées. Redirection vers la réinitialisation...");
-      window.location.hash = "/auth/reset-password"; // Simple simulation bypass
+      navigate({ to: "/auth/reset-password" });
     }, 1500);
   };
 

@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { Lock, Delete, Shield, KeyRound, UserMinus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/auth/lock")({
   component: LockPage,
@@ -10,8 +11,24 @@ export const Route = createFileRoute("/auth/lock")({
 
 function LockPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [pin, setPin] = useState<string[]>([]);
   const [sessionTime, setSessionTime] = useState(0);
+
+  const userName = user?.user_metadata?.full_name || "Sanou Gueye";
+  const userEmail = user?.email || "sanou.gueye@sonatel.sn";
+  const initials = userName
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2) || "SG";
+
+  useEffect(() => {
+    if (!localStorage.getItem("soc-lock-pin")) {
+      localStorage.setItem("soc-lock-pin", "1234");
+    }
+  }, []);
 
   // Keep track of active session duration before lock
   useEffect(() => {
@@ -51,9 +68,14 @@ function LockPage() {
   const handleUnlock = (enteredPin: string) => {
     toast.info("Validation du code PIN...");
     setTimeout(() => {
-      // For demo, any PIN is valid, but let's encourage 1234
-      toast.success("Session déverrouillée ! Restauration de l'environnement SOC...");
-      navigate({ to: "/dashboard", replace: true });
+      const storedPin = localStorage.getItem("soc-lock-pin") || "1234";
+      if (enteredPin === storedPin) {
+        toast.success("Session déverrouillée ! Restauration de l'environnement SOC...");
+        navigate({ to: "/dashboard", replace: true });
+      } else {
+        toast.error("Code PIN incorrect. Veuillez réessayer.");
+        setPin([]);
+      }
     }, 1000);
   };
 
@@ -63,13 +85,13 @@ function LockPage() {
       <div className="space-y-3">
         <div className="relative mx-auto h-20 w-20">
           <div className="flex h-20 w-20 items-center justify-center rounded-full bg-zinc-900 border-2 border-primary/40 text-primary shadow-[var(--glow-primary)]">
-            <span className="text-2xl font-bold text-white">SG</span>
+            <span className="text-2xl font-bold text-white">{initials}</span>
           </div>
           <span className="absolute bottom-0 right-0 flex h-4 w-4 rounded-full border-2 border-background bg-amber-500"></span>
         </div>
         <div>
-          <h2 className="text-xl font-bold text-foreground">Sanou Gueye</h2>
-          <p className="text-xs text-muted-foreground">sanou.gueye@sonatel.sn</p>
+          <h2 className="text-xl font-bold text-foreground">{userName}</h2>
+          <p className="text-xs text-muted-foreground">{userEmail}</p>
           <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-zinc-900/50 border border-zinc-800 px-2.5 py-0.5 text-[10px] text-zinc-400 font-mono">
             <Lock className="h-3 w-3 text-amber-500 animate-pulse" />
             Session active : {formatTime(sessionTime)}

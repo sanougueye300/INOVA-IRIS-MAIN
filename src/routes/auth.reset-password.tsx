@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { Lock, Check, X, ShieldAlert, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/auth/reset-password")({
   component: ResetPasswordPage,
@@ -45,7 +46,7 @@ function ResetPasswordPage() {
     "bg-emerald-500"
   ][passedCount];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!allPassed) {
       toast.error("Le mot de passe ne respecte pas les critères de sécurité.");
@@ -57,11 +58,19 @@ function ResetPasswordPage() {
     }
 
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) throw error;
+
       toast.success("Mot de passe mis à jour avec succès ! Vous pouvez vous connecter.");
       navigate({ to: "/auth/login" });
-    }, 2000);
+    } catch (err: any) {
+      toast.error("Erreur de mise à jour", {
+        description: err.message || "Une erreur est survenue lors de la mise à jour.",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

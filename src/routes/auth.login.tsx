@@ -203,10 +203,7 @@ function LoginPage() {
           </div>
 
           <div className="text-center text-xs mt-6">
-            <span className="text-muted-foreground">Pas encore de compte ? </span>
-            <Link to="/auth/signup" className="text-primary font-semibold hover:underline">
-              Créer une organisation client
-            </Link>
+            <span className="text-muted-foreground">Veuillez contacter l'administrateur du SOC pour obtenir vos accès.</span>
           </div>
         </form>
       )}
