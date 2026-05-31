@@ -10,6 +10,7 @@ const KEYS = [
   "VITE_SUPABASE_PROJECT_ID",
   "SUPABASE_URL",
   "SUPABASE_PUBLISHABLE_KEY",
+  "LOVABLE_API_KEY",
 ];
 
 function parseEnvFile(path) {
