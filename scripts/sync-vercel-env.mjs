@@ -11,6 +11,8 @@ const KEYS = [
   "SUPABASE_URL",
   "SUPABASE_PUBLISHABLE_KEY",
   "LOVABLE_API_KEY",
+  "GEMINI_API_KEY",
+  "GOOGLE_GENERATIVE_AI_API_KEY",
 ];
 
 function parseEnvFile(path) {

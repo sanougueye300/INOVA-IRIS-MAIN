@@ -1,4 +1,4 @@
-// Edge function: SOC AI assistant via Lovable AI Gateway (no API key required from user).
+// Edge function: SOC AI assistant (Lovable Gateway ou Gemini).
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -11,24 +11,54 @@ les règles de détection, les workflows Shuffle/TheHive/MISP/VirusTotal.
 Réponds en français, structuré, concis, professionnel. Donne des étapes
 de remédiation concrètes quand pertinent.`;
 
+async function callLovable(messages: { role: string; content: string }[], apiKey: string) {
+  const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: Deno.env.get("LOVABLE_AI_MODEL") ?? "google/gemini-2.5-flash",
+      messages: [{ role: "system", content: SYSTEM_PROMPT }, ...messages],
+    }),
+  });
+  if (!resp.ok) {
+    const txt = await resp.text();
+    throw new Error(`Gateway IA: ${resp.status} ${txt.slice(0, 200)}`);
+  }
+  const data = await resp.json();
+  return data?.choices?.[0]?.message?.content ?? "(réponse vide)";
+}
+
+async function callGemini(messages: { role: string; content: string }[], apiKey: string) {
+  const model = Deno.env.get("GEMINI_MODEL") ?? "gemini-2.0-flash";
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  const contents = messages.map((m) => ({
+    role: m.role === "assistant" ? "model" : "user",
+    parts: [{ text: m.content }],
+  }));
+  const resp = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+      contents,
+      generationConfig: { temperature: 0.4, maxOutputTokens: 2048 },
+    }),
+  });
+  if (!resp.ok) {
+    const txt = await resp.text();
+    throw new Error(`Gemini: ${resp.status} ${txt.slice(0, 200)}`);
+  }
+  const data = await resp.json();
+  return data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "(réponse vide)";
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const apiKey =
-      Deno.env.get("LOVABLE_API_KEY") ??
-      Deno.env.get("OPENAI_API_KEY");
-    if (!apiKey) {
-      throw new Error(
-        "LOVABLE_API_KEY manquant. Définissez le secret sur Supabase : npx supabase secrets set LOVABLE_API_KEY=...",
-      );
-    }
-
-    const gatewayUrl =
-      Deno.env.get("LOVABLE_AI_GATEWAY_URL") ??
-      "https://ai.gateway.lovable.dev/v1/chat/completions";
-    const model =
-      Deno.env.get("LOVABLE_AI_MODEL") ?? "google/gemini-2.5-flash";
     const { messages = [] } = await req.json();
     const chatMessages = Array.isArray(messages)
       ? messages.filter(
@@ -38,29 +68,20 @@ Deno.serve(async (req) => {
         )
       : [];
 
-    const payload = {
-      model,
-      messages: [{ role: "system", content: SYSTEM_PROMPT }, ...chatMessages],
-    };
+    const lovableKey = Deno.env.get("LOVABLE_API_KEY") ?? Deno.env.get("OPENAI_API_KEY");
+    const geminiKey =
+      Deno.env.get("GEMINI_API_KEY") ?? Deno.env.get("GOOGLE_GENERATIVE_AI_API_KEY");
 
-    const resp = await fetch(gatewayUrl, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
-
-    if (!resp.ok) {
-      const txt = await resp.text();
-      if (resp.status === 429) throw new Error("Trop de requêtes, réessayez dans un instant.");
-      if (resp.status === 402) throw new Error("Crédits IA épuisés. Ajoutez des crédits à Lovable.");
-      throw new Error(`Gateway IA: ${resp.status} ${txt}`);
+    let reply: string;
+    if (lovableKey) {
+      reply = await callLovable(chatMessages, lovableKey);
+    } else if (geminiKey) {
+      reply = await callGemini(chatMessages, geminiKey);
+    } else {
+      throw new Error(
+        "Configurez LOVABLE_API_KEY ou GEMINI_API_KEY dans les secrets Supabase.",
+      );
     }
-
-    const data = await resp.json();
-    const reply = data?.choices?.[0]?.message?.content ?? "(réponse vide)";
 
     return new Response(JSON.stringify({ reply }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -39,7 +39,7 @@ function formatCriticalAlertSummary(): string {
     "4. Ouvrir ou mettre à jour le cas TheHive et notifier l'astreinte.",
     "5. Déployer une règle Sigma/LQL Wazuh si non couverte.",
     "",
-    "_Pour une analyse IA générative en temps réel, ajoutez `LOVABLE_API_KEY` (Vercel ou Supabase) et déployez `soc-ai-chat`._",
+    "_IA générative : ajoutez `GEMINI_API_KEY` dans `.env` (https://aistudio.google.com/apikey) puis redémarrez `npm run dev`._",
   ].join("\n");
 }
 
@@ -103,7 +103,7 @@ function localFallbackReply(messages: SocAiMessage[]): string {
     "Je peux vous aider sur les alertes Wazuh, IOC/MISP, playbooks Shuffle et cas TheHive.",
     "Essayez une action rapide (Sigma, alerte critique, Shuffle, IOC).",
     "",
-    "Pour l'IA générative : configurez `LOVABLE_API_KEY` dans `.env` (dev) ou Vercel/Supabase (prod).",
+    "Pour l'IA générative : `GEMINI_API_KEY` dans `.env` → `npm run setup:ai` pour vérifier.",
   ].join("\n");
 }
 
@@ -113,7 +113,10 @@ function shouldUseLocalFallback(message: string): boolean {
     m.includes("not_found") ||
     m.includes("requested function was not found") ||
     m.includes("lovable_api_key") ||
-    m.includes("failed to send a request to the edge function")
+    m.includes("ai_key_missing") ||
+    m.includes("gemini_api_key") ||
+    m.includes("failed to send a request to the edge function") ||
+    m.includes("failed to fetch")
   );
 }
 
@@ -133,10 +136,21 @@ async function callAppApiRoute(messages: SocAiMessage[]): Promise<string> {
   return data.reply?.trim() || "(réponse vide)";
 }
 
-/** Envoie l'historique au chat IA SOC (Supabase, API Nitro, ou repli local). */
+/** Envoie l'historique au chat IA SOC (API Nitro → Supabase → repli local). */
 export async function sendSocAiChat(messages: SocAiMessage[]): Promise<string> {
   const payload = messages.map(({ role, content }) => ({ role, content }));
 
+  // 1. Route Nitro (dev + Vercel) — utilise GEMINI_API_KEY ou LOVABLE_API_KEY côté serveur
+  try {
+    return await callAppApiRoute(payload);
+  } catch (apiErr) {
+    const apiMsg = apiErr instanceof Error ? apiErr.message : String(apiErr);
+    if (!shouldUseLocalFallback(apiMsg)) {
+      throw apiErr instanceof Error ? apiErr : new Error(apiMsg);
+    }
+  }
+
+  // 2. Edge Function Supabase (si déployée)
   try {
     const { data, error } = await supabase.functions.invoke("soc-ai-chat", {
       body: { messages: payload },
@@ -144,40 +158,23 @@ export async function sendSocAiChat(messages: SocAiMessage[]): Promise<string> {
 
     if (error) {
       const msg = await parseFunctionError(error);
-      if (shouldUseLocalFallback(msg)) {
-        try {
-          return await callAppApiRoute(payload);
-        } catch {
-          return localFallbackReply(messages);
-        }
-      }
+      if (shouldUseLocalFallback(msg)) return localFallbackReply(messages);
       throw new Error(msg);
     }
 
     if (data && typeof data === "object" && "error" in data && data.error) {
       const errMsg = String(data.error);
-      if (shouldUseLocalFallback(errMsg)) {
-        try {
-          return await callAppApiRoute(payload);
-        } catch {
-          return localFallbackReply(messages);
-        }
-      }
+      if (shouldUseLocalFallback(errMsg)) return localFallbackReply(messages);
       throw new Error(errMsg);
     }
 
     const reply = data?.reply;
     if (typeof reply === "string" && reply.trim()) return reply;
-    return "(réponse vide)";
   } catch (e: unknown) {
     const msg = await parseFunctionError(e);
-    if (shouldUseLocalFallback(msg)) {
-      try {
-        return await callAppApiRoute(payload);
-      } catch {
-        return localFallbackReply(messages);
-      }
-    }
+    if (shouldUseLocalFallback(msg)) return localFallbackReply(messages);
     throw new Error(msg);
   }
+
+  return localFallbackReply(messages);
 }

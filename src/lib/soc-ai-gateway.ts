@@ -6,21 +6,18 @@ de remédiation concrètes quand pertinent.`;
 
 export type ChatMessage = { role: "user" | "assistant"; content: string };
 
-export async function callSocAiGateway(messages: ChatMessage[]): Promise<string> {
-  const apiKey = process.env.LOVABLE_API_KEY ?? process.env.OPENAI_API_KEY;
+function filterMessages(messages: ChatMessage[]) {
+  return messages.filter(
+    (m) => (m.role === "user" || m.role === "assistant") && m.content.trim(),
+  );
+}
 
-  if (!apiKey) {
-    throw new Error("LOVABLE_API_KEY_MISSING");
-  }
-
+async function callLovableGateway(messages: ChatMessage[], apiKey: string): Promise<string> {
   const gatewayUrl =
     process.env.LOVABLE_AI_GATEWAY_URL ??
     "https://ai.gateway.lovable.dev/v1/chat/completions";
   const model = process.env.LOVABLE_AI_MODEL ?? "google/gemini-2.5-flash";
-
-  const chatMessages = messages.filter(
-    (m) => (m.role === "user" || m.role === "assistant") && m.content.trim(),
-  );
+  const chatMessages = filterMessages(messages);
 
   const resp = await fetch(gatewayUrl, {
     method: "POST",
@@ -43,4 +40,53 @@ export async function callSocAiGateway(messages: ChatMessage[]): Promise<string>
 
   const data = await resp.json();
   return data?.choices?.[0]?.message?.content?.trim() || "(réponse vide)";
+}
+
+async function callGeminiApi(messages: ChatMessage[], apiKey: string): Promise<string> {
+  const model = process.env.GEMINI_MODEL ?? "gemini-2.0-flash";
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  const chatMessages = filterMessages(messages);
+
+  const contents = chatMessages.map((m) => ({
+    role: m.role === "assistant" ? "model" : "user",
+    parts: [{ text: m.content }],
+  }));
+
+  const resp = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+      contents,
+      generationConfig: { temperature: 0.4, maxOutputTokens: 2048 },
+    }),
+  });
+
+  if (!resp.ok) {
+    const txt = await resp.text();
+    throw new Error(`Gemini: ${resp.status} ${txt.slice(0, 200)}`);
+  }
+
+  const data = await resp.json();
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  return typeof text === "string" && text.trim() ? text.trim() : "(réponse vide)";
+}
+
+/** Appelle Lovable Gateway ou Gemini selon les clés disponibles. */
+export async function callSocAiGateway(messages: ChatMessage[]): Promise<string> {
+  const lovableKey = process.env.LOVABLE_API_KEY ?? process.env.OPENAI_API_KEY;
+  if (lovableKey) {
+    return callLovableGateway(messages, lovableKey);
+  }
+
+  const geminiKey =
+    process.env.GEMINI_API_KEY ??
+    process.env.GOOGLE_GENERATIVE_AI_API_KEY ??
+    process.env.VITE_GEMINI_API_KEY;
+
+  if (geminiKey) {
+    return callGeminiApi(messages, geminiKey);
+  }
+
+  throw new Error("AI_KEY_MISSING");
 }
