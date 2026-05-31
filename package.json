@@ -14,7 +14,9 @@
     "supabase:login": "supabase login",
     "supabase:link": "supabase link --project-ref pdzxabmqrlukhngnrkki",
     "supabase:start": "supabase start",
-    "supabase:db-push": "supabase db push"
+    "supabase:db-push": "supabase db push",
+    "vercel:env": "node scripts/sync-vercel-env.mjs",
+    "vercel:deploy": "npm run build && npx vercel deploy --prebuilt --prod"
   },
   "dependencies": {
     "@cloudflare/vite-plugin": "^1.25.5",
