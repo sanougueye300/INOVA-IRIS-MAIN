@@ -14,12 +14,16 @@
     "supabase:login": "supabase login",
     "supabase:link": "supabase link --project-ref pdzxabmqrlukhngnrkki",
     "supabase:start": "supabase start",
+    "supabase:deploy-ai": "npx supabase functions deploy soc-ai-chat --project-ref pdzxabmqrlukhngnrkki",
+    "supabase:deploy-auth": "npx supabase functions deploy auth-security --project-ref pdzxabmqrlukhngnrkki",
     "supabase:db-push": "supabase db push",
     "vercel:env": "node scripts/sync-vercel-env.mjs",
     "vercel:deploy": "npm run build && npx vercel deploy --prebuilt --prod",
     "test:ai": "node scripts/test-soc-ai-chat.mjs",
-    "setup:ai": "node scripts/setup-ai.mjs",
-    "supabase:deploy-ai": "npx supabase functions deploy soc-ai-chat --project-ref pdzxabmqrlukhngnrkki"
+    "test:auth": "node scripts/test-auth-security.mjs",
+    "test:auth:dev": "npx tsx scripts/test-auth-dev-store.mjs",
+    "test:auth:e2e": "node scripts/test-auth-e2e.mjs",
+    "setup:ai": "node scripts/setup-ai.mjs"
   },
   "dependencies": {
     "@cloudflare/vite-plugin": "^1.25.5",
@@ -63,6 +67,7 @@
     "embla-carousel-react": "^8.6.0",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.575.0",
+    "qrcode.react": "^4.2.0",
     "react": "^19.2.0",
     "react-day-picker": "^9.14.0",
     "react-dom": "^19.2.0",

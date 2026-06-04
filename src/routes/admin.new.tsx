@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { RequireAuth } from "@/components/RequireAuth";
 import type { AppRole } from "@/lib/auth-context";
 import { Separator } from "@/components/ui/separator";
+import { invokeAuthSecurity } from "@/lib/auth-security";
 
 export const Route = createFileRoute("/admin/new")({
   head: () => ({ meta: [{ title: "Nouveau Agent RH — SOC Platform" }] }),
@@ -91,9 +92,21 @@ function NewUserPage() {
   const [isActive, setIsActive]       = useState(true);
   const [permissions, setPermissions] = useState({ dispatching: false, showExperiences: false, showFollowers: true });
   const [tagPolicy, setTagPolicy]     = useState<"group" | "everyone">("group");
+  const [securityQuestions, setSecurityQuestions] = useState<{ id: string; question_text: string }[]>([]);
+  const [securityAnswers, setSecurityAnswers] = useState<Record<string, string>>({});
+  const [loadingQuestions, setLoadingQuestions] = useState(false);
 
   const fullName = `${form.prenom} ${form.nom}`.trim();
   const initials = fullName ? fullName.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) : "??";
+
+  useEffect(() => {
+    if (activeStep !== 2 || securityQuestions.length) return;
+    setLoadingQuestions(true);
+    invokeAuthSecurity<{ questions: { id: string; question_text: string }[] }>("list_security_question_catalog")
+      .then((r) => setSecurityQuestions((r.questions ?? []).slice(0, 2)))
+      .catch(() => setSecurityQuestions([]))
+      .finally(() => setLoadingQuestions(false));
+  }, [activeStep, securityQuestions.length]);
 
   /* City auto-fill from site */
   const handleSiteChange = (siteValue: string) => {
@@ -108,6 +121,7 @@ function NewUserPage() {
       if (!form.nom.trim())          { toast.error("Nom requis");                 return false; }
       if (!form.email.trim())        { toast.error("E-mail requis");              return false; }
       if (!/\S+@\S+\.\S+/.test(form.email)) { toast.error("E-mail invalide");   return false; }
+      if (!form.phone.trim())        { toast.error("Téléphone requis pour l'OTP de connexion"); return false; }
       if (!form.organization)        { toast.error("Organisation requise");       return false; }
       if (!form.physicalAddress)     { toast.error("Site / adresse requis");      return false; }
     }
@@ -122,6 +136,14 @@ function NewUserPage() {
       }
       if (form.password !== form.confirmPassword) {
         toast.error("Les mots de passe ne correspondent pas");
+        return false;
+      }
+      const answersPayload = securityQuestions.map((q) => ({
+        questionId: q.id,
+        answer: securityAnswers[q.id] ?? "",
+      }));
+      if (answersPayload.some((a) => !a.answer.trim())) {
+        toast.error("Répondez aux 2 questions de secours");
         return false;
       }
     }
@@ -151,6 +173,11 @@ function NewUserPage() {
         isActive,
         permissions,
         password:        form.password,
+        securityAnswers: securityQuestions.map((q) => ({
+          questionId: q.id,
+          answer: securityAnswers[q.id] ?? "",
+        })),
+        redirectOrigin:  window.location.origin,
       };
       const { data, error } = await supabase.functions.invoke("admin-create-user", { body });
       if (error) {
@@ -171,7 +198,20 @@ function NewUserPage() {
         }
         throw new Error(errMsg);
       }
-      toast.success("Agent créé avec succès !", { description: `OTP envoyé à ${form.email}` });
+      const securityInfo = data?.security;
+      const otpDesc = securityInfo?.otpSentVia === "sms" && securityInfo?.maskedPhone
+        ? `OTP SMS envoyé au ${securityInfo.maskedPhone}`
+        : securityInfo?.otpSentVia === "email"
+          ? `E-mail de bienvenue et OTP envoyés à ${form.email}`
+          : `E-mail envoyé à ${form.email}`;
+
+      toast.success("Agent créé avec succès !", {
+        description: otpDesc,
+      });
+
+      if (securityInfo?.devOtp) {
+        toast.info("Mode développement", { description: `Code OTP : ${securityInfo.devOtp}` });
+      }
       navigate({ to: "/admin" });
     } catch (e: any) {
       toast.error("Erreur", { description: e.message ?? "Impossible de créer l'agent" });
@@ -518,6 +558,41 @@ function NewUserPage() {
                       {renderInput("Confirmer le mot de passe", form.confirmPassword, v => setForm({ ...form, confirmPassword: v }), "••••••••", <Lock className="h-4 w-4" />, "password")}
                     </div>
 
+                    <Separator className="my-6 border-slate-100 dark:border-zinc-800" />
+
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                        <Shield className="h-4.5 w-4.5 text-emerald-500" />
+                      </div>
+                      <div>
+                        <h2 className="text-sm font-black text-slate-800 dark:text-zinc-100 uppercase tracking-wider">Questions de secours</h2>
+                        <p className="text-[11px] text-slate-400 font-medium">Utilisées pour la récupération de compte (2 questions obligatoires)</p>
+                      </div>
+                    </div>
+
+                    {loadingQuestions ? (
+                      <div className="flex items-center gap-2 text-muted-foreground py-4 text-sm">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Chargement du catalogue...
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {securityQuestions.map((q) => (
+                          <div key={q.id} className="border border-dashed border-slate-200 dark:border-zinc-700 rounded-xl p-4 space-y-2">
+                            <p className="text-xs font-semibold text-slate-600 dark:text-zinc-300">{q.question_text}</p>
+                            <input
+                              type="text"
+                              value={securityAnswers[q.id] ?? ""}
+                              onChange={(e) => setSecurityAnswers({ ...securityAnswers, [q.id]: e.target.value })}
+                              placeholder="Réponse secrète de l'agent"
+                              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                              required
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
                   </div>
                 </div>
               </div>
@@ -677,7 +752,7 @@ function NewUserPage() {
                     <div className="mt-5 flex items-start gap-3 p-4 rounded-2xl bg-emerald-500/8 border border-emerald-500/20">
                       <Info className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
                       <p className="text-xs text-slate-600 dark:text-zinc-300 leading-relaxed">
-                        En cliquant sur <strong>« Créer le Profil Agent »</strong>, le système provisionne l'agent et envoie un code OTP à <strong className="text-emerald-600 dark:text-emerald-400">{form.email}</strong>.
+                        En cliquant sur <strong>« Créer le Profil Agent »</strong>, le système provisionne l'agent, envoie un e-mail de bienvenue à <strong className="text-emerald-600 dark:text-emerald-400">{form.email}</strong> et un code OTP par SMS au <strong className="text-emerald-600 dark:text-emerald-400">{form.phone || "téléphone enregistré"}</strong>.
                       </p>
                     </div>
                   </div>

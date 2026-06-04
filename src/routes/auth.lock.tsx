@@ -4,6 +4,7 @@ import { Lock, Delete, Shield, KeyRound, UserMinus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth-context";
+import { invokeAuthSecurity } from "@/lib/auth-security";
 
 export const Route = createFileRoute("/auth/lock")({
   component: LockPage,
@@ -11,8 +12,9 @@ export const Route = createFileRoute("/auth/lock")({
 
 function LockPage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const [pin, setPin] = useState<string[]>([]);
+  const [pinAttempts, setPinAttempts] = useState(0);
   const [sessionTime, setSessionTime] = useState(0);
 
   const userName = user?.user_metadata?.full_name || "Sanou Gueye";
@@ -65,18 +67,29 @@ function LockPage() {
     }
   };
 
-  const handleUnlock = (enteredPin: string) => {
+  const handleUnlock = async (enteredPin: string) => {
     toast.info("Validation du code PIN...");
-    setTimeout(() => {
-      const storedPin = localStorage.getItem("soc-lock-pin") || "1234";
-      if (enteredPin === storedPin) {
+    try {
+      const res = await invokeAuthSecurity<{ valid: boolean }>("verify_pin", { pin: enteredPin });
+      if (res.valid) {
         toast.success("Session déverrouillée ! Restauration de l'environnement SOC...");
         navigate({ to: "/dashboard", replace: true });
       } else {
-        toast.error("Code PIN incorrect. Veuillez réessayer.");
-        setPin([]);
+        const nextAttempts = pinAttempts + 1;
+        setPinAttempts(nextAttempts);
+        if (nextAttempts >= 3) {
+          toast.error("Trop de tentatives de code PIN. Déconnexion complète...");
+          await signOut();
+          navigate({ to: "/auth/login", replace: true });
+        } else {
+          toast.error(`Code PIN incorrect. ${3 - nextAttempts} tentative(s) restante(s).`);
+          setPin([]);
+        }
       }
-    }, 1000);
+    } catch (err: any) {
+      toast.error(err.message || "Erreur de validation du code PIN.");
+      setPin([]);
+    }
   };
 
   return (

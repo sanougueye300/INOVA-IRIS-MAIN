@@ -119,7 +119,7 @@ import { AuthProvider } from "@/lib/auth-context";
 import { Toaster } from "@/components/ui/sonner";
 import { SocShell } from "@/components/soc/SocShell";
 
-const SOC_PREFIXES = ["/dashboard", "/alertes", "/iocs", "/admin", "/threat-map", "/assistant", "/iris", "/outils", "/clients", "/facturation", "/settings", "/integrations", "/audit"];
+const SOC_PREFIXES = ["/dashboard", "/alertes", "/iocs", "/admin", "/threat-map", "/assistant", "/iris", "/outils", "/clients", "/facturation", "/settings", "/integrations", "/audit", "/account"];
 
 function AppFrame() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });

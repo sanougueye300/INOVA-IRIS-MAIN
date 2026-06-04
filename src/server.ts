@@ -3,12 +3,33 @@ import "./lib/error-capture";
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 import { callSocAiGateway, type ChatMessage } from "./lib/soc-ai-gateway";
+import { handleAuthSecurityRequest, type AuthSecurityAction } from "./lib/auth-security-handlers";
 
 const AI_API_CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "content-type",
+  "Access-Control-Allow-Headers": "content-type, authorization",
 };
+
+async function handleAuthSecurityApiRequest(request: Request): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: AI_API_CORS });
+  }
+
+  try {
+    const body = (await request.json()) as { action?: AuthSecurityAction } & Record<string, unknown>;
+    const action = body.action;
+    if (!action) {
+      return Response.json({ error: "Action requise" }, { status: 400, headers: AI_API_CORS });
+    }
+    const { action: _a, ...payload } = body;
+    const result = await handleAuthSecurityRequest(action, payload, request.headers.get("Authorization"));
+    return Response.json(result, { headers: AI_API_CORS });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Erreur inconnue";
+    return Response.json({ error: message }, { status: 400, headers: AI_API_CORS });
+  }
+}
 
 async function handleSocAiChatRequest(request: Request): Promise<Response> {
   if (request.method === "OPTIONS") {
@@ -94,6 +115,9 @@ export default {
     const { pathname } = new URL(request.url);
     if (pathname === "/api/soc-ai-chat") {
       return handleSocAiChatRequest(request);
+    }
+    if (pathname === "/api/auth-security") {
+      return handleAuthSecurityApiRequest(request);
     }
 
     try {

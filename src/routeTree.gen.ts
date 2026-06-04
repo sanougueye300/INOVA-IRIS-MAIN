@@ -44,6 +44,7 @@ import { Route as AdminProfilesRouteImport } from './routes/admin.profiles'
 import { Route as AdminOffresRouteImport } from './routes/admin.offres'
 import { Route as AdminNewRouteImport } from './routes/admin.new'
 import { Route as AdminUserIdRouteImport } from './routes/admin.$userId'
+import { Route as AccountSecurityRouteImport } from './routes/account.security'
 
 const WorkflowRoute = WorkflowRouteImport.update({
   id: '/workflow',
@@ -220,6 +221,11 @@ const AdminUserIdRoute = AdminUserIdRouteImport.update({
   path: '/$userId',
   getParentRoute: () => AdminRoute,
 } as any)
+const AccountSecurityRoute = AccountSecurityRouteImport.update({
+  id: '/account/security',
+  path: '/account/security',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -240,6 +246,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/threat-map': typeof ThreatMapRoute
   '/workflow': typeof WorkflowRoute
+  '/account/security': typeof AccountSecurityRoute
   '/admin/$userId': typeof AdminUserIdRoute
   '/admin/new': typeof AdminNewRoute
   '/admin/offres': typeof AdminOffresRoute
@@ -276,6 +283,7 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/threat-map': typeof ThreatMapRoute
   '/workflow': typeof WorkflowRoute
+  '/account/security': typeof AccountSecurityRoute
   '/admin/$userId': typeof AdminUserIdRoute
   '/admin/new': typeof AdminNewRoute
   '/admin/offres': typeof AdminOffresRoute
@@ -314,6 +322,7 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/threat-map': typeof ThreatMapRoute
   '/workflow': typeof WorkflowRoute
+  '/account/security': typeof AccountSecurityRoute
   '/admin/$userId': typeof AdminUserIdRoute
   '/admin/new': typeof AdminNewRoute
   '/admin/offres': typeof AdminOffresRoute
@@ -353,6 +362,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/threat-map'
     | '/workflow'
+    | '/account/security'
     | '/admin/$userId'
     | '/admin/new'
     | '/admin/offres'
@@ -389,6 +399,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/threat-map'
     | '/workflow'
+    | '/account/security'
     | '/admin/$userId'
     | '/admin/new'
     | '/admin/offres'
@@ -426,6 +437,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/threat-map'
     | '/workflow'
+    | '/account/security'
     | '/admin/$userId'
     | '/admin/new'
     | '/admin/offres'
@@ -464,6 +476,7 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRoute
   ThreatMapRoute: typeof ThreatMapRoute
   WorkflowRoute: typeof WorkflowRoute
+  AccountSecurityRoute: typeof AccountSecurityRoute
   ClientsClientIdRoute: typeof ClientsClientIdRoute
   ClientsInventoryRoute: typeof ClientsInventoryRoute
   ClientsNewRoute: typeof ClientsNewRoute
@@ -719,6 +732,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminUserIdRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/account/security': {
+      id: '/account/security'
+      path: '/account/security'
+      fullPath: '/account/security'
+      preLoaderRoute: typeof AccountSecurityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -779,6 +799,7 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRoute,
   ThreatMapRoute: ThreatMapRoute,
   WorkflowRoute: WorkflowRoute,
+  AccountSecurityRoute: AccountSecurityRoute,
   ClientsClientIdRoute: ClientsClientIdRoute,
   ClientsInventoryRoute: ClientsInventoryRoute,
   ClientsNewRoute: ClientsNewRoute,
