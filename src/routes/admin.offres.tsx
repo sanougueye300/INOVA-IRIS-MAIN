@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { 
   CreditCard, Plus, Trash2, Edit2, Check, X, ShieldAlert, Sparkles, 
-  Clock, HeartHandshake, Info, ShieldCheck, HelpCircle, Coins, Laptop
+  Clock, HeartHandshake, Info, ShieldCheck, Coins, Laptop, AlertTriangle
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -37,13 +38,13 @@ const DEFAULT_OFFERS: Offer[] = [
     name: "Inova Secure",
     value: 100000,
     currency: "FCFA",
-    period: "an",
+    period: "mois",
     maxPcs: 10,
     mttd: "< 30 min",
     mttr: "< 4 heures",
     support: "8h-18h L-V",
     features: [
-      "SIEM SIEM Wazuh EDR de base",
+      "SIEM Wazuh EDR de base",
       "Scan de réputation automatique",
       "Intégration d'IOC manuelle",
       "Support par e-mail standard",
@@ -56,13 +57,13 @@ const DEFAULT_OFFERS: Offer[] = [
     name: "Terranga Secure",
     value: 24000,
     currency: "FCFA",
-    period: "an",
+    period: "mois",
     maxPcs: 25,
     mttd: "< 15 min",
     mttr: "< 2 heures",
     support: "24h/7 L-V",
     features: [
-      "SIEM SIEM Wazuh EDR avancé",
+      "SIEM Wazuh EDR avancé",
       "Orchestrateur SOAR Pipeline",
       "Gestion d'incidents TheHive",
       "Enrichissement automatique VT",
@@ -75,13 +76,13 @@ const DEFAULT_OFFERS: Offer[] = [
     name: "Gainde Secure",
     value: 60000,
     currency: "FCFA",
-    period: "an",
+    period: "mois",
     maxPcs: 100,
     mttd: "< 10 min",
     mttr: "< 1 heure",
     support: "24h/7/365 Dédié",
     features: [
-      "SIEM SIEM Wazuh EDR Premium",
+      "SIEM Wazuh EDR Premium",
       "Orchestrateur SOAR Avancé",
       "Plateforme de Threat Intel MISP",
       "Plateforme d'investigation IRIS",
@@ -96,6 +97,7 @@ function AdminOffres() {
   const [offers, setOffers] = useState<Offer[]>([]);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [editingOffer, setEditingOffer] = useState<Offer | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
   // Form State
   const [formName, setFormName] = useState("");
@@ -172,15 +174,20 @@ function AdminOffres() {
     setIsPanelOpen(true);
   };
 
-  // Suppression d'offre
+  // Suppression d'offre — ouvre le modal de confirmation
   const handleDeleteOffer = (id: string, name: string) => {
-    if (confirm(`Êtes-vous sûr de vouloir supprimer l'offre ${name} ?`)) {
-      const updated = offers.filter(o => o.id !== id);
-      saveOffersToStorage(updated);
-      toast.error(`Offre ${name} supprimée`, {
-        description: "L'offre a été retirée du catalogue."
-      });
-    }
+    setDeleteTarget({ id, name });
+  };
+
+  // Confirme et exécute la suppression
+  const confirmDelete = () => {
+    if (!deleteTarget) return;
+    const updated = offers.filter(o => o.id !== deleteTarget.id);
+    saveOffersToStorage(updated);
+    toast.error(`Offre ${deleteTarget.name} supprimée`, {
+      description: "L'offre a été retirée du catalogue."
+    });
+    setDeleteTarget(null);
   };
 
   // Soumission du formulaire (Création/Modification)
@@ -321,7 +328,7 @@ function AdminOffres() {
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Valeur Annuelle Moyenne</p>
                 <p className="text-3xl font-extrabold mt-2 text-foreground">
-                  {avgValue.toLocaleString("fr-FR")} <span className="text-lg font-normal text-muted-foreground">FCFA / an</span>
+                  {avgValue.toLocaleString("fr-FR")} <span className="text-lg font-normal text-muted-foreground">FCFA / mois</span>
                 </p>
                 <div className="flex items-center gap-1 mt-2 text-xs text-emerald-500">
                   <Sparkles className="h-3.5 w-3.5" />
@@ -419,7 +426,7 @@ function AdminOffres() {
                     {offer.value.toLocaleString("fr-FR")}
                     <span className="text-base font-medium text-muted-foreground"> {offer.currency}</span>
                   </div>
-                  <div className="text-xs text-muted-foreground mt-0.5">par {offer.period}</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">par mois</div>
                 </div>
 
                 <div className="border-t border-border/50 my-4" />
@@ -513,7 +520,7 @@ function AdminOffres() {
                 {/* Valeur & Capacité PC */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-sm font-semibold text-foreground">Prix de l'abonnement (FCFA/an) <span className="text-rose-500">*</span></label>
+                    <label className="text-sm font-semibold text-foreground">Prix de l'abonnement (FCFA/mois) <span className="text-rose-500">*</span></label>
                     <Input 
                       type="number"
                       value={formValue || ""} 
@@ -621,5 +628,62 @@ function AdminOffres() {
 
       </div>
     </div>
+
+      {/* ── Modal Confirmation Suppression ── */}
+      <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <DialogContent className="max-w-md p-0 overflow-hidden rounded-2xl border-0 shadow-2xl">
+          {/* Header avec gradient danger */}
+          <div className="relative bg-gradient-to-br from-rose-600 via-red-500 to-orange-500 p-6 pb-8">
+            <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_30%_107%,_#fff_0%,_transparent_50%)]" />
+            <div className="relative flex flex-col items-center text-center gap-3">
+              <div className="h-14 w-14 rounded-full bg-white/20 flex items-center justify-center ring-4 ring-white/20 backdrop-blur-sm">
+                <AlertTriangle className="h-7 w-7 text-white" />
+              </div>
+              <div>
+                <DialogTitle className="text-xl font-bold text-white">
+                  Supprimer l'offre
+                </DialogTitle>
+                <p className="text-sm text-white/80 mt-1">Cette action est irréversible</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Body */}
+          <div className="bg-card p-6 -mt-4 rounded-t-2xl relative z-10">
+            <div className="flex items-start gap-3 p-4 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/50 mb-6">
+              <ShieldAlert className="h-5 w-5 text-rose-500 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm text-rose-700 dark:text-rose-300 font-medium">
+                  Vous allez supprimer l'offre :
+                </p>
+                <p className="text-base font-bold text-rose-800 dark:text-rose-200 mt-0.5">
+                  « {deleteTarget?.name} »
+                </p>
+                <p className="text-xs text-rose-600 dark:text-rose-400 mt-1">
+                  Tous les clients associés à cette offre ne pourront plus la voir dans le catalogue.
+                </p>
+              </div>
+            </div>
+
+            <DialogFooter className="flex gap-3 sm:gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setDeleteTarget(null)}
+                className="flex-1 rounded-xl border-border/60 hover:bg-muted font-medium"
+              >
+                <X className="h-4 w-4 mr-1.5" />
+                Annuler
+              </Button>
+              <Button
+                onClick={confirmDelete}
+                className="flex-1 rounded-xl bg-gradient-to-r from-rose-600 to-red-500 hover:from-rose-700 hover:to-red-600 text-white font-semibold shadow-lg shadow-rose-500/25 border-0"
+              >
+                <Trash2 className="h-4 w-4 mr-1.5" />
+                Oui, supprimer
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
   );
 }
