@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import { useSocPreferences } from "@/lib/soc-preferences";
 import { 
   Sliders, ShieldCheck, PaintBucket, HardDrive, Save, Upload, Moon, Sun, 
-  Brain, Globe, RefreshCw, AlertTriangle, FileText, Database, ShieldAlert, Cpu, Sparkles
+  Brain, Globe, RefreshCw, AlertTriangle, FileText, Database, ShieldAlert, Cpu, Sparkles, Network
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
