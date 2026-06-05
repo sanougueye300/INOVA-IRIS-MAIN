@@ -627,7 +627,6 @@ function AdminOffres() {
         )}
 
       </div>
-    </div>
 
       {/* ── Modal Confirmation Suppression ── */}
       <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
@@ -685,5 +684,6 @@ function AdminOffres() {
           </div>
         </DialogContent>
       </Dialog>
+    </div>
   );
 }
