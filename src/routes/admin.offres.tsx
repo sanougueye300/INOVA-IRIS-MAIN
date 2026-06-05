@@ -33,10 +33,10 @@ export interface Offer {
 
 const DEFAULT_OFFERS: Offer[] = [
   {
-    id: "bronze",
-    name: "Bronze",
-    value: 12000,
-    currency: "EUR",
+    id: "inova-secure",
+    name: "Inova Secure",
+    value: 100000,
+    currency: "FCFA",
     period: "an",
     maxPcs: 10,
     mttd: "< 30 min",
@@ -52,10 +52,10 @@ const DEFAULT_OFFERS: Offer[] = [
     isActive: true
   },
   {
-    id: "argent",
-    name: "Argent",
+    id: "terranga-secure",
+    name: "Terranga Secure",
     value: 24000,
-    currency: "EUR",
+    currency: "FCFA",
     period: "an",
     maxPcs: 25,
     mttd: "< 15 min",
@@ -71,10 +71,10 @@ const DEFAULT_OFFERS: Offer[] = [
     isActive: true
   },
   {
-    id: "or",
-    name: "Or",
+    id: "gainde-secure",
+    name: "Gainde Secure",
     value: 60000,
-    currency: "EUR",
+    currency: "FCFA",
     period: "an",
     maxPcs: 100,
     mttd: "< 10 min",
@@ -87,26 +87,6 @@ const DEFAULT_OFFERS: Offer[] = [
       "Plateforme d'investigation IRIS",
       "Analyste SOC Dédié",
       "Playbooks d'automatisation standard"
-    ],
-    isActive: true
-  },
-  {
-    id: "platine",
-    name: "Platine",
-    value: 150000,
-    currency: "EUR",
-    period: "an",
-    maxPcs: 500,
-    mttd: "< 5 min",
-    mttr: "< 30 min",
-    support: "24h/7/365 Express",
-    features: [
-      "Couverture EDR illimitée / Multi-tenant",
-      "Automatisation SOAR complète & personnalisée",
-      "DFIR complet & Analyse Mémoire",
-      "Chasse aux menaces (Threat Hunting)",
-      "Responsable de compte technique (TAM)",
-      "Pénalités SLA contractuelles"
     ],
     isActive: true
   }
@@ -131,7 +111,16 @@ function AdminOffres() {
     const stored = localStorage.getItem("soc_catalogues_offres");
     if (stored) {
       try {
-        setOffers(JSON.parse(stored));
+        const parsed = JSON.parse(stored);
+        const hasOldCurrencyOrOldOffers = parsed.some(
+          (o: any) => o.currency === "EUR" || ["bronze", "argent", "or", "platine"].includes(o.id)
+        );
+        if (hasOldCurrencyOrOldOffers) {
+          setOffers(DEFAULT_OFFERS);
+          localStorage.setItem("soc_catalogues_offres", JSON.stringify(DEFAULT_OFFERS));
+        } else {
+          setOffers(parsed);
+        }
       } catch (e) {
         setOffers(DEFAULT_OFFERS);
       }
@@ -234,7 +223,7 @@ function AdminOffres() {
         id: "offer_" + Date.now(),
         name: formName,
         value: Number(formValue),
-        currency: "EUR",
+        currency: "FCFA",
         period: "an",
         maxPcs: Number(formMaxPcs),
         mttd: formMttd,
@@ -263,28 +252,28 @@ function AdminOffres() {
   const getOfferCardStyle = (name: string, isActive: boolean) => {
     if (!isActive) return "border-slate-300 dark:border-slate-800 bg-slate-100/40 dark:bg-slate-900/20 opacity-70";
     
-    switch (name.toLowerCase()) {
-      case "platine":
-        return "border-purple-500/50 bg-gradient-to-b from-purple-500/5 to-transparent dark:from-purple-500/10 dark:to-slate-950/40 shadow-purple-500/5 shadow-lg";
-      case "or":
-        return "border-amber-400/50 bg-gradient-to-b from-amber-400/5 to-transparent dark:from-amber-400/10 dark:to-slate-950/40 shadow-amber-500/5 shadow-lg";
-      case "argent":
-        return "border-blue-400/50 bg-gradient-to-b from-blue-400/5 to-transparent dark:from-blue-400/10 dark:to-slate-950/40 shadow-blue-500/5 shadow-lg";
-      default:
-        return "border-slate-400/50 bg-gradient-to-b from-slate-400/5 to-transparent dark:from-slate-400/10 dark:to-slate-950/40 shadow-lg";
+    const lowerName = name.toLowerCase();
+    if (lowerName.includes("gainde")) {
+      return "border-amber-400/50 bg-gradient-to-b from-amber-400/5 to-transparent dark:from-amber-400/10 dark:to-slate-950/40 shadow-amber-500/5 shadow-lg";
+    } else if (lowerName.includes("terranga")) {
+      return "border-blue-400/50 bg-gradient-to-b from-blue-400/5 to-transparent dark:from-blue-400/10 dark:to-slate-950/40 shadow-blue-500/5 shadow-lg";
+    } else if (lowerName.includes("inova")) {
+      return "border-orange-500/50 bg-gradient-to-b from-orange-500/5 to-transparent dark:from-orange-500/10 dark:to-slate-950/40 shadow-orange-500/5 shadow-lg";
+    } else {
+      return "border-slate-400/50 bg-gradient-to-b from-slate-400/5 to-transparent dark:from-slate-400/10 dark:to-slate-950/40 shadow-lg";
     }
   };
 
   const getBadgeStyle = (name: string) => {
-    switch (name.toLowerCase()) {
-      case "platine":
-        return "bg-gradient-to-r from-purple-600 to-indigo-600 text-white border-none font-extrabold";
-      case "or":
-        return "bg-gradient-to-r from-amber-400 to-orange-500 text-white border-none font-extrabold";
-      case "argent":
-        return "bg-blue-500 text-white border-none font-bold";
-      default:
-        return "bg-slate-500 text-white border-none font-bold";
+    const lowerName = name.toLowerCase();
+    if (lowerName.includes("gainde")) {
+      return "bg-gradient-to-r from-amber-400 to-amber-600 text-white border-none font-extrabold";
+    } else if (lowerName.includes("terranga")) {
+      return "bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-none font-bold";
+    } else if (lowerName.includes("inova")) {
+      return "bg-gradient-to-r from-orange-500 to-red-500 text-white border-none font-extrabold";
+    } else {
+      return "bg-slate-500 text-white border-none font-bold";
     }
   };
 
@@ -332,7 +321,7 @@ function AdminOffres() {
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Valeur Annuelle Moyenne</p>
                 <p className="text-3xl font-extrabold mt-2 text-foreground">
-                  {avgValue.toLocaleString("fr-FR")} <span className="text-lg font-normal text-muted-foreground">EUR / an</span>
+                  {avgValue.toLocaleString("fr-FR")} <span className="text-lg font-normal text-muted-foreground">FCFA / an</span>
                 </p>
                 <div className="flex items-center gap-1 mt-2 text-xs text-emerald-500">
                   <Sparkles className="h-3.5 w-3.5" />
@@ -412,18 +401,15 @@ function AdminOffres() {
                     >
                       <Edit2 className="h-4 w-4" />
                     </Button>
-                    {/* Permet de supprimer uniquement les offres personnalisées pour la sécurité */}
-                    {!["bronze", "argent", "or", "platine"].includes(offer.id) && (
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-8 w-8 rounded-lg hover:bg-rose-500/10 text-rose-500"
-                        onClick={() => handleDeleteOffer(offer.id, offer.name)}
-                        title="Supprimer l'offre"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8 rounded-lg hover:bg-rose-500/10 text-rose-500"
+                      onClick={() => handleDeleteOffer(offer.id, offer.name)}
+                      title="Supprimer l'offre"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
 
@@ -527,7 +513,7 @@ function AdminOffres() {
                 {/* Valeur & Capacité PC */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-sm font-semibold text-foreground">Prix de l'abonnement (EUR/an) <span className="text-rose-500">*</span></label>
+                    <label className="text-sm font-semibold text-foreground">Prix de l'abonnement (FCFA/an) <span className="text-rose-500">*</span></label>
                     <Input 
                       type="number"
                       value={formValue || ""} 

@@ -4,7 +4,7 @@ import { Mail, Lock, Eye, EyeOff, Fingerprint, Chrome } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { sendLoginSmsOtp, setPending2FA } from "@/lib/auth-security";
+
 
 export const Route = createFileRoute("/auth/login")({
   component: LoginPage,
@@ -56,24 +56,9 @@ function LoginPage() {
         throw new Error("Votre compte est suspendu. Contactez l'administrateur SOC.");
       }
 
-      if (!profile.phone?.trim() && !profile.email?.trim()) {
-        await supabase.auth.signOut();
-        throw new Error("Aucun contact (téléphone ou e-mail) enregistré sur votre profil.");
-      }
+      toast.success("Connexion réussie", { description: "Bienvenue sur INOVA-IRIS SOC." });
 
-      setPending2FA(true);
-      const otp = await sendLoginSmsOtp();
-
-      const otpDescription =
-        otp.otpChannel === "email"
-          ? `Code OTP envoyé par e-mail à ${email}. Valide 2 minutes.`
-          : otp.maskedPhone
-            ? `Code OTP envoyé par SMS au ${otp.maskedPhone}. Valide 2 minutes.`
-            : "Code OTP envoyé. Vérifiez votre SMS ou e-mail.";
-
-      toast.success("Identifiants validés", { description: otpDescription });
-
-      navigate({ to: "/auth/2fa", replace: true });
+      navigate({ to: "/dashboard", replace: true });
     } catch (err: unknown) {
       setLoginAttempts(prev => {
         const next = prev + 1;
@@ -115,7 +100,7 @@ function LoginPage() {
       <div className="space-y-2 text-center lg:text-left">
         <h2 className="text-3xl font-extrabold tracking-tight">Connexion au SOC</h2>
         <p className="text-sm text-muted-foreground">
-          Saisissez vos identifiants réseau. Un code OTP vous sera envoyé par SMS pour la double authentification.
+          Saisissez vos identifiants réseau pour accéder au SOC INOVA-IRIS.
         </p>
       </div>
 

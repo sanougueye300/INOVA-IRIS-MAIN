@@ -4,7 +4,7 @@ import { QrCode, Copy, Check, Smartphone, KeyRound, Settings2, RefreshCw, Mail }
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import QRCode from "qrcode.react";
+import { QRCodeSVG } from "qrcode.react";
 import {
   complete2FAAndRedirect,
   getOtpMeta,
@@ -255,7 +255,7 @@ function TwoFactorPage() {
               {enrollQr.startsWith("data:") ? (
                 <img src={enrollQr} alt="QR Google Authenticator" className="h-40 w-40" />
               ) : (
-                <QRCode value={enrollQr} size={160} bgColor="#fff" fgColor="#000" />
+                <QRCodeSVG value={enrollQr} size={160} bgColor="#fff" fgColor="#000" />
               )}
             </div>
           )}

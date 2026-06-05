@@ -1,23 +1,18 @@
 import { useAuth } from "@/lib/auth-context";
-import { isPending2FA } from "@/lib/auth-security";
-import { useNavigate, useRouterState } from "@tanstack/react-router";
+
+import { useNavigate } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 import { Loader2 } from "lucide-react";
 
 export function RequireAuth({ children, requireAdmin }: { children: ReactNode; requireAdmin?: boolean }) {
   const { user, loading, isAdmin } = useAuth();
   const navigate = useNavigate();
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   useEffect(() => {
     if (!loading && !user) {
       navigate({ to: "/auth/login", replace: true });
-      return;
     }
-    if (!loading && user && isPending2FA() && !pathname.startsWith("/auth/2fa")) {
-      navigate({ to: "/auth/2fa", replace: true });
-    }
-  }, [user, loading, navigate, pathname]);
+  }, [user, loading, navigate]);
 
   if (loading) {
     return (
@@ -28,14 +23,6 @@ export function RequireAuth({ children, requireAdmin }: { children: ReactNode; r
   }
 
   if (!user) return null;
-
-  if (isPending2FA() && !pathname.startsWith("/auth/2fa")) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-slate-950">
-        <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
-      </div>
-    );
-  }
 
   if (requireAdmin && !isAdmin) {
     return (
