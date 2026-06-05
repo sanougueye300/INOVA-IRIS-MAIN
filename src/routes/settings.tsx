@@ -28,15 +28,7 @@ function AdminSettings() {
   const [saving, setSaving] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const [settings, setSettings] = useState(() => {
-    if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("soc-admin-settings");
-      if (stored) {
-        try {
-          return JSON.parse(stored);
-        } catch (e) {}
-      }
-    }
-    return {
+    const defaultSettings = {
       tenantName: "Sonatel Group",
       primaryColor: "blue",
       retentionLogs: 90,
@@ -65,6 +57,17 @@ function AdminSettings() {
       auditWebhookUrl: "https://api.sonatel.soc/v1/audit-logs",
       auditVerbosity: "medium",
     };
+
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("soc-admin-settings");
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          return { ...defaultSettings, ...parsed };
+        } catch (e) {}
+      }
+    }
+    return defaultSettings;
   });
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
