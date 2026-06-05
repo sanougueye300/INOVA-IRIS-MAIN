@@ -34,6 +34,21 @@ function AuthLayout() {
   const [logs, setLogs] = useState<string[]>([]);
   const consoleContainerRef = useRef<HTMLDivElement>(null);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const [logoSrc, setLogoSrc] = useState(orangeLogo);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("soc-admin-settings");
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (parsed.logoBase64) {
+            setLogoSrc(parsed.logoBase64);
+          }
+        } catch (e) {}
+      }
+    }
+  }, []);
 
   // Stream mock logs
   useEffect(() => {
@@ -163,8 +178,8 @@ function AuthLayout() {
           <div className="flex justify-center mb-8 select-none shrink-0">
             <div className="inline-flex items-center justify-center gap-4 py-3.5 px-6 rounded-2xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-zinc-800/80 shadow-sm hover:shadow-md hover:border-primary/20 transition-all duration-300">
               <img
-                src={orangeLogo}
-                alt="Orange Sonatel Logo"
+                src={logoSrc}
+                alt="Sonatel Logo"
                 className="h-10 sm:h-12 w-auto object-contain select-none"
               />
               <div className="h-8 w-px bg-zinc-300 dark:bg-zinc-800" />
