@@ -213,7 +213,44 @@ function ClientsList() {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { 
+    console.log('📋 Chargement initial de la liste des clients...');
+    load(); 
+
+    // S'abonner aux changements en temps réel sur la table profiles
+    const channel = supabase
+      .channel('profiles-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Écouter tous les événements (INSERT, UPDATE, DELETE)
+          schema: 'public',
+          table: 'profiles'
+        },
+        (payload) => {
+          console.log('🔔 Changement détecté dans la table profiles:', payload);
+          // Recharger la liste quand il y a un changement
+          load();
+        }
+      )
+      .subscribe();
+
+    // Nettoyer l'abonnement au démontage du composant
+    return () => {
+      console.log('🔌 Désabonnement des changements en temps réel');
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  // Recharger la liste quand le paramètre refresh change (après création d'un nouveau client)
+  useEffect(() => {
+    if (searchParams.refresh) {
+      console.log('🔄 Rechargement de la liste après création d\'un nouveau client...');
+      setTimeout(() => {
+        load();
+      }, 500); // Petit délai pour laisser le temps à Supabase de propager les données
+    }
+  }, [searchParams.refresh]);
 
   useEffect(() => {
     let filtered = profiles;
