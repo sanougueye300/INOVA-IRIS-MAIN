@@ -6,22 +6,45 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import dotenv from 'dotenv';
+import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Charger les variables d'environnement
-dotenv.config({ path: join(__dirname, '..', '.env') });
+// Lire et parser le fichier .env manuellement
+function loadEnv() {
+  try {
+    const envPath = join(__dirname, '..', '.env');
+    const envFile = readFileSync(envPath, 'utf-8');
+    const envVars = {};
+    
+    envFile.split('\n').forEach(line => {
+      const trimmed = line.trim();
+      if (trimmed && !trimmed.startsWith('#')) {
+        const [key, ...valueParts] = trimmed.split('=');
+        if (key && valueParts.length) {
+          const value = valueParts.join('=').replace(/^["']|["']$/g, '');
+          envVars[key.trim()] = value.trim();
+        }
+      }
+    });
+    
+    return envVars;
+  } catch (error) {
+    console.error('❌ Erreur lors de la lecture du fichier .env:', error.message);
+    return {};
+  }
+}
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+const env = loadEnv();
+const supabaseUrl = env.VITE_SUPABASE_URL || env.SUPABASE_URL;
+const supabaseKey = env.SUPABASE_SERVICE_ROLE_KEY || env.VITE_SUPABASE_PUBLISHABLE_KEY || env.SUPABASE_PUBLISHABLE_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
   console.error('❌ Erreur: Variables d\'environnement Supabase manquantes');
-  console.error('   Assurez-vous que VITE_SUPABASE_URL et SUPABASE_SERVICE_ROLE_KEY sont définies dans .env');
+  console.error('   Assurez-vous que VITE_SUPABASE_URL et une clé Supabase sont définies dans .env');
   process.exit(1);
 }
 
