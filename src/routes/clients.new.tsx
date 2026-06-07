@@ -69,6 +69,15 @@ function NewClient() {
     billingCycle: "annuel",
     paymentMethod: "virement",
     clientAccountRef: "A003107" + Math.floor(Math.random() * 900000 + 100000),
+    
+    // Coordonnées bancaires (pour virement/prélèvement)
+    bankName: "",
+    iban: "",
+    bic: "",
+    accountHolder: "",
+    
+    // Orange Money (pour orange_money)
+    orangeMoneyNumber: "",
 
     // Step 3: Accès et Produits
     role: "client" as const,
@@ -122,6 +131,22 @@ function NewClient() {
     }
     if (step === 2) {
       if (!selectedOfferId) { toast.error("Veuillez sélectionner une formule d'abonnement"); return false; }
+      
+      // Validation des coordonnées bancaires
+      if (form.paymentMethod === "virement" || form.paymentMethod === "prelevement") {
+        if (!form.bankName.trim()) { toast.error("Nom de la banque requis"); return false; }
+        if (!form.iban.trim()) { toast.error("IBAN requis"); return false; }
+        if (!form.accountHolder.trim()) { toast.error("Titulaire du compte requis"); return false; }
+      }
+      
+      // Validation Orange Money
+      if (form.paymentMethod === "orange_money") {
+        if (!form.orangeMoneyNumber.trim()) { toast.error("Numéro Orange Money requis"); return false; }
+        if (!/^(\+221)?[0-9]{9}$/.test(form.orangeMoneyNumber.replace(/\s/g, ""))) {
+          toast.error("Numéro Orange Money invalide (format: +221XXXXXXXXX)");
+          return false;
+        }
+      }
     }
     return true;
   };
@@ -195,16 +220,26 @@ function NewClient() {
           }
         });
         
-        if (error) throw error;
+        // Vérifier si la réponse contient une erreur
+        if (error) {
+          console.error("Erreur Edge Function:", error);
+          throw new Error(error.message || "Erreur lors de l'appel à la fonction Edge");
+        }
+        
+        // Vérifier le statut de la réponse si disponible
+        if (data && typeof data === 'object' && 'error' in data) {
+          console.error("Erreur dans la réponse:", data);
+          throw new Error((data as any).error || "Erreur lors de la création du client");
+        }
+        
+        setDeployLogs((prev) => [...prev, "[SUCCESS] Client créé avec succès dans la base de données!"]);
         
         toast.success(`Client créé avec succès`, {
           description: `Compte provisionné et configuré sur le SIEM`,
         });
         
-        // Redirection vers la liste des clients
+        // Redirection vers la liste des clients avec rechargement
         await navigate({ to: "/clients" });
-        
-        // Petit délai pour que la navigation se termine, puis recharger
         setTimeout(() => {
           window.location.reload();
         }, 100);
@@ -710,6 +745,90 @@ function NewClient() {
                     </div>
                   </div>
 
+                  {/* Champs conditionnels pour coordonnées bancaires */}
+                  {(form.paymentMethod === "virement" || form.paymentMethod === "prelevement") && (
+                    <div className="space-y-4 p-5 bg-gradient-to-br from-blue-50/50 to-cyan-50/50 dark:from-blue-950/20 dark:to-cyan-950/20 rounded-2xl border-2 border-blue-200/50 dark:border-blue-800/30">
+                      <div className="flex items-center gap-2 mb-3">
+                        <CreditCard className="h-5 w-5 text-blue-600 dark:text-blue-500" />
+                        <Label className="text-sm font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wide">
+                          Coordonnées Bancaires Requises
+                        </Label>
+                      </div>
+                      
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label className="text-xs font-semibold text-slate-700 dark:text-zinc-300">Nom de la Banque *</Label>
+                          <input
+                            type="text"
+                            value={form.bankName}
+                            onChange={(e) => setForm({...form, bankName: e.target.value})}
+                            placeholder="Ex: BICIS, CBAO, Société Générale"
+                            className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label className="text-xs font-semibold text-slate-700 dark:text-zinc-300">Titulaire du Compte *</Label>
+                          <input
+                            type="text"
+                            value={form.accountHolder}
+                            onChange={(e) => setForm({...form, accountHolder: e.target.value})}
+                            placeholder="Nom complet du titulaire"
+                            className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label className="text-xs font-semibold text-slate-700 dark:text-zinc-300">IBAN / Numéro de Compte *</Label>
+                          <input
+                            type="text"
+                            value={form.iban}
+                            onChange={(e) => setForm({...form, iban: e.target.value})}
+                            placeholder="SN08 SN000 00000000000000000"
+                            className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-700 rounded-lg text-sm font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label className="text-xs font-semibold text-slate-700 dark:text-zinc-300">Code BIC / SWIFT (optionnel)</Label>
+                          <input
+                            type="text"
+                            value={form.bic}
+                            onChange={(e) => setForm({...form, bic: e.target.value})}
+                            placeholder="Ex: CBAOSNDA"
+                            className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-700 rounded-lg text-sm font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Champ conditionnel pour Orange Money */}
+                  {form.paymentMethod === "orange_money" && (
+                    <div className="space-y-4 p-5 bg-gradient-to-br from-orange-50/50 to-amber-50/50 dark:from-orange-950/20 dark:to-amber-950/20 rounded-2xl border-2 border-orange-200/50 dark:border-orange-800/30">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Phone className="h-5 w-5 text-orange-600 dark:text-orange-500" />
+                        <Label className="text-sm font-bold text-orange-700 dark:text-orange-400 uppercase tracking-wide">
+                          Coordonnées Orange Money
+                        </Label>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label className="text-xs font-semibold text-slate-700 dark:text-zinc-300">Numéro Orange Money *</Label>
+                        <input
+                          type="tel"
+                          value={form.orangeMoneyNumber}
+                          onChange={(e) => setForm({...form, orangeMoneyNumber: e.target.value})}
+                          placeholder="+221 77 123 45 67"
+                          className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-700 rounded-lg text-sm font-mono focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
+                        />
+                        <p className="text-xs text-slate-500 dark:text-zinc-500 mt-1">Format: +221 XX XXX XX XX (numéro mobile Sénégal)</p>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="p-3.5 bg-slate-50 dark:bg-zinc-950 rounded-xl flex items-center justify-between border border-slate-100 dark:border-zinc-850">
                     <div className="flex items-center gap-3">
                       <Receipt className="h-5 w-5 text-amber-500 shrink-0" />
@@ -1091,131 +1210,135 @@ function NewClient() {
 
           </div>
 
-          {/* Redesigned Premium HUD Console */}
+          {/* Redesigned Light & Professional HUD Console */}
           <div className="space-y-6">
             
-            <Card className="bg-gradient-to-br from-zinc-950 to-zinc-900 border border-amber-500/30 shadow-[0_0_40px_rgba(245,158,11,0.15)] rounded-3xl overflow-hidden relative animate-in slide-in-from-right-8 duration-700">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.1)_0%,transparent_50%)]" />
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-amber-500 to-transparent animate-pulse" />
+            <Card className="bg-gradient-to-br from-white via-slate-50/80 to-blue-50/50 dark:from-slate-900 dark:via-slate-800/80 dark:to-blue-900/20 border-2 border-slate-200/80 dark:border-slate-700/50 shadow-[0_8px_32px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)] rounded-3xl overflow-hidden relative animate-in slide-in-from-right-8 duration-700">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.08)_0%,transparent_50%)]" />
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-cyan-500 to-blue-500" />
               
-              <CardHeader className="pb-4 pt-6 px-6 relative z-10">
+              <CardHeader className="pb-4 pt-6 px-6 relative z-10 border-b border-slate-200/50 dark:border-slate-700/50">
                 <div className="flex items-center justify-between mb-2">
-                  <CardTitle className="text-sm font-black tracking-widest text-amber-500 uppercase flex items-center gap-2.5">
-                    <div className="p-1.5 rounded-lg bg-amber-500/20 border border-amber-500/30">
-                      <Server className="h-4 w-4 animate-pulse" />
+                  <CardTitle className="text-sm font-black tracking-wide text-slate-800 dark:text-slate-100 uppercase flex items-center gap-2.5">
+                    <div className="p-2 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 shadow-lg">
+                      <Server className="h-4 w-4 text-white" />
                     </div>
-                    Aperçu Configuration EDR
+                    Aperçu Configuration
                   </CardTitle>
-                  <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-wider">Live</span>
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-emerald-500 to-green-500 shadow-md">
+                    <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                    <span className="text-[10px] font-bold text-white uppercase tracking-wider">En Direct</span>
                   </div>
                 </div>
-                <p className="text-xs text-zinc-500 font-medium">Simulation en temps réel du provisionnement</p>
+                <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">Simulation en temps réel du provisionnement EDR</p>
               </CardHeader>
               
-              <CardContent className="space-y-6 px-6 pb-6 relative z-10">
+              <CardContent className="space-y-5 px-6 py-6 relative z-10">
                 
-                {/* Enhanced Organization Badge */}
-                <div className="bg-gradient-to-br from-black/60 to-zinc-950/60 border border-zinc-800/80 rounded-2xl p-5 text-center space-y-4 relative overflow-hidden backdrop-blur-sm">
-                  <div className="absolute -top-12 -right-12 w-28 h-28 bg-amber-500/10 rounded-full blur-3xl" />
-                  <div className="absolute -bottom-8 -left-8 w-20 h-20 bg-blue-500/10 rounded-full blur-2xl" />
+                {/* Enhanced Organization Badge - Light Version */}
+                <div className="bg-gradient-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-2xl p-6 text-center space-y-4 shadow-lg relative overflow-hidden">
+                  <div className="absolute -top-16 -right-16 w-32 h-32 bg-gradient-to-br from-blue-400/20 to-cyan-400/20 rounded-full blur-3xl" />
+                  <div className="absolute -bottom-10 -left-10 w-24 h-24 bg-gradient-to-tr from-purple-400/15 to-pink-400/15 rounded-full blur-2xl" />
                   
                   <div className="relative z-10">
-                    <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-500 via-amber-600 to-yellow-600 flex items-center justify-center font-black text-white shadow-[0_8px_24px_rgba(245,158,11,0.3)] text-xl mb-4 ring-4 ring-amber-500/20">
+                    <div className="mx-auto w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500 via-cyan-500 to-blue-600 flex items-center justify-center font-black text-white shadow-[0_8px_32px_rgba(59,130,246,0.4)] text-2xl mb-4 ring-4 ring-blue-200/50 dark:ring-blue-800/50">
                       {form.organization ? form.organization.substring(0,2).toUpperCase() : "SI"}
                     </div>
                     <div>
-                      <div className="text-base font-black text-zinc-100 tracking-tight mb-1">
+                      <div className="text-lg font-black text-slate-900 dark:text-slate-100 tracking-tight mb-1.5">
                         {form.organization || "Nouvelle Organisation"}
                       </div>
-                      <div className="text-xs text-zinc-500 font-semibold">
+                      <div className="text-xs text-slate-600 dark:text-slate-400 font-semibold">
                         {form.email || "en-attente@email.com"}
                       </div>
                     </div>
-                    <div className={`mx-auto inline-flex items-center px-3 py-1.5 rounded-xl text-[10px] font-black tracking-wider uppercase border mt-4 ${
+                    <div className={`mx-auto inline-flex items-center px-4 py-2 rounded-xl text-xs font-black tracking-wide uppercase border-2 mt-4 shadow-md ${
                       form.edrPolicy === "zero-trust" 
-                        ? "bg-red-500/15 text-red-400 border-red-500/30 shadow-[0_0_16px_rgba(239,68,68,0.2)]" 
+                        ? "bg-gradient-to-r from-red-50 to-rose-50 text-red-700 border-red-300 dark:from-red-950/30 dark:to-rose-950/30 dark:text-red-400 dark:border-red-800" 
                         : form.edrPolicy === "aggressive" 
-                          ? "bg-amber-500/15 text-amber-400 border-amber-500/30 shadow-[0_0_16px_rgba(245,158,11,0.2)]" 
-                          : "bg-emerald-500/15 text-emerald-400 border-emerald-500/30 shadow-[0_0_16px_rgba(16,185,129,0.2)]"
+                          ? "bg-gradient-to-r from-amber-50 to-orange-50 text-amber-700 border-amber-300 dark:from-amber-950/30 dark:to-orange-950/30 dark:text-amber-400 dark:border-amber-800" 
+                          : "bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-700 border-emerald-300 dark:from-emerald-950/30 dark:to-green-950/30 dark:text-emerald-400 dark:border-emerald-800"
                     }`}>
                       {form.edrPolicy === "zero-trust" ? "🚨 Strict Zero-Trust" : form.edrPolicy === "aggressive" ? "🔥 Proactive Hunting" : "🛡️ Standard Defense"}
                     </div>
                   </div>
                 </div>
 
-                {/* Enhanced Quota Progress Meter */}
-                <div className="space-y-3 p-4 rounded-2xl bg-gradient-to-br from-zinc-900/50 to-black/50 border border-zinc-800/50 backdrop-blur-sm">
+                {/* Enhanced Quota Progress Meter - Light Version */}
+                <div className="space-y-3 p-5 rounded-2xl bg-gradient-to-br from-slate-50 to-blue-50/50 dark:from-slate-800/50 dark:to-blue-900/20 border-2 border-slate-200 dark:border-slate-700 shadow-md">
                   <div className="flex justify-between items-center">
-                    <span className="text-xs text-zinc-400 font-bold uppercase tracking-wider">Quota Agents EDR</span>
-                    <span className="text-sm text-amber-500 font-black">{form.agentQuota} <span className="text-xs text-zinc-600">/ 500</span></span>
+                    <span className="text-xs text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wide">Quota Agents EDR</span>
+                    <span className="text-lg text-blue-600 dark:text-blue-400 font-black">{form.agentQuota} <span className="text-sm text-slate-500 dark:text-slate-500">/ 500</span></span>
                   </div>
-                  <div className="relative h-3 w-full bg-zinc-900/80 rounded-full overflow-hidden border border-zinc-800 shadow-inner">
+                  <div className="relative h-4 w-full bg-slate-200 dark:bg-slate-700/50 rounded-full overflow-hidden shadow-inner border-2 border-slate-300/50 dark:border-slate-600/50">
                     <div 
-                      className="h-full bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-500 transition-all duration-700 ease-out shadow-[0_0_12px_rgba(245,158,11,0.5)] relative overflow-hidden" 
+                      className="h-full bg-gradient-to-r from-blue-500 via-cyan-500 to-blue-600 transition-all duration-700 ease-out shadow-lg relative overflow-hidden" 
                       style={{ width: `${(form.agentQuota / 500) * 100}%` }}
                     >
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-[shimmer_2s_infinite]" />
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent animate-[shimmer_2s_infinite]" />
                     </div>
                   </div>
-                  <div className="text-[10px] text-zinc-600 font-semibold text-right">
-                    {((form.agentQuota / 500) * 100).toFixed(0)}% de la capacité maximale
+                  <div className="text-xs text-slate-600 dark:text-slate-400 font-semibold text-right">
+                    {((form.agentQuota / 500) * 100).toFixed(0)}% de la capacité maximale utilisée
                   </div>
                 </div>
 
-                {/* Enhanced Info Cards Grid */}
+                {/* Enhanced Info Cards Grid - Light Version */}
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-zinc-900/70 to-black/70 border border-zinc-800/70 backdrop-blur-sm">
+                  <div className="p-4 rounded-xl bg-gradient-to-br from-white to-amber-50/50 dark:from-slate-800 dark:to-amber-900/20 border-2 border-amber-200/50 dark:border-amber-800/30 shadow-md">
                     <div className="flex items-center gap-2 mb-2">
-                      <Zap className="h-3.5 w-3.5 text-amber-500" />
-                      <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Protection</span>
+                      <div className="p-1.5 rounded-lg bg-amber-500/20 dark:bg-amber-500/30">
+                        <Zap className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                      </div>
+                      <span className="text-[10px] text-slate-600 dark:text-slate-400 font-bold uppercase tracking-wider">Protection</span>
                     </div>
-                    <div className="text-xs text-zinc-200 font-bold">
+                    <div className="text-sm text-slate-900 dark:text-slate-100 font-bold">
                       {form.automationLevel === "autonomous" ? "Autonome IA" : form.automationLevel === "semi" ? "Semi-Auto" : "Manuel"}
                     </div>
                   </div>
                   
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-zinc-900/70 to-black/70 border border-zinc-800/70 backdrop-blur-sm">
+                  <div className="p-4 rounded-xl bg-gradient-to-br from-white to-blue-50/50 dark:from-slate-800 dark:to-blue-900/20 border-2 border-blue-200/50 dark:border-blue-800/30 shadow-md">
                     <div className="flex items-center gap-2 mb-2">
-                      <Shield className="h-3.5 w-3.5 text-blue-500" />
-                      <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">A2F/MFA</span>
+                      <div className="p-1.5 rounded-lg bg-blue-500/20 dark:bg-blue-500/30">
+                        <Shield className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <span className="text-[10px] text-slate-600 dark:text-slate-400 font-bold uppercase tracking-wider">A2F/MFA</span>
                     </div>
-                    <div className="text-xs text-zinc-200 font-bold">
+                    <div className="text-sm text-slate-900 dark:text-slate-100 font-bold">
                       {form.requireMfa ? "Exigée ✓" : "Optionnelle"}
                     </div>
                   </div>
                 </div>
 
-                {/* Enhanced SIEM Terminal Console */}
-                <div className="bg-black/80 rounded-2xl p-4 border border-zinc-800/80 font-mono text-[10px] text-emerald-400 space-y-2 leading-relaxed shadow-2xl backdrop-blur-sm">
-                  <div className="flex items-center justify-between text-zinc-500 font-bold border-b border-zinc-900 pb-2.5 mb-3">
+                {/* Enhanced SIEM Terminal Console - Light Version */}
+                <div className="bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-950 dark:to-slate-900 rounded-2xl p-4 border-2 border-slate-700 dark:border-slate-800 font-mono text-[10px] text-emerald-400 space-y-2 leading-relaxed shadow-xl">
+                  <div className="flex items-center justify-between text-slate-400 font-bold border-b border-slate-700 pb-2.5 mb-3">
                     <span className="flex items-center gap-2">
-                      <Terminal className="h-3.5 w-3.5" />
-                      <span className="uppercase tracking-wider">Console Provisionnement</span>
+                      <Terminal className="h-4 w-4" />
+                      <span className="uppercase tracking-wider text-xs">Console Provisionnement</span>
                     </span>
                     <div className="flex items-center gap-1.5">
-                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                      <span className="text-[9px]">● LIVE</span>
+                      <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
+                      <span className="text-[9px] text-emerald-400 font-bold">LIVE</span>
                     </div>
                   </div>
-                  <div className="space-y-1.5 max-h-[200px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent">
+                  <div className="space-y-1.5 max-h-[180px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-slate-600 scrollbar-track-transparent">
                     {hudLogs.map((log, idx) => (
-                      <div key={idx} className="group flex items-start gap-2 hover:bg-zinc-900/30 px-2 py-1 rounded transition-colors">
-                        <span className="text-emerald-700 shrink-0">❯</span>
+                      <div key={idx} className="group flex items-start gap-2 hover:bg-slate-800/50 px-2 py-1 rounded transition-colors">
+                        <span className="text-emerald-600 shrink-0">❯</span>
                         <span className="group-hover:text-emerald-300 transition-colors flex-1">{log}</span>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                {/* System Status Indicator */}
-                <div className="flex items-center justify-between p-3 rounded-xl bg-gradient-to-r from-emerald-500/10 to-blue-500/10 border border-emerald-500/20">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                    <span className="text-xs font-bold text-emerald-400">Système Opérationnel</span>
+                {/* System Status Indicator - Light Version */}
+                <div className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-950/30 dark:to-green-950/30 border-2 border-emerald-300/50 dark:border-emerald-700/50 shadow-md">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-3 h-3 rounded-full bg-gradient-to-br from-emerald-500 to-green-500 animate-pulse shadow-[0_0_12px_rgba(16,185,129,0.5)]" />
+                    <span className="text-sm font-bold text-emerald-700 dark:text-emerald-400">Système Opérationnel</span>
                   </div>
-                  <span className="text-[10px] text-zinc-500 font-semibold">Ready to deploy</span>
+                  <span className="text-xs text-slate-600 dark:text-slate-400 font-semibold">Prêt pour déploiement</span>
                 </div>
 
               </CardContent>
