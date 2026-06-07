@@ -68,10 +68,10 @@ Deno.serve(async (req) => {
 
     if (profileErr) console.error("Profile update error:", profileErr);
 
-    if (role !== "client") {
-      await admin.from("user_roles").delete().eq("user_id", newUserId);
-      await admin.from("user_roles").insert({ user_id: newUserId, role });
-    }
+    // Créer l'entrée du rôle dans user_roles (pour TOUS les rôles, y compris "client")
+    await admin.from("user_roles").delete().eq("user_id", newUserId);
+    const { error: roleErr } = await admin.from("user_roles").insert({ user_id: newUserId, role });
+    if (roleErr) console.error("Role insert error:", roleErr);
 
     const origin = redirectOrigin ?? Deno.env.get("SITE_URL") ?? "http://localhost:8080";
     const loginUrl = `${origin}/auth/login`;
