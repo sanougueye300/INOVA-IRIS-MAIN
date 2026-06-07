@@ -125,6 +125,7 @@ function NewClient() {
       if (!form.lastName.trim()) { toast.error("Nom requis"); return false; }
       if (!form.email.trim()) { toast.error("E-mail requis"); return false; }
       if (!/\S+@\S+\.\S+/.test(form.email)) { toast.error("Format d'e-mail invalide"); return false; }
+      if (!form.phone.trim()) { toast.error("Numéro de téléphone requis"); return false; }
       if (!form.organization.trim()) { toast.error("Nom de l'entreprise requis"); return false; }
       if (!form.deliveryAddress.trim()) { toast.error("Adresse de livraison requise"); return false; }
       if (!form.billingAddress.trim()) { toast.error("Adresse de facturation requise"); return false; }
@@ -217,6 +218,9 @@ function NewClient() {
             fullName: fullName,
             organization: form.organization,
             role: form.role,
+            phone: form.phone || "+221000000000", // Numéro de téléphone requis
+            generation: "v1",
+            isActive: true,
           }
         });
         
