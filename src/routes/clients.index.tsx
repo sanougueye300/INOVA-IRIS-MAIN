@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createFileRoute("/clients/")({
   head: () => ({ meta: [{ title: "Liste des Clients — SOC Platform" }] }),
+  validateSearch: (search: Record<string, unknown>) => {
+    return {
+      refresh: (search.refresh as string) || undefined,
+    };
+  },
   component: () => <RequireAuth requireAdmin><ClientsList /></RequireAuth>,
 });
 
@@ -184,6 +189,7 @@ export const DEMO_CLIENTS: Profile[] = [
 interface RoleRow { user_id: string; role: AppRole }
 
 function ClientsList() {
+  const searchParams = useSearch({ from: "/clients/" });
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [filteredProfiles, setFilteredProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
