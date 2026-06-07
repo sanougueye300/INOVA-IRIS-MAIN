@@ -244,124 +244,236 @@ function NewClient() {
   );
 
   return (
-    <div className="min-h-screen bg-[#fafafa] dark:bg-[#0b0c10] transition-colors duration-300 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-50/80 to-slate-100/50 dark:from-[#0a0b0e] dark:via-[#0e1015] dark:to-[#12141a] transition-colors duration-300 relative overflow-hidden">
       
-      {/* Decorative Blur Backgrounds */}
-      <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] rounded-full bg-amber-500/5 blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] rounded-full bg-amber-500/5 blur-[120px] pointer-events-none" />
+      {/* Enhanced Decorative Backgrounds with Grid Pattern */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808008_1px,transparent_1px),linear-gradient(to_bottom,#80808008_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
+      <div className="absolute top-[-5%] right-[-5%] w-[600px] h-[600px] rounded-full bg-gradient-to-br from-amber-500/8 via-orange-500/5 to-transparent blur-[140px] pointer-events-none animate-pulse" />
+      <div className="absolute bottom-[-10%] left-[-10%] w-[700px] h-[700px] rounded-full bg-gradient-to-tr from-blue-500/6 via-cyan-500/4 to-transparent blur-[150px] pointer-events-none" />
+      <div className="absolute top-[40%] left-[50%] w-[400px] h-[400px] rounded-full bg-gradient-to-bl from-purple-500/4 to-transparent blur-[120px] pointer-events-none" />
 
-      {/* Deployment Simulation Overlay */}
+      {/* Enhanced Deployment Simulation Overlay */}
       {deployStep !== null && (
-        <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
-          <Card className="w-full max-w-xl bg-zinc-950 border-zinc-800 shadow-2xl relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600 animate-pulse" />
-            <CardHeader className="pb-4">
-              <CardTitle className="text-lg flex items-center gap-3 text-zinc-100">
-                <Terminal className="h-5 w-5 text-amber-500 animate-pulse" />
-                Déploiement du Client SIEM / EDR
-              </CardTitle>
-              <CardDescription className="text-zinc-400 text-xs">
-                Simulation et déploiement du sandbox cyber-défense en cours...
-              </CardDescription>
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-xl z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(245,158,11,0.1)_0%,transparent_70%)]" />
+          <Card className="w-full max-w-2xl bg-gradient-to-br from-zinc-950 to-zinc-900 border border-amber-500/30 shadow-[0_0_50px_rgba(245,158,11,0.15)] relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-amber-500 to-transparent animate-pulse" />
+            <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 via-transparent to-emerald-500/5 pointer-events-none" />
+            
+            <CardHeader className="pb-5 relative z-10">
+              <div className="flex items-start justify-between">
+                <div className="space-y-2">
+                  <CardTitle className="text-xl flex items-center gap-3 text-zinc-50 font-black">
+                    <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                      <Terminal className="h-6 w-6 text-amber-500 animate-pulse" />
+                    </div>
+                    Provisionnement Client SIEM / EDR
+                  </CardTitle>
+                  <CardDescription className="text-zinc-400 text-sm font-medium pl-14">
+                    Configuration automatisée du sandbox de cyber-défense en cours...
+                  </CardDescription>
+                </div>
+                <div className="px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">En Direct</span>
+                </div>
+              </div>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="bg-black border border-zinc-800 rounded-lg p-4 font-mono text-[11px] text-emerald-400 space-y-2 max-h-[220px] overflow-y-auto leading-relaxed shadow-inner">
+            
+            <CardContent className="space-y-6 relative z-10">
+              <div className="bg-black/60 border border-zinc-800/80 rounded-xl p-5 font-mono text-xs text-emerald-400 space-y-2.5 max-h-[280px] overflow-y-auto leading-relaxed shadow-2xl backdrop-blur-sm">
+                <div className="flex items-center justify-between text-zinc-500 font-bold border-b border-zinc-800/50 pb-2 mb-3">
+                  <span className="flex items-center gap-2">
+                    <span className="text-amber-500">●</span> TERMINAL DE PROVISIONNEMENT
+                  </span>
+                  <span className="text-[10px]">{new Date().toLocaleTimeString()}</span>
+                </div>
                 {deployLogs.map((log, idx) => (
-                  <div key={idx} className="flex items-start gap-2">
-                    <span className="text-zinc-600">[{new Date().toLocaleTimeString()}]</span>
-                    <span>{log}</span>
+                  <div key={idx} className="flex items-start gap-3 group hover:bg-zinc-900/30 px-2 py-1 rounded transition-colors">
+                    <span className="text-zinc-600 text-[10px] mt-0.5 shrink-0 font-semibold">
+                      {new Date().toLocaleTimeString()}
+                    </span>
+                    <span className="text-emerald-400 group-hover:text-emerald-300 transition-colors">{log}</span>
                   </div>
                 ))}
                 {deployStep < 7 && (
-                  <div className="flex items-center gap-2 text-zinc-400 animate-pulse">
-                    <span>❯</span>
+                  <div className="flex items-center gap-3 text-amber-400 animate-pulse px-2 py-1">
+                    <span className="text-amber-500">❯</span>
                     <span>Provisionnement de la politique cyber en cours...</span>
-                    <Loader2 className="h-3 w-3 animate-spin text-amber-500 ml-auto" />
+                    <Loader2 className="h-4 w-4 animate-spin text-amber-500 ml-auto" />
                   </div>
                 )}
               </div>
 
-              <div className="grid grid-cols-7 gap-2">
-                {[...Array(7)].map((_, stepIdx) => (
-                  <div 
-                    key={stepIdx} 
-                    className={`h-2.5 rounded-full transition-all duration-300 ${
-                      deployStep > stepIdx 
-                        ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" 
-                        : deployStep === stepIdx 
-                          ? "bg-amber-500 animate-pulse" 
-                          : "bg-zinc-800"
-                    }`} 
-                  />
-                ))}
-              </div>
-              <div className="text-center text-xs text-zinc-500 mt-2">
-                Étape {deployStep + 1} de 8 : Configuration EDR
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-zinc-400 font-semibold">Progression du déploiement</span>
+                  <span className="text-zinc-200 font-bold">{Math.round(((deployStep + 1) / 8) * 100)}%</span>
+                </div>
+                <div className="grid grid-cols-8 gap-2.5">
+                  {[...Array(8)].map((_, stepIdx) => (
+                    <div 
+                      key={stepIdx} 
+                      className={`h-3 rounded-lg transition-all duration-500 relative overflow-hidden ${
+                        deployStep > stepIdx 
+                          ? "bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.6)]" 
+                          : deployStep === stepIdx 
+                            ? "bg-amber-500 animate-pulse shadow-[0_0_12px_rgba(245,158,11,0.6)]" 
+                            : "bg-zinc-800/50 border border-zinc-700/50"
+                      }`}
+                    >
+                      {deployStep === stepIdx && (
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-[shimmer_1s_infinite]" />
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <div className="text-center">
+                  <span className="text-xs text-zinc-400 font-medium">
+                    Étape <span className="text-amber-500 font-bold">{deployStep + 1}</span> sur <span className="font-bold">8</span>
+                  </span>
+                  <span className="mx-2 text-zinc-700">•</span>
+                  <span className="text-xs text-zinc-500">Configuration des services EDR</span>
+                </div>
               </div>
             </CardContent>
           </Card>
         </div>
       )}
 
-      <div className="container mx-auto px-4 py-8 max-w-7xl relative z-10">
+      <div className="container mx-auto px-4 py-10 max-w-7xl relative z-10">
         
-        {/* Header */}
-        <div className="mb-8 flex items-center gap-4">
-          <Button variant="outline" size="icon" asChild className="rounded-full bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 hover:border-amber-500 transition-colors duration-300">
-            <Link to="/clients">
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
-          </Button>
-          <div>
-            <h1 className="text-3xl font-extrabold bg-gradient-to-r from-slate-900 via-amber-600 to-amber-800 dark:from-white dark:via-amber-500 dark:to-yellow-600 bg-clip-text text-transparent tracking-tight">
-              Provisionner un nouveau client
-            </h1>
-            <p className="text-muted-foreground text-sm mt-1">
-              Configurez son profil, attribuez ses licences et appliquez des stratégies de protection de dernière génération.
-            </p>
+        {/* Enhanced Premium Header */}
+        <div className="mb-12">
+          <div className="flex items-start gap-6">
+            <Button 
+              variant="outline" 
+              size="icon" 
+              asChild 
+              className="mt-1 rounded-xl h-11 w-11 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm border-slate-200 dark:border-zinc-800 hover:border-amber-500 hover:bg-white dark:hover:bg-zinc-900 transition-all duration-300 shadow-sm hover:shadow-md"
+            >
+              <Link to="/clients">
+                <ArrowLeft className="h-5 w-5" />
+              </Link>
+            </Button>
+            <div className="flex-1 space-y-3">
+              <div className="flex items-start justify-between">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-3">
+                    <h1 className="text-4xl font-black bg-gradient-to-r from-slate-900 via-slate-700 to-slate-900 dark:from-zinc-100 dark:via-zinc-300 dark:to-zinc-100 bg-clip-text text-transparent tracking-tight">
+                      Provisionnement Client
+                    </h1>
+                    <div className="px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 backdrop-blur-sm">
+                      <span className="text-xs font-bold text-amber-600 dark:text-amber-500 uppercase tracking-wider">SIEM · EDR</span>
+                    </div>
+                  </div>
+                  <p className="text-slate-600 dark:text-zinc-400 text-base font-medium max-w-3xl leading-relaxed">
+                    Configuration complète du profil client, attribution des licences cyber-sécurité et déploiement des stratégies de protection de dernière génération.
+                  </p>
+                </div>
+              </div>
+              
+              {/* Quick Stats Badges */}
+              <div className="flex items-center gap-3 pt-2">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100/80 dark:bg-zinc-900/50 border border-slate-200 dark:border-zinc-800 backdrop-blur-sm">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="text-xs font-semibold text-slate-700 dark:text-zinc-300">Système Opérationnel</span>
+                </div>
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100/80 dark:bg-zinc-900/50 border border-slate-200 dark:border-zinc-800 backdrop-blur-sm">
+                  <Shield className="h-3.5 w-3.5 text-blue-500" />
+                  <span className="text-xs font-semibold text-slate-700 dark:text-zinc-300">Chiffrement TLS Actif</span>
+                </div>
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100/80 dark:bg-zinc-900/50 border border-slate-200 dark:border-zinc-800 backdrop-blur-sm">
+                  <Zap className="h-3.5 w-3.5 text-amber-500" />
+                  <span className="text-xs font-semibold text-slate-700 dark:text-zinc-300">Provisionnement Rapide</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Dynamic Connected Steps Progress Bar */}
-        <div className="mb-10 bg-white/60 dark:bg-zinc-900/40 border border-slate-100 dark:border-zinc-850 p-6 rounded-2xl shadow-sm backdrop-blur-md">
-          <div className="flex items-center justify-between text-xs text-muted-foreground font-bold tracking-wider relative max-w-4xl mx-auto">
-            
-            {/* Steps connectors */}
-            <div className="absolute top-5 left-[5%] right-[5%] h-0.5 bg-slate-200 dark:bg-zinc-800 -z-10" />
-            <div 
-              className="absolute top-5 left-[5%] h-0.5 bg-gradient-to-r from-amber-500 to-yellow-500 -z-10 transition-all duration-500 ease-in-out" 
-              style={{ width: `${(activeStep - 1) * 22.5}%` }}
-            />
+        {/* Redesigned Modern Steps Progress Bar */}
+        <div className="mb-12 bg-white/70 dark:bg-zinc-900/50 border border-slate-200/80 dark:border-zinc-800/80 p-8 rounded-3xl shadow-lg backdrop-blur-xl relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 via-transparent to-blue-500/5 pointer-events-none" />
+          
+          <div className="relative z-10">
+            <div className="flex items-center justify-between max-w-5xl mx-auto relative">
+              
+              {/* Background connector line */}
+              <div className="absolute top-[26px] left-[8%] right-[8%] h-[3px] bg-gradient-to-r from-slate-200 via-slate-150 to-slate-200 dark:from-zinc-800 dark:via-zinc-750 dark:to-zinc-800 rounded-full" />
+              
+              {/* Active progress line */}
+              <div 
+                className="absolute top-[26px] left-[8%] h-[3px] bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 rounded-full transition-all duration-700 ease-out shadow-[0_0_12px_rgba(245,158,11,0.4)]" 
+                style={{ width: `${Math.min((activeStep - 1) * 21, 84)}%` }}
+              />
 
-            {[
-              { num: 1, label: "Addresses" },
-              { num: 2, label: "Données Facturation" },
-              { num: 3, label: "Accès et Produits" },
-              { num: 4, label: "Services" },
-              { num: 5, label: "Validation" }
-            ].map((st) => (
-              <div key={st.num} className="flex flex-col items-center gap-2 flex-1">
-                <button
-                  type="button"
-                  onClick={() => { if (st.num < activeStep) setActiveStep(st.num); }}
-                  className={`w-10 h-10 rounded-full flex items-center justify-center font-black transition-all duration-300 border-2 ${
-                    activeStep === st.num
-                      ? "bg-gradient-to-br from-amber-500 to-yellow-500 border-transparent text-white shadow-[0_0_15px_rgba(245,158,11,0.4)] scale-110"
-                      : activeStep > st.num
-                        ? "bg-emerald-500 border-transparent text-white shadow-[0_0_10px_rgba(16,185,129,0.2)]"
-                        : "bg-slate-100 dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 text-muted-foreground"
-                  }`}
-                >
-                  {activeStep > st.num ? <Check className="h-5 w-5 stroke-[3]" /> : st.num}
-                </button>
-                <span className={`text-[10px] text-center max-w-[100px] uppercase font-extrabold mt-1 transition-colors duration-300 ${
-                  activeStep === st.num ? "text-amber-500" : activeStep > st.num ? "text-emerald-500" : "text-muted-foreground/60"
-                }`}>
-                  {st.label}
-                </span>
-              </div>
-            ))}
+              {[
+                { num: 1, label: "Coordonnées", icon: <User className="h-4 w-4" />, desc: "Identité & Contact" },
+                { num: 2, label: "Facturation", icon: <CreditCard className="h-4 w-4" />, desc: "Offre & Paiement" },
+                { num: 3, label: "Accès", icon: <Lock className="h-4 w-4" />, desc: "Licences EDR" },
+                { num: 4, label: "Services", icon: <Server className="h-4 w-4" />, desc: "SOAR & SIEM" },
+                { num: 5, label: "Validation", icon: <CheckCircle2 className="h-4 w-4" />, desc: "Vérification" }
+              ].map((st) => (
+                <div key={st.num} className="flex flex-col items-center gap-3 flex-1 relative z-10">
+                  <button
+                    type="button"
+                    onClick={() => { if (st.num < activeStep) setActiveStep(st.num); }}
+                    disabled={st.num > activeStep}
+                    className={`group relative transition-all duration-500 ${st.num <= activeStep ? 'cursor-pointer' : 'cursor-not-allowed'}`}
+                  >
+                    {/* Glow effect for active/completed */}
+                    {st.num <= activeStep && (
+                      <div className={`absolute inset-0 rounded-2xl blur-xl transition-all duration-500 ${
+                        activeStep === st.num 
+                          ? "bg-amber-500/30 scale-150" 
+                          : "bg-emerald-500/20 scale-125"
+                      }`} />
+                    )}
+                    
+                    {/* Step circle */}
+                    <div className={`relative w-14 h-14 rounded-2xl flex items-center justify-center font-black transition-all duration-500 border-2 ${
+                      activeStep === st.num
+                        ? "bg-gradient-to-br from-amber-500 to-amber-600 border-amber-400 text-white shadow-[0_8px_24px_rgba(245,158,11,0.35)] scale-110 rotate-3"
+                        : activeStep > st.num
+                          ? "bg-gradient-to-br from-emerald-500 to-emerald-600 border-emerald-400 text-white shadow-[0_4px_16px_rgba(16,185,129,0.25)] hover:scale-105"
+                          : "bg-slate-100 dark:bg-zinc-900/80 border-slate-300 dark:border-zinc-700 text-slate-400 dark:text-zinc-600"
+                    } ${st.num < activeStep ? 'hover:-rotate-3' : ''}`}>
+                      {activeStep > st.num ? (
+                        <Check className="h-6 w-6 stroke-[3] animate-in zoom-in duration-300" />
+                      ) : (
+                        <div className="flex flex-col items-center">
+                          {st.icon}
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                  
+                  {/* Step label */}
+                  <div className="text-center space-y-1 max-w-[110px]">
+                    <div className={`text-sm font-bold transition-all duration-300 ${
+                      activeStep === st.num 
+                        ? "text-amber-600 dark:text-amber-500 scale-105" 
+                        : activeStep > st.num 
+                          ? "text-emerald-600 dark:text-emerald-500" 
+                          : "text-slate-500 dark:text-zinc-500"
+                    }`}>
+                      {st.label}
+                    </div>
+                    <div className={`text-[10px] font-semibold uppercase tracking-wider transition-colors duration-300 ${
+                      activeStep === st.num 
+                        ? "text-amber-500/70" 
+                        : activeStep > st.num 
+                          ? "text-emerald-500/70" 
+                          : "text-slate-400/60 dark:text-zinc-600"
+                    }`}>
+                      {st.desc}
+                    </div>
+                  </div>
+                </div>
+              ))}
 
+            </div>
           </div>
         </div>
 
@@ -373,18 +485,24 @@ function NewClient() {
             
             {/* Step 1: Addresses */}
             {activeStep === 1 && (
-              <Card className="bg-white/80 dark:bg-zinc-900/60 backdrop-blur-md border border-slate-100 dark:border-zinc-800/80 shadow-xl rounded-2xl overflow-hidden animate-in fade-in duration-300">
-                <div className="h-1.5 bg-gradient-to-r from-amber-500 to-yellow-400" />
-                <CardHeader className="pb-4">
-                  <CardTitle className="text-lg flex items-center gap-3 font-bold dark:text-zinc-100">
-                    <MapPin className="h-5 w-5 text-amber-500" />
-                    Informations sur les adresses & contacts
-                  </CardTitle>
-                  <CardDescription className="text-xs">
-                    Identité du représentant et coordonnées d'implantation du système d'information.
-                  </CardDescription>
+              <Card className="bg-white/90 dark:bg-zinc-900/70 backdrop-blur-xl border border-slate-200/80 dark:border-zinc-800/80 shadow-2xl rounded-3xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="h-1 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500" />
+                <CardHeader className="pb-5 pt-7 px-8 space-y-3">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 rounded-2xl bg-gradient-to-br from-amber-500/10 to-orange-500/10 border border-amber-500/20">
+                      <MapPin className="h-6 w-6 text-amber-600 dark:text-amber-500" />
+                    </div>
+                    <div className="flex-1">
+                      <CardTitle className="text-xl flex items-center gap-3 font-black text-slate-900 dark:text-zinc-50">
+                        Informations de Contact & Localisation
+                      </CardTitle>
+                      <CardDescription className="text-sm mt-1.5 text-slate-600 dark:text-zinc-400 font-medium">
+                        Identité du représentant et coordonnées d'implantation du système d'information.
+                      </CardDescription>
+                    </div>
+                  </div>
                 </CardHeader>
-                <CardContent className="space-y-6 pt-2">
+                <CardContent className="space-y-8 px-8 pb-8">
                   <div className="grid gap-6 md:grid-cols-2">
                     {renderInput("PRENOM DU REPRÉSENTANT", form.firstName, (v) => setForm({...form, firstName: v}), "Jean", <User className="h-4 w-4" />)}
                     {renderInput("NOM DU REPRÉSENTANT", form.lastName, (v) => setForm({...form, lastName: v}), "Dupont", <User className="h-4 w-4" />)}
@@ -398,13 +516,18 @@ function NewClient() {
                     {renderInput("SITE WEB DE L'ORGANISATION", form.website, (v) => setForm({...form, website: v}), "https://sonatel.sn", <Globe className="h-4 w-4" />, "url")}
                   </div>
                   
-                  <Separator className="border-slate-100 dark:border-zinc-800" />
+                  <Separator className="border-slate-200 dark:border-zinc-800 my-2" />
                   
-                  <div className="space-y-4">
-                    <h3 className="text-xs font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
-                      <MapPin className="h-4 w-4" /> Adresse de livraison / d'implantation des équipements
-                    </h3>
-                    <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="space-y-5">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                        <MapPin className="h-4 w-4 text-blue-600 dark:text-blue-500" />
+                      </div>
+                      <h3 className="text-sm font-black uppercase tracking-wider text-slate-700 dark:text-zinc-300">
+                        Adresse de livraison / implantation des équipements
+                      </h3>
+                    </div>
+                    <div className="grid gap-5 sm:grid-cols-3 pl-14">
                       <div className="sm:col-span-2">
                         {renderInput("Adresse physique de livraison", form.deliveryAddress, (v) => setForm({...form, deliveryAddress: v}), "Dakar, SICAP Liberté IV", <MapPin className="h-4 w-4" />)}
                       </div>
@@ -414,15 +537,21 @@ function NewClient() {
                     </div>
                   </div>
 
-                  <div className="space-y-4 pt-2">
+                  <div className="space-y-5 pt-2">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-xs font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
-                        <Receipt className="h-4 w-4" /> Adresse de facturation
-                      </h3>
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-purple-500/10 border border-purple-500/20">
+                          <Receipt className="h-4 w-4 text-purple-600 dark:text-purple-500" />
+                        </div>
+                        <h3 className="text-sm font-black uppercase tracking-wider text-slate-700 dark:text-zinc-300">
+                          Adresse de facturation
+                        </h3>
+                      </div>
                       <Button
                         type="button"
                         variant="ghost"
-                        className="text-[10px] text-amber-500 hover:text-amber-600 font-extrabold gap-1"
+                        size="sm"
+                        className="text-xs text-amber-600 dark:text-amber-500 hover:text-amber-700 dark:hover:text-amber-400 hover:bg-amber-500/10 font-bold gap-1.5 rounded-lg transition-all"
                         onClick={() => setForm(prev => ({
                           ...prev,
                           billingAddress: prev.deliveryAddress,
@@ -431,10 +560,11 @@ function NewClient() {
                           billingCountry: prev.deliveryCountry
                         }))}
                       >
+                        <Check className="h-3 w-3" />
                         Identique à la livraison
                       </Button>
                     </div>
-                    <div className="grid gap-4 sm:grid-cols-3">
+                    <div className="grid gap-5 sm:grid-cols-3 pl-14">
                       <div className="sm:col-span-2">
                         {renderInput("Adresse physique de facturation", form.billingAddress, (v) => setForm({...form, billingAddress: v}), "Dakar, SICAP Liberté IV", <Receipt className="h-4 w-4" />)}
                       </div>
@@ -449,57 +579,83 @@ function NewClient() {
 
             {/* Step 2: Données Facturation */}
             {activeStep === 2 && (
-              <Card className="bg-white/80 dark:bg-zinc-900/60 backdrop-blur-md border border-slate-100 dark:border-zinc-800/80 shadow-xl rounded-2xl overflow-hidden animate-in fade-in duration-300">
-                <div className="h-1.5 bg-gradient-to-r from-amber-500 to-yellow-400" />
-                <CardHeader className="pb-4">
-                  <CardTitle className="text-lg flex items-center gap-3 font-bold dark:text-zinc-100">
-                    <CreditCard className="h-5 w-5 text-amber-500" />
-                    Données de Facturation & Choix de l'Offre
-                  </CardTitle>
-                  <CardDescription className="text-xs">
-                    Associez une offre active du catalogue et configurez les conditions de paiement.
-                  </CardDescription>
+              <Card className="bg-white/90 dark:bg-zinc-900/70 backdrop-blur-xl border border-slate-200/80 dark:border-zinc-800/80 shadow-2xl rounded-3xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="h-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-500" />
+                <CardHeader className="pb-5 pt-7 px-8 space-y-3">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 rounded-2xl bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border border-emerald-500/20">
+                      <CreditCard className="h-6 w-6 text-emerald-600 dark:text-emerald-500" />
+                    </div>
+                    <div className="flex-1">
+                      <CardTitle className="text-xl flex items-center gap-3 font-black text-slate-900 dark:text-zinc-50">
+                        Facturation & Sélection de l'Offre
+                      </CardTitle>
+                      <CardDescription className="text-sm mt-1.5 text-slate-600 dark:text-zinc-400 font-medium">
+                        Associez une offre active du catalogue et configurez les conditions de paiement.
+                      </CardDescription>
+                    </div>
+                  </div>
                 </CardHeader>
-                <CardContent className="space-y-6 pt-2">
+                <CardContent className="space-y-8 px-8 pb-8">
                   
                   {/* Cards for offers */}
-                  <div className="space-y-3">
-                    <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Formule d'Abonnement SOC active</Label>
-                    <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-4">
+                    <Label className="text-sm font-bold text-slate-700 dark:text-zinc-300 uppercase tracking-wide flex items-center gap-2">
+                      <Shield className="h-4 w-4 text-amber-500" />
+                      Formules d'Abonnement SOC Disponibles
+                    </Label>
+                    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                       {offers.length === 0 ? (
-                        <div className="sm:col-span-2 text-center p-6 bg-slate-100 dark:bg-zinc-900 rounded-xl">
-                          <p className="text-xs text-muted-foreground">Aucune offre active trouvée dans le catalogue d'administration.</p>
-                          <Link to="/admin/offres" className="text-xs text-amber-500 hover:underline font-bold mt-2 inline-block">Aller au catalogue d'offres</Link>
+                        <div className="sm:col-span-2 lg:col-span-3 text-center p-8 bg-gradient-to-br from-slate-100/80 to-slate-50/80 dark:from-zinc-900/50 dark:to-zinc-900/30 rounded-2xl border border-slate-200 dark:border-zinc-800 backdrop-blur-sm">
+                          <div className="inline-flex p-4 rounded-2xl bg-slate-200/50 dark:bg-zinc-800/50 mb-4">
+                            <Info className="h-8 w-8 text-slate-400 dark:text-zinc-500" />
+                          </div>
+                          <p className="text-sm text-slate-600 dark:text-zinc-400 font-medium mb-3">Aucune offre active trouvée dans le catalogue d'administration.</p>
+                          <Link to="/admin/offres" className="inline-flex items-center gap-2 text-sm text-amber-600 dark:text-amber-500 hover:text-amber-700 dark:hover:text-amber-400 font-bold px-4 py-2 rounded-lg hover:bg-amber-500/10 transition-all">
+                            <ChevronRight className="h-4 w-4" />
+                            Aller au catalogue d'offres
+                          </Link>
                         </div>
                       ) : (
                         offers.map((offer) => (
                           <div
                             key={offer.id}
                             onClick={() => handleOfferChange(offer.id)}
-                            className={`cursor-pointer rounded-2xl p-4 border transition-all duration-300 relative flex flex-col justify-between ${
+                            className={`group cursor-pointer rounded-2xl p-5 border-2 transition-all duration-300 relative flex flex-col justify-between h-full ${
                               selectedOfferId === offer.id
-                                ? "bg-amber-500/10 border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.15)]"
-                                : "border-slate-100 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-950/20 hover:border-slate-350 hover:bg-slate-50 dark:hover:bg-zinc-900/40"
+                                ? "bg-gradient-to-br from-amber-500/10 to-orange-500/10 border-amber-500 shadow-[0_8px_30px_rgba(245,158,11,0.25)] scale-[1.02]"
+                                : "border-slate-200 dark:border-zinc-800 bg-white/50 dark:bg-zinc-950/30 hover:border-slate-300 dark:hover:border-zinc-700 hover:shadow-lg hover:scale-[1.01]"
                             }`}
                           >
                             <div>
-                              <div className="flex items-center justify-between mb-2">
-                                <span className="text-sm font-black">{offer.name}</span>
+                              <div className="flex items-center justify-between mb-3">
+                                <span className={`text-base font-black uppercase tracking-wide ${selectedOfferId === offer.id ? 'text-amber-600 dark:text-amber-500' : 'text-slate-800 dark:text-zinc-200'}`}>
+                                  {offer.name}
+                                </span>
                                 {selectedOfferId === offer.id && (
-                                  <span className="p-1 bg-amber-500 text-white rounded-full">
-                                    <Check className="h-3 w-3 stroke-[3]" />
-                                  </span>
+                                  <div className="flex items-center justify-center w-6 h-6 bg-amber-500 text-white rounded-full shadow-lg animate-in zoom-in duration-300">
+                                    <Check className="h-4 w-4 stroke-[3]" />
+                                  </div>
                                 )}
                               </div>
-                              <p className="text-xs text-muted-foreground leading-snug mb-3">
-                                SLA de détection : <strong>{offer.mttd}</strong> | MTTR : <strong>{offer.mttr}</strong>
-                              </p>
-                              <div className="text-xs text-slate-700 dark:text-zinc-300 font-bold mb-1">
-                                Postes inclus : {offer.maxPcs} agents EDR
+                              <div className="space-y-2 mb-4">
+                                <p className="text-xs text-slate-600 dark:text-zinc-400 leading-relaxed">
+                                  <strong className="text-slate-700 dark:text-zinc-300">SLA Détection :</strong> {offer.mttd}
+                                </p>
+                                <p className="text-xs text-slate-600 dark:text-zinc-400 leading-relaxed">
+                                  <strong className="text-slate-700 dark:text-zinc-300">MTTR :</strong> {offer.mttr}
+                                </p>
+                                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-blue-500/10 border border-blue-500/20 mt-2">
+                                  <Cpu className="h-3.5 w-3.5 text-blue-600 dark:text-blue-500" />
+                                  <span className="text-xs font-bold text-blue-700 dark:text-blue-400">{offer.maxPcs} agents EDR</span>
+                                </div>
                               </div>
                             </div>
-                            <div className="text-lg font-black text-amber-600 dark:text-amber-500 mt-2">
-                              {offer.value.toLocaleString("fr-FR")} EUR <span className="text-[10px] text-muted-foreground">/ {offer.period}</span>
+                            <div className="pt-4 border-t border-slate-200/50 dark:border-zinc-800/50">
+                              <div className="text-2xl font-black text-amber-600 dark:text-amber-500">
+                                {offer.value.toLocaleString("fr-FR")} <span className="text-sm">EUR</span>
+                                <span className="text-xs text-slate-500 dark:text-zinc-500 font-semibold ml-1">/ {offer.period}</span>
+                              </div>
                             </div>
                           </div>
                         ))
@@ -507,7 +663,7 @@ function NewClient() {
                     </div>
                   </div>
 
-                  <Separator className="border-slate-100 dark:border-zinc-800" />
+                  <Separator className="border-slate-200 dark:border-zinc-800" />
 
                   <div className="grid gap-6 md:grid-cols-2">
                     {/* Billing Cycle */}
@@ -567,16 +723,22 @@ function NewClient() {
 
             {/* Step 3: Accès et Produits */}
             {activeStep === 3 && (
-              <Card className="bg-white/80 dark:bg-zinc-900/60 backdrop-blur-md border border-slate-100 dark:border-zinc-800/80 shadow-xl rounded-2xl overflow-hidden animate-in fade-in duration-300">
-                <div className="h-1.5 bg-gradient-to-r from-amber-500 to-yellow-400" />
-                <CardHeader className="pb-4">
-                  <CardTitle className="text-lg flex items-center gap-3 font-bold dark:text-zinc-100">
-                    <Lock className="h-5 w-5 text-amber-500" />
-                    Accès et Produits (Licences & Protection EDR)
-                  </CardTitle>
-                  <CardDescription className="text-xs">
-                    Attribuez des privilèges d'accès et ajustez la capacité matérielle de protection EDR.
-                  </CardDescription>
+              <Card className="bg-white/90 dark:bg-zinc-900/70 backdrop-blur-xl border border-slate-200/80 dark:border-zinc-800/80 shadow-2xl rounded-3xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="h-1 bg-gradient-to-r from-blue-500 via-cyan-500 to-blue-500" />
+                <CardHeader className="pb-5 pt-7 px-8 space-y-3">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 rounded-2xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/20">
+                      <Lock className="h-6 w-6 text-blue-600 dark:text-blue-500" />
+                    </div>
+                    <div className="flex-1">
+                      <CardTitle className="text-xl flex items-center gap-3 font-black text-slate-900 dark:text-zinc-50">
+                        Accès & Licences de Protection EDR
+                      </CardTitle>
+                      <CardDescription className="text-sm mt-1.5 text-slate-600 dark:text-zinc-400 font-medium">
+                        Attribuez des privilèges d'accès et ajustez la capacité matérielle de protection EDR.
+                      </CardDescription>
+                    </div>
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-6 pt-2">
 
@@ -676,18 +838,24 @@ function NewClient() {
 
             {/* Step 4: Services */}
             {activeStep === 4 && (
-              <Card className="bg-white/80 dark:bg-zinc-900/60 backdrop-blur-md border border-slate-100 dark:border-zinc-800/80 shadow-xl rounded-2xl overflow-hidden animate-in fade-in duration-300">
-                <div className="h-1.5 bg-gradient-to-r from-amber-500 to-yellow-400" />
-                <CardHeader className="pb-4">
-                  <CardTitle className="text-lg flex items-center gap-3 font-bold dark:text-zinc-100">
-                    <Cpu className="h-5 w-5 text-amber-500" />
-                    Intégrations & Automatisation SOAR
-                  </CardTitle>
-                  <CardDescription className="text-xs">
-                    Raccordez le SIEM aux pipelines d'orchestration de réponse active et d'alerte.
-                  </CardDescription>
+              <Card className="bg-white/90 dark:bg-zinc-900/70 backdrop-blur-xl border border-slate-200/80 dark:border-zinc-800/80 shadow-2xl rounded-3xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="h-1 bg-gradient-to-r from-purple-500 via-pink-500 to-purple-500" />
+                <CardHeader className="pb-5 pt-7 px-8 space-y-3">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 rounded-2xl bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20">
+                      <Cpu className="h-6 w-6 text-purple-600 dark:text-purple-500" />
+                    </div>
+                    <div className="flex-1">
+                      <CardTitle className="text-xl flex items-center gap-3 font-black text-slate-900 dark:text-zinc-50">
+                        Intégrations & Automatisation SOAR
+                      </CardTitle>
+                      <CardDescription className="text-sm mt-1.5 text-slate-600 dark:text-zinc-400 font-medium">
+                        Raccordez le SIEM aux pipelines d'orchestration de réponse active et d'alerte.
+                      </CardDescription>
+                    </div>
+                  </div>
                 </CardHeader>
-                <CardContent className="space-y-6 pt-2">
+                <CardContent className="space-y-8 px-8 pb-8">
                   
                   {/* Automation SOAR level cards */}
                   <div className="space-y-3">
@@ -784,18 +952,24 @@ function NewClient() {
 
             {/* Step 5: Validation */}
             {activeStep === 5 && (
-              <Card className="bg-white/80 dark:bg-zinc-900/60 backdrop-blur-md border border-slate-100 dark:border-zinc-800/80 shadow-xl rounded-2xl overflow-hidden animate-in fade-in duration-300">
-                <div className="h-1.5 bg-gradient-to-r from-amber-500 to-emerald-500 animate-pulse" />
-                <CardHeader className="pb-4">
-                  <CardTitle className="text-lg flex items-center gap-3 font-bold dark:text-zinc-100">
-                    <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                    Validation et lancement du provisionnement cyber
-                  </CardTitle>
-                  <CardDescription className="text-xs">
-                    Vérifiez toutes les informations de configuration avant le lancement du déploiement.
-                  </CardDescription>
+              <Card className="bg-white/90 dark:bg-zinc-900/70 backdrop-blur-xl border border-slate-200/80 dark:border-zinc-800/80 shadow-2xl rounded-3xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="h-1 bg-gradient-to-r from-emerald-500 via-green-500 to-emerald-500 animate-pulse" />
+                <CardHeader className="pb-5 pt-7 px-8 space-y-3">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 rounded-2xl bg-gradient-to-br from-emerald-500/10 to-green-500/10 border border-emerald-500/20">
+                      <CheckCircle2 className="h-6 w-6 text-emerald-600 dark:text-emerald-500" />
+                    </div>
+                    <div className="flex-1">
+                      <CardTitle className="text-xl flex items-center gap-3 font-black text-slate-900 dark:text-zinc-50">
+                        Validation & Lancement du Provisionnement
+                      </CardTitle>
+                      <CardDescription className="text-sm mt-1.5 text-slate-600 dark:text-zinc-400 font-medium">
+                        Vérifiez toutes les informations de configuration avant le déploiement.
+                      </CardDescription>
+                    </div>
+                  </div>
                 </CardHeader>
-                <CardContent className="space-y-6 pt-2">
+                <CardContent className="space-y-8 px-8 pb-8">
                   
                   {/* Interactive recap widgets */}
                   <div className="grid gap-6 sm:grid-cols-2">
@@ -859,17 +1033,17 @@ function NewClient() {
               </Card>
             )}
 
-            {/* Stepper Navigation Buttons */}
-            <div className="flex items-center justify-between pt-4">
+            {/* Enhanced Stepper Navigation Buttons */}
+            <div className="flex items-center justify-between pt-6">
               {activeStep > 1 ? (
                 <Button
                   type="button"
                   variant="outline"
                   size="lg"
                   onClick={handlePrev}
-                  className="rounded-xl font-bold bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-800"
+                  className="rounded-xl font-bold bg-white dark:bg-zinc-900 border-2 border-slate-300 dark:border-zinc-700 hover:border-slate-400 dark:hover:border-zinc-600 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-all duration-300 shadow-md hover:shadow-lg group"
                 >
-                  <ChevronLeft className="mr-2 h-4 w-4" />
+                  <ChevronLeft className="mr-2 h-5 w-5 transition-transform group-hover:-translate-x-1" />
                   Précédent
                 </Button>
               ) : (
@@ -881,10 +1055,10 @@ function NewClient() {
                   type="button"
                   size="lg"
                   onClick={handleNext}
-                  className="rounded-xl font-bold bg-amber-500 hover:bg-amber-600 text-white ml-auto"
+                  className="rounded-xl font-bold bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white ml-auto shadow-lg hover:shadow-xl transition-all duration-300 group"
                 >
                   Suivant
-                  <ChevronRight className="ml-2 h-4 w-4" />
+                  <ChevronRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
                 </Button>
               ) : (
                 <Button
@@ -892,89 +1066,150 @@ function NewClient() {
                   size="lg"
                   onClick={createUser}
                   disabled={busy}
-                  className="rounded-xl font-extrabold bg-gradient-to-r from-amber-500 to-emerald-500 hover:from-amber-600 hover:to-emerald-600 text-white shadow-lg hover:shadow-xl ml-auto gap-2"
+                  className="rounded-xl font-black bg-gradient-to-r from-emerald-500 via-green-500 to-emerald-500 hover:from-emerald-600 hover:via-green-600 hover:to-emerald-600 text-white shadow-[0_0_24px_rgba(16,185,129,0.3)] hover:shadow-[0_0_32px_rgba(16,185,129,0.4)] ml-auto gap-2.5 px-8 transition-all duration-300"
                 >
-                  {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <Play className="h-4 w-4" />}
-                  Lancer le provisionnement EDR
+                  {busy ? (
+                    <>
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      Provisionnement...
+                    </>
+                  ) : (
+                    <>
+                      <Play className="h-5 w-5" />
+                      Lancer le Provisionnement
+                    </>
+                  )}
                 </Button>
               )}
             </div>
 
           </div>
 
-          {/* Right Column: Cyber previews HUD Console */}
+          {/* Redesigned Premium HUD Console */}
           <div className="space-y-6">
             
-            <Card className="bg-zinc-950 border border-amber-500/20 shadow-[0_0_25px_rgba(245,158,11,0.05)] rounded-2xl overflow-hidden relative animate-in slide-in-from-right duration-500">
-              <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-amber-500 to-yellow-500" />
-              <CardHeader className="pb-3">
-                <CardTitle className="text-xs font-black tracking-widest text-amber-500 uppercase flex items-center gap-2">
-                  <Server className="h-3.5 w-3.5 animate-pulse" />
-                  Aperçu Provision EDR en temps réel
-                </CardTitle>
+            <Card className="bg-gradient-to-br from-zinc-950 to-zinc-900 border border-amber-500/30 shadow-[0_0_40px_rgba(245,158,11,0.15)] rounded-3xl overflow-hidden relative animate-in slide-in-from-right-8 duration-700">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.1)_0%,transparent_50%)]" />
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-amber-500 to-transparent animate-pulse" />
+              
+              <CardHeader className="pb-4 pt-6 px-6 relative z-10">
+                <div className="flex items-center justify-between mb-2">
+                  <CardTitle className="text-sm font-black tracking-widest text-amber-500 uppercase flex items-center gap-2.5">
+                    <div className="p-1.5 rounded-lg bg-amber-500/20 border border-amber-500/30">
+                      <Server className="h-4 w-4 animate-pulse" />
+                    </div>
+                    Aperçu Configuration EDR
+                  </CardTitle>
+                  <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30">
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-wider">Live</span>
+                  </div>
+                </div>
+                <p className="text-xs text-zinc-500 font-medium">Simulation en temps réel du provisionnement</p>
               </CardHeader>
-              <CardContent className="space-y-5">
+              
+              <CardContent className="space-y-6 px-6 pb-6 relative z-10">
                 
-                {/* Dynamic Badge & Policy HUD */}
-                <div className="bg-black/60 border border-zinc-900 rounded-xl p-4 text-center space-y-3 relative overflow-hidden">
-                  <div className="absolute -top-10 -right-10 w-24 h-24 bg-amber-500/5 rounded-full blur-2xl" />
-                  <div className="mx-auto w-12 h-12 rounded-full bg-gradient-to-br from-amber-500 to-yellow-600 flex items-center justify-center font-bold text-white shadow-lg text-lg">
-                    {form.organization ? form.organization.substring(0,2).toUpperCase() : "SI"}
-                  </div>
-                  <div>
-                    <div className="text-sm font-extrabold text-zinc-100 tracking-tight">
-                      {form.organization || "Nouvelle Organisation"}
+                {/* Enhanced Organization Badge */}
+                <div className="bg-gradient-to-br from-black/60 to-zinc-950/60 border border-zinc-800/80 rounded-2xl p-5 text-center space-y-4 relative overflow-hidden backdrop-blur-sm">
+                  <div className="absolute -top-12 -right-12 w-28 h-28 bg-amber-500/10 rounded-full blur-3xl" />
+                  <div className="absolute -bottom-8 -left-8 w-20 h-20 bg-blue-500/10 rounded-full blur-2xl" />
+                  
+                  <div className="relative z-10">
+                    <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-500 via-amber-600 to-yellow-600 flex items-center justify-center font-black text-white shadow-[0_8px_24px_rgba(245,158,11,0.3)] text-xl mb-4 ring-4 ring-amber-500/20">
+                      {form.organization ? form.organization.substring(0,2).toUpperCase() : "SI"}
                     </div>
-                    <div className="text-[10px] text-zinc-500 font-semibold mt-0.5">
-                      {form.email || "en-attente@email.com"}
+                    <div>
+                      <div className="text-base font-black text-zinc-100 tracking-tight mb-1">
+                        {form.organization || "Nouvelle Organisation"}
+                      </div>
+                      <div className="text-xs text-zinc-500 font-semibold">
+                        {form.email || "en-attente@email.com"}
+                      </div>
                     </div>
-                  </div>
-                  <div className={`mx-auto inline-flex items-center px-2.5 py-0.5 rounded-full text-[9px] font-black tracking-wider uppercase border ${
-                    form.edrPolicy === "zero-trust" 
-                      ? "bg-red-500/10 text-red-500 border-red-500/20 shadow-[0_0_8px_rgba(239,68,68,0.2)]" 
-                      : form.edrPolicy === "aggressive" 
-                        ? "bg-amber-500/10 text-amber-500 border-amber-500/20" 
-                        : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
-                  }`}>
-                    {form.edrPolicy === "zero-trust" ? "Strict Zero-Trust 🚨" : form.edrPolicy === "aggressive" ? "Proactive Hunting 🔥" : "Standard Defense 🛡️"}
+                    <div className={`mx-auto inline-flex items-center px-3 py-1.5 rounded-xl text-[10px] font-black tracking-wider uppercase border mt-4 ${
+                      form.edrPolicy === "zero-trust" 
+                        ? "bg-red-500/15 text-red-400 border-red-500/30 shadow-[0_0_16px_rgba(239,68,68,0.2)]" 
+                        : form.edrPolicy === "aggressive" 
+                          ? "bg-amber-500/15 text-amber-400 border-amber-500/30 shadow-[0_0_16px_rgba(245,158,11,0.2)]" 
+                          : "bg-emerald-500/15 text-emerald-400 border-emerald-500/30 shadow-[0_0_16px_rgba(16,185,129,0.2)]"
+                    }`}>
+                      {form.edrPolicy === "zero-trust" ? "🚨 Strict Zero-Trust" : form.edrPolicy === "aggressive" ? "🔥 Proactive Hunting" : "🛡️ Standard Defense"}
+                    </div>
                   </div>
                 </div>
 
-                {/* Quota Progress meter */}
-                <div className="space-y-2">
-                  <div className="flex justify-between text-[10px] text-zinc-400 font-bold uppercase tracking-wider">
-                    <span>Quota Agents EDR</span>
-                    <span className="text-amber-500">{form.agentQuota} / 500</span>
+                {/* Enhanced Quota Progress Meter */}
+                <div className="space-y-3 p-4 rounded-2xl bg-gradient-to-br from-zinc-900/50 to-black/50 border border-zinc-800/50 backdrop-blur-sm">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-zinc-400 font-bold uppercase tracking-wider">Quota Agents EDR</span>
+                    <span className="text-sm text-amber-500 font-black">{form.agentQuota} <span className="text-xs text-zinc-600">/ 500</span></span>
                   </div>
-                  <div className="h-2 w-full bg-zinc-900 rounded-full overflow-hidden border border-zinc-800">
+                  <div className="relative h-3 w-full bg-zinc-900/80 rounded-full overflow-hidden border border-zinc-800 shadow-inner">
                     <div 
-                      className="h-full bg-gradient-to-r from-amber-500 to-yellow-500 transition-all duration-500 shadow-[0_0_8px_rgba(245,158,11,0.4)]" 
+                      className="h-full bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-500 transition-all duration-700 ease-out shadow-[0_0_12px_rgba(245,158,11,0.5)] relative overflow-hidden" 
                       style={{ width: `${(form.agentQuota / 500) * 100}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Incident Level Info */}
-                <div className="flex items-center justify-between p-3 rounded-lg bg-zinc-900/50 border border-zinc-800/80 text-[10px] font-semibold text-zinc-300">
-                  <span>Niveau de protection :</span>
-                  <span className="flex items-center gap-1.5 text-zinc-100">
-                    <Zap className="h-3 w-3 text-amber-500 animate-pulse" />
-                    {form.automationLevel === "autonomous" ? "Défense Autonome" : form.automationLevel === "semi" ? "Semi-Autonome" : "Incident Manuel"}
-                  </span>
-                </div>
-
-                {/* SIEM Terminal Logs */}
-                <div className="bg-black rounded-lg p-3 border border-zinc-800 font-mono text-[9px] text-emerald-400 space-y-1 leading-relaxed">
-                  <div className="text-zinc-500 font-bold border-b border-zinc-900 pb-1.5 flex justify-between">
-                    <span>CONSOLE DE PROVISIONNEMENT</span>
-                    <span className="animate-pulse">● LIVE</span>
-                  </div>
-                  {hudLogs.map((log, idx) => (
-                    <div key={idx} className="truncate">
-                      <span className="text-emerald-700 mr-1.5">❯</span>
-                      {log}
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-[shimmer_2s_infinite]" />
                     </div>
-                  ))}
+                  </div>
+                  <div className="text-[10px] text-zinc-600 font-semibold text-right">
+                    {((form.agentQuota / 500) * 100).toFixed(0)}% de la capacité maximale
+                  </div>
+                </div>
+
+                {/* Enhanced Info Cards Grid */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-zinc-900/70 to-black/70 border border-zinc-800/70 backdrop-blur-sm">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Zap className="h-3.5 w-3.5 text-amber-500" />
+                      <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Protection</span>
+                    </div>
+                    <div className="text-xs text-zinc-200 font-bold">
+                      {form.automationLevel === "autonomous" ? "Autonome IA" : form.automationLevel === "semi" ? "Semi-Auto" : "Manuel"}
+                    </div>
+                  </div>
+                  
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-zinc-900/70 to-black/70 border border-zinc-800/70 backdrop-blur-sm">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Shield className="h-3.5 w-3.5 text-blue-500" />
+                      <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">A2F/MFA</span>
+                    </div>
+                    <div className="text-xs text-zinc-200 font-bold">
+                      {form.requireMfa ? "Exigée ✓" : "Optionnelle"}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Enhanced SIEM Terminal Console */}
+                <div className="bg-black/80 rounded-2xl p-4 border border-zinc-800/80 font-mono text-[10px] text-emerald-400 space-y-2 leading-relaxed shadow-2xl backdrop-blur-sm">
+                  <div className="flex items-center justify-between text-zinc-500 font-bold border-b border-zinc-900 pb-2.5 mb-3">
+                    <span className="flex items-center gap-2">
+                      <Terminal className="h-3.5 w-3.5" />
+                      <span className="uppercase tracking-wider">Console Provisionnement</span>
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      <span className="text-[9px]">● LIVE</span>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5 max-h-[200px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent">
+                    {hudLogs.map((log, idx) => (
+                      <div key={idx} className="group flex items-start gap-2 hover:bg-zinc-900/30 px-2 py-1 rounded transition-colors">
+                        <span className="text-emerald-700 shrink-0">❯</span>
+                        <span className="group-hover:text-emerald-300 transition-colors flex-1">{log}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* System Status Indicator */}
+                <div className="flex items-center justify-between p-3 rounded-xl bg-gradient-to-r from-emerald-500/10 to-blue-500/10 border border-emerald-500/20">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="text-xs font-bold text-emerald-400">Système Opérationnel</span>
+                  </div>
+                  <span className="text-[10px] text-zinc-500 font-semibold">Ready to deploy</span>
                 </div>
 
               </CardContent>
