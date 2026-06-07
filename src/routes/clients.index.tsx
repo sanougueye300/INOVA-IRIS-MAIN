@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createFileRoute("/clients/")({
   head: () => ({ meta: [{ title: "Liste des Clients — SOC Platform" }] }),
+  validateSearch: (search: Record<string, unknown>) => {
+    return {
+      refresh: (search.refresh as string) || undefined,
+    };
+  },
   component: () => <RequireAuth requireAdmin><ClientsList /></RequireAuth>,
 });
 
@@ -189,6 +194,7 @@ function ClientsList() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
+  const searchParams = useSearch({ from: "/clients/" });
 
   const load = async () => {
     setLoading(true);
@@ -214,6 +220,13 @@ function ClientsList() {
   };
 
   useEffect(() => { load(); }, []);
+
+  // Recharger la liste quand le paramètre refresh change (après création d'un nouveau client)
+  useEffect(() => {
+    if (searchParams.refresh) {
+      load();
+    }
+  }, [searchParams.refresh]);
 
   useEffect(() => {
     let filtered = profiles;

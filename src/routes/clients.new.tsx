@@ -201,7 +201,13 @@ function NewClient() {
           description: `Compte provisionné et configuré sur le SIEM`,
         });
         
-        navigate({ to: "/clients" });
+        // Redirection vers la liste des clients
+        await navigate({ to: "/clients" });
+        
+        // Petit délai pour que la navigation se termine, puis recharger
+        setTimeout(() => {
+          window.location.reload();
+        }, 100);
       } catch (err: any) {
         toast.error("Erreur lors de la création", {
           description: err?.message ?? "Une erreur est survenue lors de l'appel API",
