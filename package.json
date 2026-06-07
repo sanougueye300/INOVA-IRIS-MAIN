@@ -23,7 +23,8 @@
     "test:auth": "node scripts/test-auth-security.mjs",
     "test:auth:dev": "npx tsx scripts/test-auth-dev-store.mjs",
     "test:auth:e2e": "node scripts/test-auth-e2e.mjs",
-    "setup:ai": "node scripts/setup-ai.mjs"
+    "setup:ai": "node scripts/setup-ai.mjs",
+    "fix:client-roles": "node scripts/fix-client-roles.js"
   },
   "dependencies": {
     "@cloudflare/vite-plugin": "^1.25.5",

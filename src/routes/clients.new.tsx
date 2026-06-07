@@ -388,47 +388,47 @@ function NewClient() {
 
       <div className="container mx-auto px-4 py-10 max-w-7xl relative z-10">
         
-        {/* Enhanced Premium Header */}
-        <div className="mb-12">
-          <div className="flex items-start gap-6">
+        {/* Enhanced Premium Header - Responsive */}
+        <div className="mb-8 sm:mb-12">
+          <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-6">
             <Button 
               variant="outline" 
               size="icon" 
               asChild 
-              className="mt-1 rounded-xl h-11 w-11 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm border-slate-200 dark:border-zinc-800 hover:border-amber-500 hover:bg-white dark:hover:bg-zinc-900 transition-all duration-300 shadow-sm hover:shadow-md"
+              className="mt-1 rounded-xl h-10 w-10 sm:h-11 sm:w-11 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm border-slate-200 dark:border-zinc-800 hover:border-amber-500 hover:bg-white dark:hover:bg-zinc-900 transition-all duration-300 shadow-sm hover:shadow-md"
             >
               <Link to="/clients">
-                <ArrowLeft className="h-5 w-5" />
+                <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
               </Link>
             </Button>
-            <div className="flex-1 space-y-3">
-              <div className="flex items-start justify-between">
+            <div className="flex-1 space-y-2 sm:space-y-3">
+              <div className="flex flex-col sm:flex-row items-start sm:items-start justify-between gap-3 sm:gap-4">
                 <div className="space-y-2">
-                  <div className="flex items-center gap-3">
-                    <h1 className="text-4xl font-black bg-gradient-to-r from-slate-900 via-slate-700 to-slate-900 dark:from-zinc-100 dark:via-zinc-300 dark:to-zinc-100 bg-clip-text text-transparent tracking-tight">
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                    <h1 className="text-2xl sm:text-3xl md:text-4xl font-black bg-gradient-to-r from-slate-900 via-slate-700 to-slate-900 dark:from-zinc-100 dark:via-zinc-300 dark:to-zinc-100 bg-clip-text text-transparent tracking-tight">
                       Provisionnement Client
                     </h1>
-                    <div className="px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 backdrop-blur-sm">
-                      <span className="text-xs font-bold text-amber-600 dark:text-amber-500 uppercase tracking-wider">SIEM · EDR</span>
+                    <div className="px-2 sm:px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 backdrop-blur-sm">
+                      <span className="text-[10px] sm:text-xs font-bold text-amber-600 dark:text-amber-500 uppercase tracking-wider">SIEM · EDR</span>
                     </div>
                   </div>
-                  <p className="text-slate-600 dark:text-zinc-400 text-base font-medium max-w-3xl leading-relaxed">
+                  <p className="text-xs sm:text-sm md:text-base text-slate-600 dark:text-zinc-400 font-medium max-w-3xl leading-relaxed">
                     Configuration complète du profil client, attribution des licences cyber-sécurité et déploiement des stratégies de protection de dernière génération.
                   </p>
                 </div>
               </div>
               
-              {/* Quick Stats Badges */}
-              <div className="flex items-center gap-3 pt-2">
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100/80 dark:bg-zinc-900/50 border border-slate-200 dark:border-zinc-800 backdrop-blur-sm">
-                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="text-xs font-semibold text-slate-700 dark:text-zinc-300">Système Opérationnel</span>
+              {/* Quick Stats Badges - Responsive */}
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3 pt-2">
+                <div className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg bg-slate-100/80 dark:bg-zinc-900/50 border border-slate-200 dark:border-zinc-800 backdrop-blur-sm">
+                  <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="text-[10px] sm:text-xs font-semibold text-slate-700 dark:text-zinc-300">Système Opérationnel</span>
                 </div>
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100/80 dark:bg-zinc-900/50 border border-slate-200 dark:border-zinc-800 backdrop-blur-sm">
-                  <Shield className="h-3.5 w-3.5 text-blue-500" />
-                  <span className="text-xs font-semibold text-slate-700 dark:text-zinc-300">Chiffrement TLS Actif</span>
+                <div className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg bg-slate-100/80 dark:bg-zinc-900/50 border border-slate-200 dark:border-zinc-800 backdrop-blur-sm">
+                  <Shield className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-blue-500" />
+                  <span className="text-[10px] sm:text-xs font-semibold text-slate-700 dark:text-zinc-300">Chiffrement TLS Actif</span>
                 </div>
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100/80 dark:bg-zinc-900/50 border border-slate-200 dark:border-zinc-800 backdrop-blur-sm">
+                <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100/80 dark:bg-zinc-900/50 border border-slate-200 dark:border-zinc-800 backdrop-blur-sm">
                   <Zap className="h-3.5 w-3.5 text-amber-500" />
                   <span className="text-xs font-semibold text-slate-700 dark:text-zinc-300">Provisionnement Rapide</span>
                 </div>
@@ -438,29 +438,29 @@ function NewClient() {
         </div>
 
         {/* Redesigned Modern Steps Progress Bar */}
-        <div className="mb-12 bg-white/70 dark:bg-zinc-900/50 border border-slate-200/80 dark:border-zinc-800/80 p-8 rounded-3xl shadow-lg backdrop-blur-xl relative overflow-hidden">
+        <div className="mb-12 bg-white/70 dark:bg-zinc-900/50 border border-slate-200/80 dark:border-zinc-800/80 p-4 sm:p-6 md:p-8 rounded-3xl shadow-lg backdrop-blur-xl relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 via-transparent to-blue-500/5 pointer-events-none" />
           
           <div className="relative z-10">
-            <div className="flex items-center justify-between max-w-5xl mx-auto relative">
+            <div className="flex items-center justify-between max-w-5xl mx-auto relative overflow-x-auto pb-2">
               
-              {/* Background connector line */}
-              <div className="absolute top-[26px] left-[8%] right-[8%] h-[3px] bg-gradient-to-r from-slate-200 via-slate-150 to-slate-200 dark:from-zinc-800 dark:via-zinc-750 dark:to-zinc-800 rounded-full" />
+              {/* Background connector line - Hidden on mobile, visible on md+ */}
+              <div className="hidden md:block absolute top-[26px] left-[8%] right-[8%] h-[3px] bg-gradient-to-r from-slate-200 via-slate-150 to-slate-200 dark:from-zinc-800 dark:via-zinc-750 dark:to-zinc-800 rounded-full" />
               
-              {/* Active progress line */}
+              {/* Active progress line - Hidden on mobile, visible on md+ */}
               <div 
-                className="absolute top-[26px] left-[8%] h-[3px] bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 rounded-full transition-all duration-700 ease-out shadow-[0_0_12px_rgba(245,158,11,0.4)]" 
+                className="hidden md:block absolute top-[26px] left-[8%] h-[3px] bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 rounded-full transition-all duration-700 ease-out shadow-[0_0_12px_rgba(245,158,11,0.4)]" 
                 style={{ width: `${Math.min((activeStep - 1) * 21, 84)}%` }}
               />
 
               {[
-                { num: 1, label: "Coordonnées", icon: <User className="h-4 w-4" />, desc: "Identité & Contact" },
-                { num: 2, label: "Facturation", icon: <CreditCard className="h-4 w-4" />, desc: "Offre & Paiement" },
-                { num: 3, label: "Accès", icon: <Lock className="h-4 w-4" />, desc: "Licences EDR" },
-                { num: 4, label: "Services", icon: <Server className="h-4 w-4" />, desc: "SOAR & SIEM" },
-                { num: 5, label: "Validation", icon: <CheckCircle2 className="h-4 w-4" />, desc: "Vérification" }
+                { num: 1, label: "Coordonnées", icon: <User className="h-3 w-3 sm:h-4 sm:w-4" />, desc: "Identité & Contact" },
+                { num: 2, label: "Facturation", icon: <CreditCard className="h-3 w-3 sm:h-4 sm:w-4" />, desc: "Offre & Paiement" },
+                { num: 3, label: "Accès", icon: <Lock className="h-3 w-3 sm:h-4 sm:w-4" />, desc: "Licences EDR" },
+                { num: 4, label: "Services", icon: <Server className="h-3 w-3 sm:h-4 sm:w-4" />, desc: "SOAR & SIEM" },
+                { num: 5, label: "Validation", icon: <CheckCircle2 className="h-3 w-3 sm:h-4 sm:w-4" />, desc: "Vérification" }
               ].map((st) => (
-                <div key={st.num} className="flex flex-col items-center gap-3 flex-1 relative z-10">
+                <div key={st.num} className="flex flex-col items-center gap-2 sm:gap-3 flex-1 relative z-10 min-w-[60px] sm:min-w-[80px]">
                   <button
                     type="button"
                     onClick={() => { if (st.num < activeStep) setActiveStep(st.num); }}
@@ -469,15 +469,15 @@ function NewClient() {
                   >
                     {/* Glow effect for active/completed */}
                     {st.num <= activeStep && (
-                      <div className={`absolute inset-0 rounded-2xl blur-xl transition-all duration-500 ${
+                      <div className={`absolute inset-0 rounded-xl sm:rounded-2xl blur-xl transition-all duration-500 ${
                         activeStep === st.num 
                           ? "bg-amber-500/30 scale-150" 
                           : "bg-emerald-500/20 scale-125"
                       }`} />
                     )}
                     
-                    {/* Step circle */}
-                    <div className={`relative w-14 h-14 rounded-2xl flex items-center justify-center font-black transition-all duration-500 border-2 ${
+                    {/* Step circle - Responsive sizes */}
+                    <div className={`relative w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-xl sm:rounded-2xl flex items-center justify-center font-black transition-all duration-500 border-2 ${
                       activeStep === st.num
                         ? "bg-gradient-to-br from-amber-500 to-amber-600 border-amber-400 text-white shadow-[0_8px_24px_rgba(245,158,11,0.35)] scale-110 rotate-3"
                         : activeStep > st.num
@@ -485,7 +485,7 @@ function NewClient() {
                           : "bg-slate-100 dark:bg-zinc-900/80 border-slate-300 dark:border-zinc-700 text-slate-400 dark:text-zinc-600"
                     } ${st.num < activeStep ? 'hover:-rotate-3' : ''}`}>
                       {activeStep > st.num ? (
-                        <Check className="h-6 w-6 stroke-[3] animate-in zoom-in duration-300" />
+                        <Check className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 stroke-[3] animate-in zoom-in duration-300" />
                       ) : (
                         <div className="flex flex-col items-center">
                           {st.icon}
@@ -494,9 +494,9 @@ function NewClient() {
                     </div>
                   </button>
                   
-                  {/* Step label */}
-                  <div className="text-center space-y-1 max-w-[110px]">
-                    <div className={`text-sm font-bold transition-all duration-300 ${
+                  {/* Step label - Responsive text */}
+                  <div className="text-center space-y-0.5 sm:space-y-1 max-w-[70px] sm:max-w-[90px] md:max-w-[110px]">
+                    <div className={`text-[10px] sm:text-xs md:text-sm font-bold transition-all duration-300 ${
                       activeStep === st.num 
                         ? "text-amber-600 dark:text-amber-500 scale-105" 
                         : activeStep > st.num 
@@ -505,7 +505,7 @@ function NewClient() {
                     }`}>
                       {st.label}
                     </div>
-                    <div className={`text-[10px] font-semibold uppercase tracking-wider transition-colors duration-300 ${
+                    <div className={`hidden sm:block text-[9px] md:text-[10px] font-semibold uppercase tracking-wider transition-colors duration-300 ${
                       activeStep === st.num 
                         ? "text-amber-500/70" 
                         : activeStep > st.num 
@@ -522,8 +522,8 @@ function NewClient() {
           </div>
         </div>
 
-        {/* Wizard Layout */}
-        <div className="grid gap-8 lg:grid-cols-3">
+        {/* Wizard Layout - Responsive Grid */}
+        <div className="grid gap-6 lg:gap-8 lg:grid-cols-3">
           
           {/* Active Step Panel */}
           <div className="lg:col-span-2 space-y-6">
@@ -532,22 +532,22 @@ function NewClient() {
             {activeStep === 1 && (
               <Card className="bg-white/90 dark:bg-zinc-900/70 backdrop-blur-xl border border-slate-200/80 dark:border-zinc-800/80 shadow-2xl rounded-3xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="h-1 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500" />
-                <CardHeader className="pb-5 pt-7 px-8 space-y-3">
-                  <div className="flex items-center gap-4">
+                <CardHeader className="pb-5 pt-7 px-4 sm:px-6 md:px-8 space-y-3">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
                     <div className="p-3 rounded-2xl bg-gradient-to-br from-amber-500/10 to-orange-500/10 border border-amber-500/20">
-                      <MapPin className="h-6 w-6 text-amber-600 dark:text-amber-500" />
+                      <MapPin className="h-5 w-5 sm:h-6 sm:w-6 text-amber-600 dark:text-amber-500" />
                     </div>
                     <div className="flex-1">
-                      <CardTitle className="text-xl flex items-center gap-3 font-black text-slate-900 dark:text-zinc-50">
+                      <CardTitle className="text-lg sm:text-xl flex items-center gap-3 font-black text-slate-900 dark:text-zinc-50">
                         Informations de Contact & Localisation
                       </CardTitle>
-                      <CardDescription className="text-sm mt-1.5 text-slate-600 dark:text-zinc-400 font-medium">
+                      <CardDescription className="text-xs sm:text-sm mt-1.5 text-slate-600 dark:text-zinc-400 font-medium">
                         Identité du représentant et coordonnées d'implantation du système d'information.
                       </CardDescription>
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-8 px-8 pb-8">
+                <CardContent className="space-y-6 sm:space-y-8 px-4 sm:px-6 md:px-8 pb-6 sm:pb-8">
                   <div className="grid gap-6 md:grid-cols-2">
                     {renderInput("PRENOM DU REPRÉSENTANT", form.firstName, (v) => setForm({...form, firstName: v}), "Jean", <User className="h-4 w-4" />)}
                     {renderInput("NOM DU REPRÉSENTANT", form.lastName, (v) => setForm({...form, lastName: v}), "Dupont", <User className="h-4 w-4" />)}
@@ -1162,21 +1162,21 @@ function NewClient() {
               </Card>
             )}
 
-            {/* Enhanced Stepper Navigation Buttons */}
-            <div className="flex items-center justify-between pt-6">
+            {/* Enhanced Stepper Navigation Buttons - Responsive */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-0 pt-6">
               {activeStep > 1 ? (
                 <Button
                   type="button"
                   variant="outline"
                   size="lg"
                   onClick={handlePrev}
-                  className="rounded-xl font-bold bg-white dark:bg-zinc-900 border-2 border-slate-300 dark:border-zinc-700 hover:border-slate-400 dark:hover:border-zinc-600 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-all duration-300 shadow-md hover:shadow-lg group"
+                  className="w-full sm:w-auto rounded-xl font-bold bg-white dark:bg-zinc-900 border-2 border-slate-300 dark:border-zinc-700 hover:border-slate-400 dark:hover:border-zinc-600 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-all duration-300 shadow-md hover:shadow-lg group"
                 >
                   <ChevronLeft className="mr-2 h-5 w-5 transition-transform group-hover:-translate-x-1" />
                   Précédent
                 </Button>
               ) : (
-                <div />
+                <div className="hidden sm:block" />
               )}
 
               {activeStep < 5 ? (
@@ -1184,7 +1184,7 @@ function NewClient() {
                   type="button"
                   size="lg"
                   onClick={handleNext}
-                  className="rounded-xl font-bold bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white ml-auto shadow-lg hover:shadow-xl transition-all duration-300 group"
+                  className="w-full sm:w-auto rounded-xl font-bold bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 group"
                 >
                   Suivant
                   <ChevronRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
@@ -1195,17 +1195,19 @@ function NewClient() {
                   size="lg"
                   onClick={createUser}
                   disabled={busy}
-                  className="rounded-xl font-black bg-gradient-to-r from-emerald-500 via-green-500 to-emerald-500 hover:from-emerald-600 hover:via-green-600 hover:to-emerald-600 text-white shadow-[0_0_24px_rgba(16,185,129,0.3)] hover:shadow-[0_0_32px_rgba(16,185,129,0.4)] ml-auto gap-2.5 px-8 transition-all duration-300"
+                  className="w-full sm:w-auto rounded-xl font-black bg-gradient-to-r from-emerald-500 via-green-500 to-emerald-500 hover:from-emerald-600 hover:via-green-600 hover:to-emerald-600 text-white shadow-[0_0_24px_rgba(16,185,129,0.3)] hover:shadow-[0_0_32px_rgba(16,185,129,0.4)] gap-2.5 px-6 sm:px-8 transition-all duration-300"
                 >
                   {busy ? (
                     <>
                       <Loader2 className="h-5 w-5 animate-spin" />
-                      Provisionnement...
+                      <span className="hidden sm:inline">Provisionnement...</span>
+                      <span className="sm:hidden">Création...</span>
                     </>
                   ) : (
                     <>
                       <Play className="h-5 w-5" />
-                      Lancer le Provisionnement
+                      <span className="hidden sm:inline">Lancer le Provisionnement</span>
+                      <span className="sm:hidden">Lancer</span>
                     </>
                   )}
                 </Button>
@@ -1214,8 +1216,8 @@ function NewClient() {
 
           </div>
 
-          {/* Redesigned Light & Professional HUD Console */}
-          <div className="space-y-6">
+          {/* Redesigned Light & Professional HUD Console - Hidden on mobile, visible on lg+ */}
+          <div className="hidden lg:block space-y-6">
             
             <Card className="bg-gradient-to-br from-white via-slate-50/80 to-blue-50/50 dark:from-slate-900 dark:via-slate-800/80 dark:to-blue-900/20 border-2 border-slate-200/80 dark:border-slate-700/50 shadow-[0_8px_32px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)] rounded-3xl overflow-hidden relative animate-in slide-in-from-right-8 duration-700">
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.08)_0%,transparent_50%)]" />
