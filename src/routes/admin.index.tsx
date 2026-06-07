@@ -69,7 +69,7 @@ function RoleBadge({ role }: { role: AppRole }) {
 }
 
 /* ─── Pagination component ──────────────────────────────────────── */
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 6;
 
 function Pagination({
   total,
@@ -96,70 +96,61 @@ function Pagination({
     return arr;
   }, [totalPages, page]);
 
+  const indexOfFirstItem = (page - 1) * PAGE_SIZE;
+  const indexOfLastItem = page * PAGE_SIZE;
+
   return (
-    <div className="flex items-center justify-between px-4 py-3 border-t bg-muted/20">
-      <p className="text-xs text-muted-foreground">
-        Page <span className="font-semibold text-foreground">{page}</span> sur{" "}
-        <span className="font-semibold text-foreground">{totalPages}</span> —{" "}
-        <span className="font-semibold text-foreground">{total}</span> utilisateur{total > 1 ? "s" : ""}
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 bg-slate-50/50 dark:bg-slate-950/20 border-t border-slate-200 dark:border-white/5">
+      <p className="text-xs text-slate-500 dark:text-slate-400 font-medium sm:w-1/3 text-left">
+        Affichage de <span className="font-semibold text-slate-700 dark:text-slate-200">{indexOfFirstItem + 1}</span> à{" "}
+        <span className="font-semibold text-slate-700 dark:text-slate-200">
+          {Math.min(indexOfLastItem, total)}
+        </span>{" "}
+        sur <span className="font-semibold text-slate-700 dark:text-slate-200">{total}</span> utilisateurs
       </p>
-      <div className="flex items-center gap-1">
-        {/* First */}
-        <button
-          onClick={() => setPage(1)}
+      
+      <div className="flex items-center justify-center gap-1.5 sm:w-1/3">
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-8 w-8 rounded-lg bg-white dark:bg-slate-950 border-slate-200 dark:border-white/5 text-slate-500 hover:text-slate-800 disabled:opacity-50 cursor-pointer"
+          onClick={() => setPage(Math.max(page - 1, 1))}
           disabled={page === 1}
-          className="p-1.5 rounded-md hover:bg-muted transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-          title="Première page"
-        >
-          <ChevronsLeft className="h-4 w-4" />
-        </button>
-        {/* Prev */}
-        <button
-          onClick={() => setPage(page - 1)}
-          disabled={page === 1}
-          className="p-1.5 rounded-md hover:bg-muted transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-          title="Page précédente"
         >
           <ChevronLeft className="h-4 w-4" />
-        </button>
-
+        </Button>
+        
         {pages.map((p, i) =>
           p === "…" ? (
-            <span key={`ellipsis-${i}`} className="px-1 text-muted-foreground text-sm">…</span>
+            <span key={`ellipsis-${i}`} className="px-1 text-slate-500 dark:text-slate-400 text-sm">…</span>
           ) : (
-            <button
+            <Button
               key={p}
-              onClick={() => setPage(p as number)}
-              className={`min-w-[32px] h-8 rounded-md text-sm font-medium transition-all ${
+              variant={page === p ? "default" : "outline"}
+              className={`h-8 w-8 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 page === p
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "hover:bg-muted text-foreground"
+                  ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white border-none shadow-sm"
+                  : "bg-white dark:bg-slate-950 border-slate-200 dark:border-white/5 text-slate-655 hover:text-slate-850"
               }`}
+              onClick={() => setPage(p as number)}
             >
               {p}
-            </button>
+            </Button>
           )
         )}
-
-        {/* Next */}
-        <button
-          onClick={() => setPage(page + 1)}
+        
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-8 w-8 rounded-lg bg-white dark:bg-slate-950 border-slate-200 dark:border-white/5 text-slate-500 hover:text-slate-800 disabled:opacity-50 cursor-pointer"
+          onClick={() => setPage(Math.min(page + 1, totalPages))}
           disabled={page === totalPages}
-          className="p-1.5 rounded-md hover:bg-muted transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-          title="Page suivante"
         >
           <ChevronRight className="h-4 w-4" />
-        </button>
-        {/* Last */}
-        <button
-          onClick={() => setPage(totalPages)}
-          disabled={page === totalPages}
-          className="p-1.5 rounded-md hover:bg-muted transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-          title="Dernière page"
-        >
-          <ChevronsRight className="h-4 w-4" />
-        </button>
+        </Button>
       </div>
+      
+      <div className="hidden sm:block sm:w-1/3" />
     </div>
   );
 }
@@ -625,19 +616,12 @@ function Admin() {
           </div>
 
           {/* ── Pagination ── */}
-          {!loading && filteredProfiles.length > PAGE_SIZE && (
+          {!loading && filteredProfiles.length > 0 && (
             <Pagination
               total={filteredProfiles.length}
               page={currentPage}
               setPage={setCurrentPage}
             />
-          )}
-
-          {/* Subtle info even when < PAGE_SIZE */}
-          {!loading && filteredProfiles.length > 0 && filteredProfiles.length <= PAGE_SIZE && (
-            <div className="px-4 py-3 border-t bg-muted/20 text-xs text-muted-foreground">
-              {filteredProfiles.length} utilisateur{filteredProfiles.length > 1 ? "s" : ""} affiché{filteredProfiles.length > 1 ? "s" : ""}
-            </div>
           )}
         </Card>
 
