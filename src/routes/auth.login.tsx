@@ -28,6 +28,27 @@ function LoginPage() {
       return;
     }
 
+    // Vérifier d'abord s'il s'agit de l'utilisateur inscrit via la souscription locale
+    const registeredUserStr = localStorage.getItem("inova_registered_user");
+    if (registeredUserStr) {
+      try {
+        const regUser = JSON.parse(registeredUserStr);
+        if (email.toLowerCase() === regUser.email.toLowerCase() && password === regUser.password) {
+          localStorage.setItem("inova_mock_user", JSON.stringify({
+            id: "mock-uid-123",
+            email: regUser.email,
+            organization: regUser.companyName,
+            user_metadata: { full_name: regUser.fullName || "Abonné" }
+          }));
+          toast.success("Connexion réussie", { description: "Bienvenue sur votre console SOC INOVA-IRIS." });
+          navigate({ to: "/dashboard", replace: true });
+          return;
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+
     // Vérifier le lockout local (côté client, doublé côté serveur)
     if (lockoutUntil && new Date() < lockoutUntil) {
       const remaining = Math.ceil((lockoutUntil.getTime() - Date.now()) / 1000);

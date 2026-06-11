@@ -68,6 +68,8 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   );
 }
 
+import orangeLogo from "../assets/orange-logo.png";
+
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
     meta: [
@@ -90,6 +92,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         rel: "stylesheet",
         href: appCss,
+      },
+      {
+        rel: "icon",
+        type: "image/png",
+        href: orangeLogo,
       },
     ],
   }),
@@ -132,11 +139,11 @@ function AppFrame() {
     );
   }
   
-  const isAuth = pathname === "/login" || pathname === "/auth" || pathname.startsWith("/auth/");
+  const isAuth = pathname === "/" || pathname === "/login" || pathname === "/auth" || pathname.startsWith("/auth/");
   if (isAuth) {
     return (
-      <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
-        <main className="flex-1 min-h-0">
+      <div className="flex min-h-screen flex-col bg-background text-foreground">
+        <main className="flex-1">
           <Outlet />
         </main>
       </div>

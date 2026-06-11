@@ -35,6 +35,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    const mockUserStr = localStorage.getItem("inova_mock_user");
+    if (mockUserStr) {
+      try {
+        const mockUser = JSON.parse(mockUserStr);
+        setUser(mockUser);
+        setSession({ user: mockUser } as any);
+        setRoles(["admin", "client"]);
+        setOrganization(mockUser.organization || "Client Souscrit");
+        setLoading(false);
+        
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => {
+          if (!s) {
+            localStorage.removeItem("inova_mock_user");
+            setUser(null);
+            setSession(null);
+            setRoles([]);
+            setOrganization(null);
+          }
+        });
+        return () => subscription.unsubscribe();
+      } catch (e) {
+        // ignore
+      }
+    }
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => {
       setSession(s);
       setUser(s?.user ?? null);
@@ -54,8 +79,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signOut = async () => { await supabase.auth.signOut(); };
-  const refresh = async () => { if (user) await loadProfile(user.id); };
+  const signOut = async () => { 
+    localStorage.removeItem("inova_mock_user");
+    await supabase.auth.signOut(); 
+    setUser(null);
+    setSession(null);
+    setRoles([]);
+    setOrganization(null);
+  };
+  const refresh = async () => { if (user && user.id !== "mock-uid-123") await loadProfile(user.id); };
 
   const value: AuthContextValue = {
     user, session, loading, roles, organization, signOut, refresh,
