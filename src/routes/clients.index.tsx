@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, MoreVertical, CheckCircle, XCircle, Users, Building2, ExternalLink, CreditCard, Download, ShieldAlert, Laptop, Sparkles, FileText, Eye } from "lucide-react";
+import { Search, MoreVertical, CheckCircle, XCircle, Users, Building2, ExternalLink, CreditCard, ShieldAlert, Laptop, Sparkles, FileText, Eye, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { RequireAuth } from "@/components/RequireAuth";
 import { toast } from "sonner";
@@ -13,6 +13,10 @@ import type { AppRole } from "@/lib/auth-context";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { Offer } from "@/lib/offers";
+import { DEFAULT_OFFERS } from "@/lib/offers";
+
+const CLIENTS_PER_PAGE = 6;
 
 export const Route = createFileRoute("/clients/")({
   head: () => ({ meta: [{ title: "Liste des Clients — SOC Platform" }] }),
@@ -47,7 +51,7 @@ export interface ClientExtendedData {
 
 export function getClientExtendedData(clientId: string, orgName: string): ClientExtendedData {
   const localKey = `client_ext_${clientId}`;
-  const stored = localStorage.getItem(localKey);
+  const stored = typeof window !== "undefined" ? localStorage.getItem(localKey) : null;
   if (stored) {
     try {
       return JSON.parse(stored);
@@ -64,7 +68,7 @@ export function getClientExtendedData(clientId: string, orgName: string): Client
   const tiers: Array<"Bronze" | "Argent" | "Or" | "Platine"> = ["Bronze", "Argent", "Or", "Platine"];
   const contractTier = tiers[hash % tiers.length];
   
-  const values = { Bronze: 12000, Argent: 24000, Or: 60000, Platine: 150000 };
+  const values = { Bronze: 100000, Argent: 250000, Or: 500000, Platine: 750000 };
   const contractValue = values[contractTier];
   
   const cyberScore = 70 + (hash % 26); // Score entre 70% et 96%
@@ -105,7 +109,9 @@ export function getClientExtendedData(clientId: string, orgName: string): Client
     pcs,
   };
 
-  localStorage.setItem(localKey, JSON.stringify(data));
+  if (typeof window !== "undefined") {
+    localStorage.setItem(localKey, JSON.stringify(data));
+  }
   return data;
 }
 
@@ -132,7 +138,7 @@ CLIENT      : ${orgName || "Non spécifié"}
 2. NIVEAU DE SERVICE & ABONNEMENT (SLA)
 --------------------------------------------------------------------------------
 FORMULE SOUSCRITE   : OFFRE ${extData.contractTier.toUpperCase()}
-VALEUR DU CONTRAT   : ${extData.contractValue.toLocaleString("fr-FR")} EUR / AN
+VALEUR DU CONTRAT   : ${extData.contractValue.toLocaleString("fr-FR")} FCFA / MOIS
 NOMBRE MAX DE PC    : ${extData.pcs.length} Postes connectés autorisés
 
 NIVEAUX DE SERVICE (SLA) GARANTIS :
@@ -179,11 +185,11 @@ Signé numériquement par :
   URL.revokeObjectURL(url);
 }
 
-interface Profile { id: string; email: string | null; full_name: string | null; organization: string | null; is_active: boolean; created_at: string }
+interface Profile { id: string; email: string | null; full_name: string | null; organization: string | null; is_active: boolean; created_at: string; matricule?: string | null }
 export const DEMO_CLIENTS: Profile[] = [
-  { id: "demo-client-1", email: "contact@acme-corp.com", full_name: "Jean Dupont", organization: "Acme Corporation", is_active: true, created_at: new Date().toISOString() },
-  { id: "demo-client-2", email: "security@techflow.io", full_name: "Alice Martin", organization: "TechFlow Solutions", is_active: true, created_at: new Date().toISOString() },
-  { id: "demo-client-3", email: "it-admin@globex.net", full_name: "Robert Fox", organization: "Globex Network", is_active: false, created_at: new Date().toISOString() },
+  { id: "demo-client-1", email: "contact@acme-corp.com", full_name: "Jean Dupont", organization: "Acme Corporation", is_active: true, created_at: new Date().toISOString(), matricule: "CLT-100001" },
+  { id: "demo-client-2", email: "security@techflow.io", full_name: "Alice Martin", organization: "TechFlow Solutions", is_active: true, created_at: new Date().toISOString(), matricule: "CLT-100002" },
+  { id: "demo-client-3", email: "it-admin@globex.net", full_name: "Robert Fox", organization: "Globex Network", is_active: false, created_at: new Date().toISOString(), matricule: "CLT-100003" },
 ];
 
 interface RoleRow { user_id: string; role: AppRole }
@@ -195,6 +201,31 @@ function ClientsList() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [offers, setOffers] = useState<Offer[]>([]);
+
+  // Charger les offres depuis localStorage (catalogue offres)
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("soc_catalogues_offres");
+      if (stored) {
+        const parsed = JSON.parse(stored) as Offer[];
+        setOffers(parsed.length > 0 ? parsed : DEFAULT_OFFERS);
+      } else {
+        setOffers(DEFAULT_OFFERS);
+      }
+    } catch {
+      setOffers(DEFAULT_OFFERS);
+    }
+  }, []);
+
+  // Retourne l'offre correspondant à un contractTier (association par index/position)
+  const getOfferForTier = (tier: string): Offer | undefined => {
+    const activeOffers = offers.filter(o => o.isActive);
+    const tierMap: Record<string, number> = { Bronze: 0, Argent: 1, Or: 2, Platine: 3 };
+    const idx = tierMap[tier] ?? 0;
+    return activeOffers[idx] ?? activeOffers[0];
+  };
 
   const load = async () => {
     setLoading(true);
@@ -205,15 +236,16 @@ function ClientsList() {
       ]);
       
       const roles = (r as RoleRow[]) ?? [];
+      // Uniquement les profils avec le rôle "client" — créés via /clients/new
       const clientUserIds = new Set(roles.filter(x => x.role === "client").map(x => x.user_id));
       
       const allProfiles = (p as Profile[]) ?? [];
       const clientProfiles = allProfiles.filter(profile => clientUserIds.has(profile.id));
       
-      const existingEmails = new Set(clientProfiles.map(c => c.email));
-      const newDemos = DEMO_CLIENTS.filter(d => !existingEmails.has(d.email));
-      
-      setProfiles([...newDemos, ...clientProfiles]);
+      setProfiles(clientProfiles);
+    } catch (err) {
+      console.error("Erreur lors du chargement des clients:", err);
+      setProfiles([]);
     } finally {
       setLoading(false);
     }
@@ -252,9 +284,13 @@ function ClientsList() {
   useEffect(() => {
     if (searchParams.refresh) {
       console.log('🔄 Rechargement de la liste après création d\'un nouveau client...');
-      setTimeout(() => {
-        load();
-      }, 500); // Petit délai pour laisser le temps à Supabase de propager les données
+      // Premier rechargement rapide
+      load();
+      // Deuxième rechargement après 2s pour s'assurer que user_roles est bien propagé
+      const t1 = setTimeout(() => { load(); }, 2000);
+      // Troisième rechargement après 5s comme filet de sécurité
+      const t2 = setTimeout(() => { load(); }, 5000);
+      return () => { clearTimeout(t1); clearTimeout(t2); };
     }
   }, [searchParams.refresh]);
 
@@ -273,16 +309,14 @@ function ClientsList() {
       );
     }
     setFilteredProfiles(filtered);
+    setCurrentPage(1); // Retour à la page 1 à chaque changement de filtre
   }, [profiles, searchTerm, statusFilter]);
 
   const toggleActive = async (p: Profile) => {
     const toastId = toast.loading(`${p.is_active ? "Désactivation" : "Activation"} en cours...`);
     try {
-      const isDemo = DEMO_CLIENTS.some(d => d.id === p.id);
-      if (!isDemo) {
-        const { error } = await supabase.from("profiles").update({ is_active: !p.is_active }).eq("id", p.id);
-        if (error) throw error;
-      }
+      const { error } = await supabase.from("profiles").update({ is_active: !p.is_active }).eq("id", p.id);
+      if (error) throw error;
       toast.success(`Client ${p.is_active ? "désactivé" : "activé"} avec succès`, { id: toastId });
       await load();
     } catch (error: any) {
@@ -327,6 +361,31 @@ function ClientsList() {
       default:
         return "bg-orange-100 text-orange-800 dark:bg-orange-950/40 dark:text-orange-300 border-none";
     }
+  };
+
+  // ── Pagination ──────────────────────────────────────────────────────────────
+  const totalPages = Math.max(1, Math.ceil(filteredProfiles.length / CLIENTS_PER_PAGE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const paginatedProfiles = filteredProfiles.slice(
+    (safeCurrentPage - 1) * CLIENTS_PER_PAGE,
+    safeCurrentPage * CLIENTS_PER_PAGE
+  );
+
+  // Génère une fenêtre de pages à afficher (max 5)
+  const getPageNumbers = () => {
+    const pages: (number | "…")[] = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (safeCurrentPage > 3) pages.push("…");
+      for (let i = Math.max(2, safeCurrentPage - 1); i <= Math.min(totalPages - 1, safeCurrentPage + 1); i++) {
+        pages.push(i);
+      }
+      if (safeCurrentPage < totalPages - 2) pages.push("…");
+      pages.push(totalPages);
+    }
+    return pages;
   };
 
   return (
@@ -414,12 +473,13 @@ function ClientsList() {
         </Card>
 
         <Card className="overflow-hidden border-border/50 bg-card/70 backdrop-blur-md shadow-xl rounded-2xl">
+
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/40 hover:bg-muted/40 border-b border-border/40">
                   <TableHead className="w-[70px]"></TableHead>
-                  <TableHead className="font-semibold">Client / Représentant</TableHead>
+                  <TableHead className="font-semibold">ID Client</TableHead>
                   <TableHead className="font-semibold">Organisation</TableHead>
                   <TableHead className="font-semibold">Santé Cyber</TableHead>
                   <TableHead className="font-semibold">PC Connectés</TableHead>
@@ -430,7 +490,7 @@ function ClientsList() {
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  Array.from({ length: 5 }).map((_, i) => (
+                  Array.from({ length: CLIENTS_PER_PAGE }).map((_, i) => (
                     <TableRow key={i} className="border-b border-border/20">
                       <TableCell><Skeleton className="h-10 w-10 rounded-full" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-32" /></TableCell>
@@ -457,9 +517,11 @@ function ClientsList() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredProfiles.map(p => {
+                  paginatedProfiles.map(p => {
                     const extData = getClientExtendedData(p.id, p.organization || "Client");
                     const connectedPcs = extData.pcs.filter(pc => pc.status === "active" || pc.status === "alert" || pc.status === "isolated").length;
+                    const offer = getOfferForTier(extData.contractTier);
+                    const maxPcs = offer?.maxPcs ?? extData.pcs.length;
                     
                     return (
                       <TableRow key={p.id} className="hover:bg-muted/30 transition-colors border-b border-border/20">
@@ -474,8 +536,14 @@ function ClientsList() {
                         </TableCell>
                         <TableCell className="py-4">
                           <Link to="/clients/$clientId" params={{ clientId: p.id }} className="hover:underline cursor-pointer group block">
-                            <div className="font-semibold text-foreground group-hover:text-primary transition-colors">{p.full_name ?? "—"}</div>
-                            <div className="text-xs text-muted-foreground mt-0.5">{p.email}</div>
+                            <div className="font-mono font-semibold text-sm text-foreground group-hover:text-primary transition-colors tracking-wide">
+                              {p.matricule?.startsWith("CLT-")
+                                ? p.matricule
+                                : p.matricule
+                                  ? `CLT-${p.matricule}`
+                                  : `CLT-${p.id.replace(/-/g, "").slice(0, 6).toUpperCase()}`}
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-0.5">{p.full_name ?? "—"}</div>
                           </Link>
                         </TableCell>
                         <TableCell>
@@ -499,13 +567,13 @@ function ClientsList() {
                             </div>
                             <div>
                               <span className="font-bold text-sm text-foreground">{connectedPcs}</span>
-                              <span className="text-muted-foreground text-xs"> / {extData.pcs.length} PC</span>
+                              <span className="text-muted-foreground text-xs"> / {maxPcs} PC</span>
                             </div>
                           </div>
                         </TableCell>
                         <TableCell>
                           <Badge className={`px-2.5 py-1 rounded-lg ${getContractBadge(extData.contractTier)}`}>
-                            {extData.contractTier}
+                            {offer?.name ?? extData.contractTier}
                           </Badge>
                         </TableCell>
                         <TableCell>
@@ -516,30 +584,17 @@ function ClientsList() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">
-                            {/* Bouton d'accès rapide au tableau de bord */}
                             <Button
                               asChild
                               variant="ghost"
                               size="icon"
                               className="h-9 w-9 rounded-xl hover:bg-primary/10 hover:text-primary transition-all"
-                              title="Voir la console 360° / Tableau de bord"
+                              title="Voir la console 360°"
                             >
                               <Link to="/clients/$clientId" params={{ clientId: p.id }}>
                                 <Eye className="h-4.5 w-4.5 text-primary" />
                               </Link>
                             </Button>
-
-                            {/* Bouton de téléchargement de contrat direct */}
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-9 w-9 rounded-xl hover:bg-primary/10 hover:text-primary transition-all"
-                              onClick={() => handleDownloadQuickContract(p)}
-                              title="Télécharger le contrat client"
-                            >
-                              <Download className="h-4.5 w-4.5" />
-                            </Button>
-                            
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">
@@ -580,6 +635,64 @@ function ClientsList() {
               </TableBody>
             </Table>
           </div>
+
+          {/* ── Pagination en bas — style capture ── */}
+          {!loading && filteredProfiles.length > 0 && (
+            <div className="flex flex-col items-center gap-3 px-6 py-4 border-t border-border/30 bg-background/50">
+              <span className="text-sm text-muted-foreground">
+                Affichage de{" "}
+                <span className="font-semibold text-foreground">{(safeCurrentPage - 1) * CLIENTS_PER_PAGE + 1}</span>
+                {" "}à{" "}
+                <span className="font-semibold text-foreground">{Math.min(safeCurrentPage * CLIENTS_PER_PAGE, filteredProfiles.length)}</span>
+                {" "}sur{" "}
+                <span className="font-semibold text-foreground">{filteredProfiles.length}</span>
+                {" "}clients
+              </span>
+
+              {totalPages > 1 && (
+                <div className="flex items-center gap-1">
+                  {/* Précédent */}
+                  <button
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={safeCurrentPage === 1}
+                    className="h-9 w-9 flex items-center justify-center rounded-lg border border-border/60 text-muted-foreground hover:bg-muted/60 hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+
+                  {/* Numéros */}
+                  {getPageNumbers().map((pg, idx) =>
+                    pg === "…" ? (
+                      <span key={`ellipsis-${idx}`} className="h-9 w-9 flex items-center justify-center text-sm text-muted-foreground select-none">
+                        …
+                      </span>
+                    ) : (
+                      <button
+                        key={pg}
+                        onClick={() => setCurrentPage(pg as number)}
+                        className={`h-9 w-9 flex items-center justify-center rounded-lg text-sm font-semibold transition-all ${
+                          safeCurrentPage === pg
+                            ? "bg-orange-500 text-white shadow-sm shadow-orange-200 dark:shadow-orange-900/40"
+                            : "border border-border/60 text-foreground hover:bg-muted/60"
+                        }`}
+                      >
+                        {pg}
+                      </button>
+                    )
+                  )}
+
+                  {/* Suivant */}
+                  <button
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={safeCurrentPage === totalPages}
+                    className="h-9 w-9 flex items-center justify-center rounded-lg border border-border/60 text-muted-foreground hover:bg-muted/60 hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </Card>
       </div>
     </div>
