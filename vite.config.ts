@@ -19,9 +19,6 @@ export default defineConfig({
     nitro({
       preset: "vercel",
       vercel: { entryFormat: "node" },
-      routeRules: {
-        "/": { redirect: { to: "/auth/login", statusCode: 302 } },
-      },
     }),
   ],
   vite: {
