@@ -279,7 +279,7 @@ function LandingPage() {
       <div className="absolute top-[50%] right-[8%] w-[300px] sm:w-[380px] h-[300px] sm:h-[380px] rounded-full bg-amber-500/8 blur-[90px] sm:blur-[120px] pointer-events-none animate-bubble-1 z-0" />
 
       {/* HEADER SECTION - EXACT REPRODUCTION OF DELICUT BAR */}
-      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-100 px-6 py-4">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-100 px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           {/* Logo brand INOVA IRIS next to Orange logo */}
           <div className="flex items-center gap-2.5">
@@ -335,19 +335,13 @@ function LandingPage() {
       </header>
 
       {/* HERO SECTION - MODERN 2-COLUMN PREMIUM SAAS LAYOUT */}
-      <section className="relative py-20 lg:py-32 px-6 overflow-hidden bg-gradient-to-b from-slate-50/60 to-white/20 border-b border-slate-100/80 z-10">
+      <section className="relative pt-36 pb-24 lg:pt-44 lg:pb-32 px-6 overflow-hidden bg-gradient-to-b from-slate-50/60 to-white/20 border-b border-slate-100/80 z-10">
         <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
           
           {/* Left Column: Heading text & CTAs */}
           <div className="lg:col-span-7 text-left flex flex-col items-start space-y-6 reveal-on-scroll">
             
-            {/* Integrated Platform Logo above the title with micro-pulse animation */}
-            <div className="flex items-center gap-3 bg-white border border-slate-200/60 rounded-2xl px-5 py-2.5 shadow-sm animate-pulse-soft hover:scale-105 transition-all">
-              <img src={orangeLogo} alt="Orange Logo" className="h-7 w-auto object-contain" />
-              <div className="h-5 w-px bg-slate-200" />
-              <span className="font-extrabold text-[15px] tracking-wider text-[#FF7900] font-mono">INOVA IRIS</span>
-              <Badge className="bg-[#FF7900] text-white font-bold text-[8px] tracking-widest uppercase rounded">SOC</Badge>
-            </div>
+
 
             {/* Headline matching typography proportions */}
             <h1 className="text-4xl sm:text-[56px] lg:text-[64px] leading-[1.08] font-extrabold tracking-tight text-slate-950">
@@ -912,7 +906,7 @@ function LandingPage() {
                         required 
                         value={companyName}
                         onChange={(e) => setCompanyName(e.target.value)}
-                        placeholder="Ex: Sonatel SA"
+                        placeholder=""
                         className="w-full rounded-xl border border-slate-200 bg-slate-50/30 pl-10 pr-4 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-orange-500/25 focus:border-[#FF7900] focus:bg-white transition-all"
                       />
                     </div>
@@ -930,7 +924,7 @@ function LandingPage() {
                         required 
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
-                        placeholder="Ex: Moustapha Diop"
+                        placeholder=""
                         className="w-full rounded-xl border border-slate-200 bg-slate-50/30 pl-10 pr-4 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-orange-500/25 focus:border-[#FF7900] focus:bg-white transition-all"
                       />
                     </div>
@@ -948,7 +942,7 @@ function LandingPage() {
                         required 
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="Ex: contact@entreprise.sn"
+                        placeholder=""
                         className="w-full rounded-xl border border-slate-200 bg-slate-50/30 pl-10 pr-4 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-orange-500/25 focus:border-[#FF7900] focus:bg-white transition-all"
                       />
                     </div>
@@ -966,7 +960,7 @@ function LandingPage() {
                         required 
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
-                        placeholder="Ex: +221 77 123 45 67"
+                        placeholder=""
                         className="w-full rounded-xl border border-slate-200 bg-slate-50/30 pl-10 pr-4 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-orange-500/25 focus:border-[#FF7900] focus:bg-white transition-all"
                       />
                     </div>
@@ -984,7 +978,7 @@ function LandingPage() {
                         required 
                         value={physicalAddress}
                         onChange={(e) => setPhysicalAddress(e.target.value)}
-                        placeholder="Ex: Route de la VDN, Mermoz, Dakar"
+                        placeholder=""
                         className="w-full rounded-xl border border-slate-200 bg-slate-50/30 pl-10 pr-4 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-orange-500/25 focus:border-[#FF7900] focus:bg-white transition-all"
                       />
                     </div>
@@ -1138,7 +1132,7 @@ function LandingPage() {
                             required 
                             value={paymentPhone}
                             onChange={(e) => setPaymentPhone(e.target.value)}
-                            placeholder="Ex: 77 123 45 67"
+                            placeholder=""
                             className="w-full rounded-xl border border-slate-200 bg-slate-50/20 pl-10 pr-4 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 focus:bg-white transition-all"
                           />
                         </div>
@@ -1160,7 +1154,7 @@ function LandingPage() {
                             maxLength={4}
                             value={otpCode}
                             onChange={(e) => setOtpCode(e.target.value)}
-                            placeholder="Entrez les 4 chiffres reçus"
+                            placeholder=""
                             className="w-full rounded-xl border border-slate-200 bg-slate-50/20 px-3.5 py-2.5 text-xs text-center font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 focus:bg-white transition-all"
                           />
                         </div>
@@ -1189,7 +1183,7 @@ function LandingPage() {
                             required 
                             value={paymentPhone}
                             onChange={(e) => setPaymentPhone(e.target.value)}
-                            placeholder="Ex: 77 123 45 67"
+                            placeholder=""
                             className="w-full rounded-xl border border-slate-200 bg-slate-50/20 pl-10 pr-4 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-[#FF7900] focus:bg-white transition-all"
                           />
                         </div>
@@ -1204,7 +1198,7 @@ function LandingPage() {
                           maxLength={6}
                           value={omAuthCode}
                           onChange={(e) => setOmAuthCode(e.target.value)}
-                          placeholder="Ex: 104829"
+                          placeholder=""
                           className="w-full rounded-xl border border-slate-200 bg-slate-50/20 px-3.5 py-2.5 text-xs text-center font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-[#FF7900] focus:bg-white transition-all"
                         />
                       </div>
@@ -1265,7 +1259,7 @@ function LandingPage() {
                           required 
                           value={cardHolder}
                           onChange={(e) => setCardHolder(e.target.value)}
-                          placeholder="Ex: Moustapha Diop"
+                          placeholder=""
                           className="w-full rounded-xl border border-slate-200 bg-slate-50/20 px-3.5 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-[#FF7900] focus:bg-white transition-all"
                         />
                       </div>
@@ -1283,7 +1277,7 @@ function LandingPage() {
                             maxLength={19}
                             value={cardNumber}
                             onChange={(e) => setCardNumber(e.target.value)}
-                            placeholder="4000 1234 5678 9010"
+                            placeholder=""
                             className="w-full rounded-xl border border-slate-200 bg-slate-50/20 pl-10 pr-4 py-2.5 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-[#FF7900] focus:bg-white transition-all"
                           />
                         </div>
@@ -1299,7 +1293,7 @@ function LandingPage() {
                             maxLength={5}
                             value={cardExpiry}
                             onChange={(e) => setCardExpiry(e.target.value)}
-                            placeholder="MM/AA"
+                            placeholder=""
                             className="w-full rounded-xl border border-slate-200 bg-slate-50/20 px-3.5 py-2.5 text-xs text-center font-mono focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-[#FF7900] focus:bg-white transition-all"
                           />
                         </div>
@@ -1312,7 +1306,7 @@ function LandingPage() {
                             maxLength={3}
                             value={cardCvv}
                             onChange={(e) => setCardCvv(e.target.value)}
-                            placeholder="•••"
+                            placeholder=""
                             className="w-full rounded-xl border border-slate-200 bg-slate-50/20 px-3.5 py-2.5 text-xs text-center font-mono focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-[#FF7900] focus:bg-white transition-all"
                           />
                         </div>
