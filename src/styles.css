@@ -237,11 +237,107 @@
   animation: gradient-shift 4s ease infinite;
 }
 
-.scan-line::after {
-  content:'';
-  position:absolute;
-  left:0;right:0;
-  height:2px;
-  background:linear-gradient(90deg,transparent,rgba(249,115,22,0.3),transparent);
-  animation: scan-line 4s linear infinite;
+/* ═══ Scroll Reveal System ═══ */
+.reveal-on-scroll {
+  opacity: 0;
+  transform: translateY(30px) scale(0.98);
+  transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform, opacity;
 }
+
+.reveal-on-scroll.reveal-active {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.reveal-delay-100 { transition-delay: 100ms; }
+.reveal-delay-200 { transition-delay: 200ms; }
+.reveal-delay-300 { transition-delay: 300ms; }
+.reveal-delay-400 { transition-delay: 400ms; }
+.reveal-delay-500 { transition-delay: 500ms; }
+
+/* ═══ Floating Glowing Spheres ═══ */
+@keyframes float-bubble-1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -50px) scale(1.1); }
+  66% { transform: translate(-20px, 20px) scale(0.95); }
+}
+
+@keyframes float-bubble-2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-40px, 40px) scale(1.05); }
+}
+
+.animate-bubble-1 {
+  animation: float-bubble-1 15s infinite ease-in-out;
+}
+
+.animate-bubble-2 {
+  animation: float-bubble-2 18s infinite ease-in-out;
+}
+
+/* ═══ Cyber Laser Scanner ═══ */
+@keyframes scan-laser {
+  0%, 100% { top: 0%; opacity: 0.8; }
+  50% { top: 100%; opacity: 0.8; }
+}
+
+.scan-laser {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, oklch(0.72 0.20 50), transparent);
+  box-shadow: 0 0 10px oklch(0.72 0.20 50), 0 0 20px oklch(0.72 0.20 50);
+  animation: scan-laser 3s infinite linear;
+}
+
+/* ═══ Cyber Radar Sweep ═══ */
+@keyframes radar-sweep {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.radar-sweep {
+  width: 100%;
+  height: 100%;
+  background: conic-gradient(from 0deg, rgba(255, 121, 0, 0.15) 0deg, rgba(255, 121, 0, 0) 180deg);
+  border-radius: 50%;
+  animation: radar-sweep 4s infinite linear;
+}
+
+@keyframes pulse-radar-dot {
+  0%, 100% { transform: scale(1); opacity: 0.3; }
+  50% { transform: scale(1.5); opacity: 1; box-shadow: 0 0 10px rgba(239, 68, 68, 0.8); }
+}
+
+.radar-dot {
+  animation: pulse-radar-dot 2s infinite ease-in-out;
+}
+
+/* ═══ Glowing Borders for Validated Cards ═══ */
+@keyframes border-glow-orange {
+  0%, 100% { border-color: rgba(255, 121, 0, 0.3); box-shadow: 0 0 15px rgba(255, 121, 0, 0.05); }
+  50% { border-color: rgba(255, 121, 0, 1); box-shadow: 0 0 25px rgba(255, 121, 0, 0.25); }
+}
+.animate-border-orange {
+  animation: border-glow-orange 2s infinite ease-in-out;
+}
+
+@keyframes drift-slow {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  50% { transform: translate(15px, -15px) rotate(180deg); }
+  100% { transform: translate(0, 0) rotate(360deg); }
+}
+.animate-drift {
+  animation: drift-slow 20s infinite ease-in-out;
+}
+
+@keyframes pulse-soft {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.02); opacity: 0.95; }
+}
+.animate-pulse-soft {
+  animation: pulse-soft 2s infinite ease-in-out;
+}
+
