@@ -5,7 +5,7 @@ import {
   Phone, Smartphone, CheckCircle, RefreshCw, Cpu, Database, 
   Search, FolderOpen, Zap, Fingerprint, Eye, EyeOff, HelpCircle,
   Building2, MapPin, Briefcase, Mail, Send, CheckSquare, Sparkles,
-  Loader2, ArrowRightCircle
+  Loader2, ArrowRightCircle, Clock, ChevronDown
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -483,228 +483,256 @@ function LandingPage() {
         </div>
       </section>
 
-      {/* PLANS & SUBSCRIPTIONS SECTION - HIGHLY AESTHETIC HIGHLIGHT UPON CHOOSING / HOVERING */}
-      <section id="offres" className="py-24 px-6 bg-white border-t border-slate-100 relative z-10">
-        <div className="max-w-6xl mx-auto">
+      {/* PLANS & SUBSCRIPTIONS SECTION - PREMIUM PRICING EXPERIENCE */}
+      <section id="offres" className="relative py-32 px-6 bg-gradient-to-b from-white via-slate-50/40 to-white border-t border-slate-100 overflow-hidden">
+        {/* Decorative background elements */}
+        <div className="absolute top-0 right-0 w-96 h-96 bg-orange-500/5 rounded-full blur-3xl -z-10" />
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl -z-10" />
+        
+        <div className="max-w-7xl mx-auto">
           
-          <div className="text-center max-w-2xl mx-auto mb-16 reveal-on-scroll">
-            <Badge className="bg-[#FF7900]/10 text-[#FF7900] border-transparent font-bold text-[9px] tracking-wider uppercase px-3 py-1 rounded-full mb-3">
-              SOUSCRIPTION SIMPLIFIÉE
+          {/* Section Header */}
+          <div className="text-center max-w-3xl mx-auto mb-20 reveal-on-scroll">
+            <Badge className="bg-orange-500/10 text-orange-600 border border-orange-200/50 font-bold text-xs tracking-wider uppercase px-4 py-1.5 rounded-full mb-4 inline-flex items-center gap-2">
+              <Sparkles className="h-3.5 w-3.5" />
+              FORMULES D'ABONNEMENT
             </Badge>
-            <h2 className="text-3xl font-extrabold text-slate-950 tracking-tight">Nos Offres d'Abonnement</h2>
-            <p className="mt-3 text-slate-500 text-sm font-light">
-              Cliquez sur une offre pour lancer le test de validation de ressources SOC et configurer votre tenant de sécurité.
+            <h2 className="text-4xl md:text-5xl font-extrabold text-slate-950 tracking-tight mb-6">
+              Choisissez votre formule SOC
+            </h2>
+            <p className="text-lg text-slate-600 font-light leading-relaxed">
+              Démarrez votre transformation en cybersécurité avec une plateforme SOC complète, flexible et évolutive conçue pour les entreprises africaines.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch mb-10 reveal-on-scroll reveal-delay-100">
-            {offers.filter(o => o.isActive).map((plan) => {
+          {/* Pricing Cards Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch mb-16 reveal-on-scroll reveal-delay-100 px-2">
+            {offers.filter(o => o.isActive).map((plan, idx) => {
+              const isPopular = plan.theme === "blue"; // Terranga is the popular one
               const active = selectedPlanId === plan.id;
-              const validating = validatingPlanId === plan.id;
-              const validated = validatedPlanId === plan.id;
               
-              // Map accent styles based on active selection or plan tier
-              let cardStyles = "border-slate-200 bg-white text-slate-900 hover:border-slate-300 hover:shadow-xl hover:-translate-y-1.5 shadow-sm";
-              let badgeText = "";
-              let buttonClass = "bg-slate-100 text-slate-900 hover:bg-slate-200";
-
-              if (active) {
-                cardStyles = "border-[#FF7900] bg-white text-slate-900 shadow-2xl shadow-orange-500/10 ring-2 ring-orange-500/20 md:scale-[1.03]";
-                buttonClass = "bg-[#FF7900] hover:bg-[#e06b00] text-white shadow-md shadow-orange-500/10";
-                
-                if (plan.theme === "blue") badgeText = "Le plus populaire";
-                else if (plan.theme === "gold" || plan.theme === "slate") badgeText = "Premium Corporate";
-                else badgeText = "Sélectionné";
-              }
-
-              // Apply special border glow animation when successfully validated
-              if (validated) {
-                cardStyles += " animate-border-orange";
-              }
-
-              // Gold base style override for card
-              if (plan.theme === "gold" && !active) {
-                cardStyles = "border-slate-800 bg-slate-900/5 text-slate-900 opacity-90 hover:shadow-lg hover:-translate-y-1";
-              } else if (plan.theme === "gold" && active) {
-                cardStyles = "border-slate-900 bg-slate-950 text-white shadow-2xl shadow-slate-900/40 ring-2 ring-slate-800/30 md:scale-[1.03]";
-                buttonClass = "bg-white text-slate-950 hover:bg-slate-100";
-              }
+              // Determine colors based on theme
+              const themeColors = {
+                orange: { gradient: "from-orange-50 to-orange-50/30", border: "border-orange-200", accent: "text-orange-600", badge: "bg-orange-100 text-orange-700", button: "bg-orange-600 hover:bg-orange-700", highlight: "bg-orange-500/10", icon: "text-orange-600" },
+                blue: { gradient: "from-blue-50 to-blue-50/30", border: "border-blue-200", accent: "text-blue-600", badge: "bg-blue-100 text-blue-700", button: "bg-blue-600 hover:bg-blue-700", highlight: "bg-blue-500/10", icon: "text-blue-600" },
+                gold: { gradient: "from-amber-50 to-amber-50/30", border: "border-amber-200", accent: "text-amber-600", badge: "bg-amber-100 text-amber-700", button: "bg-amber-600 hover:bg-amber-700", highlight: "bg-amber-500/10", icon: "text-amber-600" }
+              };
+              
+              const colors = themeColors[plan.theme as keyof typeof themeColors] || themeColors.orange;
 
               return (
                 <div 
                   key={plan.id}
                   onClick={() => handleSelectPlan(plan)}
-                  className={`rounded-2xl border p-8 flex flex-col justify-between transition-all duration-300 cursor-pointer relative overflow-hidden ${cardStyles}`}
+                  className={`relative group rounded-2xl transition-all duration-500 overflow-hidden cursor-pointer ${
+                    isPopular 
+                      ? "lg:scale-105 lg:ring-2 lg:ring-blue-500/50" 
+                      : ""
+                  } ${
+                    active 
+                      ? "ring-2 ring-offset-2 ring-offset-white shadow-2xl" 
+                      : "shadow-lg hover:shadow-xl"
+                  }`}
+                  style={active ? { outlineColor: colors.accent } : {}}
                 >
-                  
-                  {/* Cyber Scan Validation Overlay */}
-                  {validating && (
-                    <div className="absolute inset-0 bg-slate-950/95 rounded-2xl p-6 flex flex-col justify-between z-20 border border-orange-500 animate-fade-in font-mono text-[11px] text-slate-300 select-none">
-                      {/* Laser scanner line */}
-                      <div className="scan-laser pointer-events-none" />
-
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between border-b border-slate-800 pb-2 text-[10px] text-slate-505">
-                          <span>SOC_PROVISIONING_AGENT</span>
-                          <span className="animate-pulse text-orange-500">RUNNING</span>
-                        </div>
-
-                        <div className="space-y-3 mt-4">
-                          {[
-                            "Vérification ressources SOC...",
-                            "Allocation EDR & Agent Wazuh...",
-                            "Config playbooks SOAR/CTI...",
-                            "Validation finale & signature..."
-                          ].map((step, idx) => {
-                            const isDone = currentValidationStep > idx;
-                            const isCurrent = currentValidationStep === idx;
-                            return (
-                              <div key={idx} className="flex items-center gap-2">
-                                {isDone ? (
-                                  <Check className="h-3.5 w-3.5 text-emerald-500 shrink-0 stroke-[3]" />
-                                ) : isCurrent ? (
-                                  <Loader2 className="h-3.5 w-3.5 text-orange-500 animate-spin shrink-0" />
-                                ) : (
-                                  <div className="h-3.5 w-3.5 rounded-full border border-slate-700 shrink-0" />
-                                )}
-                                <span className={isDone ? "text-slate-400 line-through" : isCurrent ? "text-white font-bold" : "text-slate-600"}>
-                                  {step}
-                                </span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-center text-[10px] text-slate-500">
-                          <span>PROGRÈS CONFIG</span>
-                          <span>{validationProgress}%</span>
-                        </div>
-                        <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
-                          <div 
-                            className="bg-orange-500 h-1.5 transition-all duration-100" 
-                            style={{ width: `${validationProgress}%` }}
-                          />
-                        </div>
-                      </div>
+                  {/* Popular Badge */}
+                  {isPopular && (
+                    <div className="absolute -top-12 -right-12 w-24 h-24 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-xs rotate-45 z-20 shadow-lg">
+                      <span className="-rotate-45">PLUS POPULAIRE</span>
                     </div>
                   )}
 
-                  <div className="relative">
+                  {/* Card Background */}
+                  <div className={`absolute inset-0 bg-gradient-to-br ${colors.gradient} opacity-100`} />
+                  
+                  {/* Animated Border Gradient */}
+                  <div className={`absolute inset-0 border rounded-2xl ${colors.border} transition-all duration-300`} />
+                  
+                  {/* Hover Glow Effect */}
+                  <div className={`absolute inset-0 bg-gradient-to-br ${colors.highlight} opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl`} />
+
+                  {/* Content */}
+                  <div className="relative p-8 flex flex-col h-full">
                     
-                    {/* Selected & Validated Indicators */}
-                    {active && (
-                      <div className="absolute -top-3 -right-3 h-6 w-6 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-lg animate-fade-up">
-                        {validating ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <Check className="h-3.5 w-3.5 stroke-[3]" />
-                        )}
+                    {/* Plan Name & Badge */}
+                    <div className="mb-8">
+                      <div className="flex items-center justify-between gap-4 mb-4">
+                        <h3 className={`text-2xl font-bold ${colors.accent}`}>{plan.name}</h3>
+                        {active && <Check className={`h-6 w-6 ${colors.accent}`} />}
                       </div>
-                    )}
-
-                    <div className="flex justify-between items-center mb-6">
-                      <span className="text-[10px] font-bold font-mono tracking-widest uppercase opacity-70">{plan.name}</span>
-                      {badgeText && (
-                        <Badge className={`${plan.theme === "gold" && active ? "bg-amber-400 text-slate-950" : "bg-orange-500 text-white"} font-bold text-[8px] px-2 py-0.5 rounded-full uppercase tracking-wider`}>
-                          {badgeText}
-                        </Badge>
+                      
+                      {plan.description && (
+                        <p className="text-sm text-slate-600 leading-relaxed">{plan.description}</p>
                       )}
                     </div>
 
-                    <div className="flex items-baseline gap-1 mb-4">
-                      <span className="text-3xl sm:text-4xl font-extrabold tracking-tight font-mono">{plan.value.toLocaleString()}</span>
-                      <span className="text-xs opacity-75 font-mono">{plan.currency} / {plan.period}</span>
+                    {/* Pricing */}
+                    <div className={`mb-8 p-5 rounded-xl ${colors.highlight}`}>
+                      <div className="flex items-baseline gap-2 mb-2">
+                        <span className={`text-4xl md:text-5xl font-extrabold ${colors.accent}`}>
+                          {plan.value.toLocaleString()}
+                        </span>
+                        <div className="flex flex-col">
+                          <span className="text-sm font-semibold text-slate-600">{plan.currency}</span>
+                          <span className="text-xs text-slate-500">/ {plan.period}</span>
+                        </div>
+                      </div>
+                      <p className="text-xs text-slate-600 mt-3">Facturation mensuelle sans engagement</p>
                     </div>
 
-                    <p className="text-xs opacity-80 leading-relaxed font-light mb-8">{plan.description}</p>
+                    {/* Key Metrics */}
+                    <div className="space-y-3 mb-8 pb-8 border-b border-slate-200/50">
+                      <div className="flex items-center gap-3">
+                        <div className={`h-8 w-8 rounded-lg ${colors.highlight} flex items-center justify-center`}>
+                          <Clock className={`h-4 w-4 ${colors.icon}`} />
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-500 font-semibold uppercase">Détection</p>
+                          <p className={`text-sm font-bold ${colors.accent}`}>{plan.mttd}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className={`h-8 w-8 rounded-lg ${colors.highlight} flex items-center justify-center`}>
+                          <Zap className={`h-4 w-4 ${colors.icon}`} />
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-500 font-semibold uppercase">Réaction</p>
+                          <p className={`text-sm font-bold ${colors.accent}`}>{plan.mttr}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className={`h-8 w-8 rounded-lg ${colors.highlight} flex items-center justify-center`}>
+                          <Cpu className={`h-4 w-4 ${colors.icon}`} />
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-500 font-semibold uppercase">Agents EDR</p>
+                          <p className={`text-sm font-bold ${colors.accent}`}>{plan.maxPcs} postes</p>
+                        </div>
+                      </div>
+                    </div>
 
-                    <div className="h-px bg-slate-200/30 my-6" />
+                    {/* Features */}
+                    <div className="mb-8 flex-grow">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 mb-4">Inclus dans cette formule</h4>
+                      <ul className="space-y-3">
+                        {plan.features.map((feat, i) => (
+                          <li key={i} className="flex items-start gap-3">
+                            <Check className={`h-4 w-4 ${colors.accent} shrink-0 mt-0.5`} />
+                            <span className="text-sm text-slate-700">{feat}</span>
+                          </li>
+                        ))}
+                        <li className="flex items-start gap-3">
+                          <Check className={`h-4 w-4 ${colors.accent} shrink-0 mt-0.5`} />
+                          <span className="text-sm text-slate-700">Support {plan.support}</span>
+                        </li>
+                      </ul>
+                    </div>
 
-                    <ul className="space-y-3.5 mb-8">
-                      {plan.features.map((feat, i) => (
-                        <li key={i} className="flex items-start gap-2.5 text-xs font-light">
-                          <Check className="h-4 w-4 text-[#FF7900] shrink-0 mt-0.5" />
-                          <span>{feat}</span>
-                        </li>
-                      ))}
-                      {plan.mttd && (
-                        <li className="flex items-start gap-2.5 text-xs font-light">
-                          <Check className="h-4 w-4 text-[#FF7900] shrink-0 mt-0.5" />
-                          <span>MTTD : <strong className="font-semibold">{plan.mttd}</strong></span>
-                        </li>
-                      )}
-                      {plan.mttr && (
-                        <li className="flex items-start gap-2.5 text-xs font-light">
-                          <Check className="h-4 w-4 text-[#FF7900] shrink-0 mt-0.5" />
-                          <span>MTTR : <strong className="font-semibold">{plan.mttr}</strong></span>
-                        </li>
-                      )}
-                      {plan.support && (
-                        <li className="flex items-start gap-2.5 text-xs font-light">
-                          <Check className="h-4 w-4 text-[#FF7900] shrink-0 mt-0.5" />
-                          <span>Support : <strong className="font-semibold">{plan.support}</strong></span>
-                        </li>
-                      )}
-                    </ul>
+                    {/* CTA Button */}
+                    <Button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSelectPlan(plan);
+                      }}
+                      className={`w-full font-bold py-3 h-12 rounded-xl transition-all duration-300 text-white text-sm ${colors.button} shadow-md hover:shadow-lg`}
+                    >
+                      <span className="flex items-center justify-center gap-2">
+                        {active ? (
+                          <>
+                            <Check className="h-4 w-4" /> Sélectionné
+                          </>
+                        ) : (
+                          <>
+                            Choisir cette formule <ArrowRight className="h-4 w-4" />
+                          </>
+                        )}
+                      </span>
+                    </Button>
                   </div>
-
-                  <Button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleSelectPlan(plan);
-                    }}
-                    className={`w-full font-bold text-xs py-3 h-11 rounded-full cursor-pointer transition-all ${buttonClass}`}
-                  >
-                    {validating ? (
-                      <span className="flex items-center gap-1.5 justify-center">
-                        <Loader2 className="h-4.5 w-4.5 animate-spin" /> Validation...
-                      </span>
-                    ) : validated ? (
-                      <span className="flex items-center gap-1 justify-center text-emerald-500 font-bold animate-fade-in">
-                        <Check className="h-4 w-4" /> Offre validée !
-                      </span>
-                    ) : (
-                      "Sélectionner & Valider"
-                    )}
-                  </Button>
                 </div>
               );
             })}
           </div>
 
-          {/* ELEGANT SLIDING RECUPERATION BAR FOR CHECOUT (VALIDATION FLOW) */}
+          {/* Checkout Action Bar */}
           {selectedPlanId && (
-            <div className="sticky bottom-4 z-30 max-w-3xl mx-auto mt-8 animate-fade-up">
-              <div className="bg-slate-900 text-white rounded-2xl p-4.5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-2xl border border-slate-800">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 bg-orange-500/10 rounded-xl flex items-center justify-center text-[#FF7900]">
-                    <ShieldCheck className="h-5.5 w-5.5" />
-                  </div>
+            <div className="max-w-2xl mx-auto animate-fade-up">
+              <div className={`rounded-2xl p-6 border-2 transition-all duration-300 backdrop-blur-sm ${
+                selectedPlanId === offers.find(o => o.theme === "blue")?.id
+                  ? "bg-gradient-to-r from-blue-50 to-blue-50/50 border-blue-200 shadow-lg shadow-blue-500/10"
+                  : selectedPlanId === offers.find(o => o.theme === "gold")?.id
+                  ? "bg-gradient-to-r from-amber-50 to-amber-50/50 border-amber-200 shadow-lg shadow-amber-500/10"
+                  : "bg-gradient-to-r from-orange-50 to-orange-50/50 border-orange-200 shadow-lg shadow-orange-500/10"
+              }`}>
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                   <div>
-                    <span className="text-[10px] text-slate-400 font-mono tracking-wide uppercase">Choix actuel</span>
-                    <h4 className="text-xs font-bold">
-                      {offers.find(o => o.id === selectedPlanId)?.name} —{" "}
-                      <span className="text-[#FF7900] font-mono">
-                        {offers.find(o => o.id === selectedPlanId)?.value.toLocaleString()} FCFA
+                    <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-1">Offre sélectionnée</p>
+                    <h4 className="text-lg font-bold text-slate-900">
+                      {offers.find(o => o.id === selectedPlanId)?.name} — 
+                      <span className="text-orange-600 ml-2">
+                        {offers.find(o => o.id === selectedPlanId)?.value.toLocaleString()} FCFA/mois
                       </span>
                     </h4>
                   </div>
-                </div>
 
-                <Button 
-                  onClick={() => {
-                    const chosen = offers.find(o => o.id === selectedPlanId);
-                    if (chosen) openCheckout(chosen);
-                  }}
-                  className="bg-[#FF7900] hover:bg-[#e06b00] text-white font-bold text-xs h-10 px-6 rounded-full cursor-pointer transition-all flex items-center gap-1.5 shadow-md shadow-orange-500/10 animate-pulse-soft"
-                >
-                  Continuer vers l'inscription <ArrowRight className="h-4 w-4" />
-                </Button>
+                  <Button 
+                    onClick={() => {
+                      const chosen = offers.find(o => o.id === selectedPlanId);
+                      if (chosen) openCheckout(chosen);
+                    }}
+                    className="bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white font-bold px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all whitespace-nowrap"
+                  >
+                    Procéder au paiement <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
+                </div>
               </div>
             </div>
           )}
+
+          {/* Comparison Table (Optional Expansion) */}
+          <div className="mt-20 reveal-on-scroll">
+            <details className="group cursor-pointer">
+              <summary className="flex items-center justify-center gap-2 text-sm font-bold text-slate-700 hover:text-slate-900 transition-colors pb-6">
+                <ChevronDown className="h-5 w-5 group-open:rotate-180 transition-transform" />
+                Voir la comparaison détaillée des formules
+              </summary>
+              
+              <div className="bg-white rounded-2xl border border-slate-200 overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-50 border-b border-slate-200">
+                    <tr>
+                      <th className="text-left p-4 font-bold text-slate-900">Fonctionnalité</th>
+                      {offers.filter(o => o.isActive).map(plan => (
+                        <th key={plan.id} className="text-center p-4 font-bold text-slate-900">{plan.name}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {["MTTD", "MTTR", "Agents EDR", "Support", "SIEM Wazuh", "SOAR Shuffle", "CTI MISP", "TheHive"].map((feature, i) => (
+                      <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-slate-50"}>
+                        <td className="p-4 font-semibold text-slate-700">{feature}</td>
+                        {offers.filter(o => o.isActive).map(plan => (
+                          <td key={plan.id} className="text-center p-4">
+                            {feature === "MTTD" && <span className="font-bold text-orange-600">{plan.mttd}</span>}
+                            {feature === "MTTR" && <span className="font-bold text-orange-600">{plan.mttr}</span>}
+                            {feature === "Agents EDR" && <span className="font-bold text-orange-600">{plan.maxPcs}</span>}
+                            {feature === "Support" && <span className="text-slate-600">{plan.support}</span>}
+                            {(feature === "SIEM Wazuh" || feature === "SOAR Shuffle" || feature === "CTI MISP" || feature === "TheHive") && (
+                              plan.features.some(f => f.toLowerCase().includes(feature.toLowerCase())) ? (
+                                <Check className="h-5 w-5 text-emerald-500 mx-auto" />
+                              ) : (
+                                <X className="h-5 w-5 text-slate-300 mx-auto" />
+                              )
+                            )}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          </div>
         </div>
       </section>
 
