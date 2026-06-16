@@ -1082,156 +1082,215 @@ UDP   0.0.0.0:123            *:*
                   </Badge>
                 </div>
 
-                {/* SVG Visual Node Graph */}
+                {/* SVG Visual Node Graph — Laptops + Server */}
                 <div className="flex-1 flex items-center justify-center min-h-[260px] relative pt-12">
-                  <svg className="w-full h-full max-w-[550px] min-h-[220px]" viewBox="0 0 500 240">
-                    <defs>
-                      <radialGradient id="hubGlow" cx="50%" cy="50%" r="50%">
-                        <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.4" />
-                        <stop offset="100%" stopColor="var(--primary)" stopOpacity="0" />
-                      </radialGradient>
-                    </defs>
+                  {(() => {
+                    // Quota par tier d'offre
+                    const QUOTA_BY_TIER: Record<string, number> = {
+                      Bronze: 5, Argent: 10, Or: 20, Platine: 50
+                    };
+                    const maxPcs = QUOTA_BY_TIER[extData.contractTier] ?? 10;
+                    const usedPcs = extData.pcs.length;
+                    const quotaReached = usedPcs >= maxPcs;
 
-                    {/* Central Hub lines to outside nodes */}
-                    {extData.pcs.map((pc, idx) => {
-                      const telemetry = pcTelemetry[pc.id];
-                      const status = telemetry?.wazuhStatus || pc.status;
-                      
-                      // Positions radiales autour du centre (250, 120)
-                      const total = extData.pcs.length;
-                      const angle = (idx * 2 * Math.PI) / total;
-                      const radiusX = 170;
-                      const radiusY = 75;
-                      const targetX = 250 + radiusX * Math.cos(angle);
-                      const targetY = 120 + radiusY * Math.sin(angle);
-
-                      // Style des lignes selon l'état
-                      let strokeColor = "stroke-slate-300 dark:stroke-slate-800";
-                      let strokeDash = "";
-                      let isPulsing = false;
-
-                      if (status === "active") {
-                        strokeColor = "stroke-emerald-500/40 dark:stroke-emerald-500/30";
-                        isPulsing = true;
-                      } else if (status === "alert") {
-                        strokeColor = "stroke-amber-500/50 dark:stroke-amber-500/40";
-                        strokeDash = "3,3";
-                        isPulsing = true;
-                      } else if (status === "isolated") {
-                        strokeColor = "stroke-rose-500/40 dark:stroke-rose-500/35";
-                        strokeDash = "4,4";
+                    const addMachine = () => {
+                      if (quotaReached) {
+                        toast.error(`Quota atteint (${maxPcs} PC max pour l'offre ${extData.contractTier})`, {
+                          description: "Mettez à niveau votre offre pour ajouter plus de machines."
+                        });
+                        return;
                       }
+                      const newId = `${extData.clientId}-pc-${Date.now()}`;
+                      const osList = ["windows", "linux", "macos"] as const;
+                      const os = osList[usedPcs % osList.length];
+                      const prefix = os === "windows" ? "desktop" : os === "linux" ? "srv" : "macbook";
+                      const orgSlug = (form.organization || "client").toLowerCase().replace(/[^a-z0-9]/g, "-");
+                      const newPc = {
+                        id: newId,
+                        name: `${prefix}-${orgSlug}-${String(usedPcs + 1).padStart(2, "0")}`,
+                        os,
+                        ip: `192.168.${Math.floor(Math.random() * 50) + 1}.${Math.floor(Math.random() * 200) + 10}`,
+                        status: "active" as const,
+                        cpu: Math.floor(Math.random() * 30) + 5,
+                        ram: Math.floor(Math.random() * 40) + 20,
+                        lastSeen: "À l'instant",
+                        wazuhId: String(300 + usedPcs).padStart(3, "0"),
+                      };
+                      const updated = { ...extData, pcs: [...extData.pcs, newPc] };
+                      setExtData(updated);
+                      localStorage.setItem(`client_ext_${clientId}`, JSON.stringify(updated));
+                      toast.success("Machine ajoutée !", { description: `${newPc.name} est maintenant surveillée par l'agent EDR.` });
+                    };
 
-                      return (
-                        <g key={`line-${pc.id}`}>
-                          {/* Ligne principale */}
-                          <line 
-                            x1="250" 
-                            y1="120" 
-                            x2={targetX} 
-                            y2={targetY} 
-                            className={`stroke-2 transition-all duration-1000 ${strokeColor}`}
-                            strokeDasharray={strokeDash}
-                          />
-
-                          {/* Petite particule de données animée sur les lignes actives */}
-                          {isPulsing && (
-                            <circle r="3" className="fill-primary dark:fill-sky-400">
-                              <animateMotion 
-                                dur={`${1.5 + idx * 0.4}s`} 
-                                repeatCount="indefinite" 
-                                path={`M250,120 L${targetX},${targetY}`}
+                    return (
+                      <div className="w-full flex flex-col gap-4">
+                        {/* Quota bar */}
+                        <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl px-4 py-2.5 border border-border/30">
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between text-xs mb-1.5">
+                              <span className="font-bold text-slate-700 dark:text-slate-300">
+                                Quota machines — Offre <span className="text-primary">{extData.contractTier}</span>
+                              </span>
+                              <span className={`font-black ${quotaReached ? "text-rose-500" : "text-emerald-500"}`}>
+                                {usedPcs} / {maxPcs} PC
+                              </span>
+                            </div>
+                            <div className="h-2 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all duration-700 ${
+                                  quotaReached ? "bg-rose-500 animate-pulse" :
+                                  usedPcs / maxPcs > 0.8 ? "bg-amber-500" : "bg-emerald-500"
+                                }`}
+                                style={{ width: `${Math.min((usedPcs / maxPcs) * 100, 100)}%` }}
                               />
-                            </circle>
-                          )}
-                        </g>
-                      );
-                    })}
-
-                    {/* Central Wazuh SOC HUB Node */}
-                    <g className="cursor-pointer" onClick={() => setSelectedPcId(null)}>
-                      <circle cx="250" cy="120" r="32" fill="url(#hubGlow)" />
-                      <circle cx="250" cy="120" r="22" className="fill-slate-900 stroke-2 stroke-primary/80" />
-                      <circle cx="250" cy="120" r="6" className="fill-primary animate-ping" />
-                      <circle cx="250" cy="120" r="4" className="fill-primary" />
-                      <text x="250" y="148" textAnchor="middle" className="text-[9px] font-bold fill-primary tracking-wider font-mono">SOC MANAGER</text>
-                    </g>
-
-                    {/* Endpoint Nodes */}
-                    {extData.pcs.map((pc, idx) => {
-                      const telemetry = pcTelemetry[pc.id];
-                      const status = telemetry?.wazuhStatus || pc.status;
-                      const isSelected = selectedPcId === pc.id;
-
-                      const total = extData.pcs.length;
-                      const angle = (idx * 2 * Math.PI) / total;
-                      const radiusX = 170;
-                      const radiusY = 75;
-                      const targetX = 250 + radiusX * Math.cos(angle);
-                      const targetY = 120 + radiusY * Math.sin(angle);
-
-                      // Détermination des couleurs de node
-                      let fillNode = "fill-slate-900";
-                      let strokeNode = "stroke-slate-400";
-                      let glowNode = "";
-
-                      if (status === "active") {
-                        strokeNode = "stroke-emerald-500";
-                        glowNode = "shadow-[0_0_10px_rgba(16,185,129,0.5)]";
-                      } else if (status === "alert") {
-                        strokeNode = "stroke-amber-500 animate-pulse";
-                      } else if (status === "isolated") {
-                        strokeNode = "stroke-rose-500";
-                      } else if (status === "disconnected") {
-                        strokeNode = "stroke-slate-500/40";
-                      }
-
-                      if (isSelected) {
-                        strokeNode = `${strokeNode} stroke-[3px]`;
-                      }
-
-                      return (
-                        <g 
-                          key={`node-${pc.id}`} 
-                          className="cursor-pointer group"
-                          onClick={() => setSelectedPcId(pc.id)}
-                        >
-                          {/* Halo de sélection */}
-                          {isSelected && (
-                            <circle cx={targetX} cy={targetY} r="18" className="fill-primary/10 stroke-none animate-ping" />
-                          )}
-                          
-                          {/* Node principal */}
-                          <circle 
-                            cx={targetX} 
-                            cy={targetY} 
-                            r="12" 
-                            className={`fill-slate-950 stroke-2 transition-all duration-500 hover:scale-110 ${strokeNode}`} 
-                          />
-                          
-                          {/* Mini icône OS simplifiée au centre */}
-                          <text 
-                            x={targetX} 
-                            y={targetY + 3.5} 
-                            textAnchor="middle" 
-                            className="text-[9px] select-none pointer-events-none fill-slate-300 font-bold"
+                            </div>
+                          </div>
+                          <button
+                            onClick={addMachine}
+                            disabled={quotaReached}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wide transition-all border ${
+                              quotaReached
+                                ? "bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700 cursor-not-allowed"
+                                : "bg-emerald-500 hover:bg-emerald-600 text-white border-emerald-500 shadow-md shadow-emerald-500/20 hover:shadow-emerald-500/40 hover:scale-105"
+                            }`}
+                            title={quotaReached ? `Quota atteint (${maxPcs} max)` : "Ajouter une nouvelle machine"}
                           >
-                            {pc.os === "windows" ? "W" : pc.os === "linux" ? "L" : "M"}
-                          </text>
+                            <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 fill-current"><path d="M8 1a.5.5 0 0 1 .5.5v6h6a.5.5 0 0 1 0 1h-6v6a.5.5 0 0 1-1 0v-6h-6a.5.5 0 0 1 0-1h6v-6A.5.5 0 0 1 8 1z"/></svg>
+                            {quotaReached ? "Quota max" : "Ajouter machine"}
+                          </button>
+                        </div>
 
-                          {/* Label sous le node */}
-                          <text 
-                            x={targetX} 
-                            y={targetY + 24} 
-                            textAnchor="middle" 
-                            className={`text-[9px] font-mono select-none font-semibold ${isSelected ? "fill-primary font-bold scale-105" : "fill-muted-foreground group-hover:fill-foreground"} transition-all`}
-                          >
-                            {pc.name.length > 15 ? `${pc.name.slice(0, 12)}...` : pc.name}
-                          </text>
-                        </g>
-                      );
-                    })}
-                  </svg>
+                        {/* SVG topology */}
+                        <svg className="w-full max-w-[600px] mx-auto" viewBox="0 0 540 260" style={{ minHeight: 200 }}>
+                          <defs>
+                            <radialGradient id="hubGlow2" cx="50%" cy="50%" r="50%">
+                              <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.35" />
+                              <stop offset="100%" stopColor="var(--primary)" stopOpacity="0" />
+                            </radialGradient>
+                            <filter id="glow-green">
+                              <feGaussianBlur stdDeviation="2.5" result="blur"/>
+                              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                            </filter>
+                            <filter id="glow-red">
+                              <feGaussianBlur stdDeviation="2" result="blur"/>
+                              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                            </filter>
+                          </defs>
+
+                          {/* Connection lines */}
+                          {extData.pcs.map((pc, idx) => {
+                            const telemetry = pcTelemetry[pc.id];
+                            const status = telemetry?.wazuhStatus || pc.status;
+                            const total = extData.pcs.length;
+                            const angle = (idx * 2 * Math.PI) / total - Math.PI / 2;
+                            const rx = 190, ry = 88;
+                            const tx = 270 + rx * Math.cos(angle);
+                            const ty = 130 + ry * Math.sin(angle);
+                            const strokeColor = status === "active" ? "#10b981" : status === "alert" ? "#f59e0b" : status === "isolated" ? "#ef4444" : "#64748b";
+                            const dash = status === "isolated" ? "5,4" : status === "disconnected" ? "3,5" : "";
+                            return (
+                              <g key={`ln-${pc.id}`}>
+                                <line x1="270" y1="130" x2={tx} y2={ty}
+                                  stroke={strokeColor} strokeWidth="1.5" strokeDasharray={dash} opacity="0.5" />
+                                {(status === "active" || status === "alert") && (
+                                  <circle r="3" fill={strokeColor} opacity="0.85">
+                                    <animateMotion dur={`${1.8 + idx * 0.35}s`} repeatCount="indefinite"
+                                      path={`M270,130 L${tx},${ty}`} />
+                                  </circle>
+                                )}
+                              </g>
+                            );
+                          })}
+
+                          {/* ── SOC MANAGER — Server rack icon ── */}
+                          <g className="cursor-pointer" onClick={() => setSelectedPcId(null)}>
+                            <circle cx="270" cy="130" r="36" fill="url(#hubGlow2)" />
+                            {/* Server rack body */}
+                            <rect x="252" y="112" width="36" height="36" rx="4" className="fill-slate-900" stroke="hsl(var(--primary))" strokeWidth="1.5" />
+                            {/* Server slots */}
+                            {[0,1,2].map(i => (
+                              <g key={i}>
+                                <rect x="256" y={116 + i * 10} width="28" height="7" rx="1.5" className="fill-slate-800" />
+                                <circle cx="260" cy={119.5 + i * 10} r="1.5" fill={i === 0 ? "#10b981" : i === 1 ? "#10b981" : "#f59e0b"} />
+                                <rect x="264" y={118 + i * 10} width="16" height="2" rx="1" className="fill-slate-700" />
+                              </g>
+                            ))}
+                            {/* Pulsing dot */}
+                            <circle cx="270" cy="156" r="4" className="fill-primary opacity-20 animate-ping" />
+                            <circle cx="270" cy="156" r="2.5" className="fill-primary" />
+                            <text x="270" y="174" textAnchor="middle" fontSize="8" fontWeight="800"
+                              className="fill-primary font-mono tracking-wider" letterSpacing="0.08em">
+                              SOC MANAGER
+                            </text>
+                          </g>
+
+                          {/* ── ENDPOINT NODES — Laptop icons ── */}
+                          {extData.pcs.map((pc, idx) => {
+                            const telemetry = pcTelemetry[pc.id];
+                            const status = telemetry?.wazuhStatus || pc.status;
+                            const isSelected = selectedPcId === pc.id;
+                            const total = extData.pcs.length;
+                            const angle = (idx * 2 * Math.PI) / total - Math.PI / 2;
+                            const rx = 190, ry = 88;
+                            const cx = 270 + rx * Math.cos(angle);
+                            const cy = 130 + ry * Math.sin(angle);
+
+                            const borderColor = status === "active" ? "#10b981" : status === "alert" ? "#f59e0b" : status === "isolated" ? "#ef4444" : "#64748b55";
+                            const screenColor = status === "active" ? "#052e16" : status === "alert" ? "#451a03" : status === "isolated" ? "#450a0a" : "#1e293b";
+                            const dotColor = status === "active" ? "#10b981" : status === "alert" ? "#f59e0b" : status === "isolated" ? "#ef4444" : "#94a3b8";
+
+                            // OS label character
+                            const osChar = pc.os === "windows" ? "W" : pc.os === "linux" ? "L" : "M";
+
+                            return (
+                              <g key={`node-${pc.id}`} className="cursor-pointer"
+                                onClick={() => setSelectedPcId(pc.id)}>
+
+                                {/* Selection ring */}
+                                {isSelected && (
+                                  <circle cx={cx} cy={cy} r="22" fill="none" stroke="hsl(var(--primary))"
+                                    strokeWidth="2" strokeDasharray="4,3" opacity="0.7">
+                                    <animateTransform attributeName="transform" type="rotate"
+                                      from={`0 ${cx} ${cy}`} to={`360 ${cx} ${cy}`} dur="4s" repeatCount="indefinite" />
+                                  </circle>
+                                )}
+
+                                {/* Laptop screen */}
+                                <rect x={cx - 12} y={cy - 13} width="24" height="15" rx="2"
+                                  fill={screenColor} stroke={borderColor} strokeWidth={isSelected ? 2 : 1.5} />
+                                {/* Screen glow / content */}
+                                <rect x={cx - 10} y={cy - 11} width="20" height="11" rx="1" fill={screenColor} opacity="0.9" />
+                                {/* OS text on screen */}
+                                <text x={cx} y={cy - 4} textAnchor="middle" fontSize="6" fontWeight="900"
+                                  fill={borderColor} fontFamily="monospace">{osChar}</text>
+
+                                {/* Laptop base/keyboard */}
+                                <rect x={cx - 14} y={cy + 2} width="28" height="4" rx="1"
+                                  fill="#1e293b" stroke={borderColor} strokeWidth="1" />
+                                {/* Hinge notch */}
+                                <rect x={cx - 4} y={cy + 5} width="8" height="2" rx="1" fill="#0f172a" />
+
+                                {/* Status indicator dot */}
+                                <circle cx={cx + 11} cy={cy - 12} r="3.5" fill={dotColor}
+                                  filter={status === "active" ? "url(#glow-green)" : status === "isolated" ? "url(#glow-red)" : ""}>
+                                  {(status === "active" || status === "alert") && (
+                                    <animate attributeName="opacity" values="1;0.4;1" dur="1.8s" repeatCount="indefinite" />
+                                  )}
+                                </circle>
+
+                                {/* PC name label */}
+                                <text x={cx} y={cy + 18} textAnchor="middle" fontSize="7.5" fontWeight="600"
+                                  fontFamily="monospace"
+                                  className={isSelected ? "fill-primary" : "fill-muted-foreground"}>
+                                  {pc.name.length > 14 ? `${pc.name.slice(0, 11)}…` : pc.name}
+                                </text>
+                              </g>
+                            );
+                          })}
+                        </svg>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 <div className="flex justify-between items-center text-[10px] text-muted-foreground border-t border-border/30 pt-3 mt-2">
