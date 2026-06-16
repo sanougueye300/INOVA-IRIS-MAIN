@@ -4,7 +4,14 @@ import { useEffect, type ReactNode } from "react";
 import { Loader2, ShieldOff } from "lucide-react";
 
 /** Pages that a 'client' role is allowed to access inside the admin area */
-const CLIENT_ALLOWED_PATHS = ["/admin/new", "/settings", "/audit"];
+const CLIENT_ALLOWED_PATHS = [
+  "/admin/new",
+  "/admin",
+  "/settings",
+  "/audit",
+  "/alertes",
+  "/clients/inventory",
+];
 
 export function RequireAuth({ children, requireAdmin }: { children: ReactNode; requireAdmin?: boolean }) {
   const { user, loading, isAdmin, roles } = useAuth();

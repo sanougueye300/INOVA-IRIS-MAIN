@@ -136,20 +136,35 @@ export function SocSidebar({ onNavigate }: { onNavigate?: () => void }) {
             </div>
           </div>
 
+          {/* Supervision */}
+          <div className="px-3">
+            <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Supervision</p>
+            <nav className="space-y-1">
+              {/* Alertes */}
+              {renderItem({ to: "/alertes", label: "Alertes", icon: AlertTriangle })}
+
+              {/* PCs connectés / Inventaire EDR */}
+              {renderItem({ to: "/clients/inventory", label: "PCs connectés (EDR)", icon: Laptop })}
+            </nav>
+          </div>
+
           {/* Administration Client */}
           <div className="px-3">
             <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Administration</p>
             <nav className="space-y-1">
+              {/* Gestion des agents */}
+              {renderItem({ to: "/admin", label: "Gestion des Agents", icon: Users })}
+
               <button
                 onClick={() => setAdminOpen(o => !o)}
                 className={`group flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors ${
-                  pathname.startsWith("/admin") || pathname === "/settings" || pathname === "/audit"
+                  pathname === "/admin/new" || pathname === "/settings" || pathname === "/audit"
                     ? "border-l-4 border-primary bg-accent font-semibold text-accent-foreground"
                     : "border-l-4 border-transparent text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                 }`}
               >
                 <ServerCog className="h-4 w-4 shrink-0" />
-                <span className="flex-1 text-left">Mon Espace</span>
+                <span className="flex-1 text-left">Paramétrage</span>
                 {adminOpen
                   ? <ChevronDown className="h-3.5 w-3.5 opacity-60" />
                   : <ChevronRight className="h-3.5 w-3.5 opacity-60" />}

@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { RequireAuth } from "@/components/RequireAuth";
+import { useAuth } from "@/lib/auth-context";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,7 +18,7 @@ import {
 
 export const Route = createFileRoute("/clients/inventory")({
   head: () => ({ meta: [{ title: "Parc & Inventaire EDR — SOC Platform" }] }),
-  component: () => <RequireAuth requireAdmin><InventoryPage /></RequireAuth>,
+  component: () => <RequireAuth><InventoryPage /></RequireAuth>,
 });
 
 interface EdrDevice {
@@ -45,6 +46,9 @@ const SHELL_COMMANDS: Record<string, string> = {
 };
 
 function InventoryPage() {
+  const { roles, organization } = useAuth();
+  const isClientOnly = roles.includes("client") && !roles.includes("admin") && !roles.includes("analyste") && !roles.includes("manager");
+
   const [devices, setDevices] = useState<EdrDevice[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [search, setSearch] = useState("");
@@ -57,8 +61,12 @@ function InventoryPage() {
   const [termInput, setTermInput] = useState("");
 
   useEffect(() => {
-    setDevices(SEED_DEVICES);
-  }, []);
+    // Filter devices by client organization if client-only
+    const visible = isClientOnly && organization
+      ? SEED_DEVICES.filter(d => d.clientName.toLowerCase().includes(organization.toLowerCase()))
+      : SEED_DEVICES;
+    setDevices(visible);
+  }, [isClientOnly, organization]);
 
   const total = devices.length;
   const active = devices.filter(d => d.status === "active").length;

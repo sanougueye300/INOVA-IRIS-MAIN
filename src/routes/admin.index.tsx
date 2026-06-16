@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { RequireAuth } from "@/components/RequireAuth";
+import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
 import type { AppRole } from "@/lib/auth-context";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -22,7 +23,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createFileRoute("/admin/")({
   head: () => ({ meta: [{ title: "Administration — SOC Platform" }] }),
-  component: () => <RequireAuth requireAdmin><Admin /></RequireAuth>,
+  component: () => <RequireAuth><Admin /></RequireAuth>,
 });
 
 interface Profile { id: string; email: string | null; full_name: string | null; organization: string | null; is_active: boolean; created_at: string }
@@ -263,6 +264,9 @@ async function exportToExcel(
 
 /* ─── Main component ────────────────────────────────────────────── */
 function Admin() {
+  const { roles, organization } = useAuth();
+  const isClientOnly = roles.includes("client") && !roles.includes("admin") && !roles.includes("analyste") && !roles.includes("manager");
+
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [filteredProfiles, setFilteredProfiles] = useState<Profile[]>([]);
   const [rolesByUser, setRolesByUser] = useState<Record<string, AppRole[]>>({});
@@ -284,7 +288,12 @@ function Admin() {
       ]);
       const fetched = (p as Profile[]) ?? [];
       const hasSanou = fetched.some(pr => pr.full_name === "Sanou Gueye");
-      setProfiles(hasSanou ? fetched : [defaultUser, ...fetched]);
+      const allProfiles = hasSanou ? fetched : [defaultUser, ...fetched];
+      // For client-only users, show only profiles from their own organization
+      const visibleProfiles = isClientOnly && organization
+        ? allProfiles.filter(pr => pr.organization?.toLowerCase() === organization.toLowerCase())
+        : allProfiles;
+      setProfiles(visibleProfiles);
 
       const map: Record<string, AppRole[]> = {};
       ((r as RoleRow[]) ?? []).forEach(x => { (map[x.user_id] ||= []).push(x.role); });
