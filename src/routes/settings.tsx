@@ -10,9 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RequireAuth } from "@/components/RequireAuth";
 import { toast } from "sonner";
 import { useSocPreferences } from "@/lib/soc-preferences";
+import { useAuth } from "@/lib/auth-context";
 import { 
   Sliders, ShieldCheck, PaintBucket, HardDrive, Save, Upload, Moon, Sun, 
-  Brain, Globe, RefreshCw, AlertTriangle, FileText, Database, ShieldAlert, Cpu, Sparkles, Network
+  Brain, Globe, RefreshCw, AlertTriangle, FileText, Database, ShieldAlert, Cpu, Sparkles, Network,
+  Users, Info
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -25,6 +27,8 @@ export const Route = createFileRoute("/settings")({
 
 function AdminSettings() {
   const { theme, setTheme } = useSocPreferences();
+  const { roles } = useAuth();
+  const isClientOnly = roles.includes("client") && !roles.includes("admin") && !roles.includes("analyste") && !roles.includes("manager");
   const [saving, setSaving] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const [settings, setSettings] = useState(() => {
@@ -146,20 +150,34 @@ function AdminSettings() {
               <Sliders className="h-6 w-6 text-primary" />
             </div>
             <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 dark:from-gray-100 dark:to-gray-400 bg-clip-text text-transparent">
-              Paramètres Globaux
+              Paramètres {isClientOnly ? "de votre espace" : "Globaux"}
             </h1>
           </div>
           <p className="text-muted-foreground">
-            Configurez l'environnement de sécurité multi-tenant, l'IA autonome, l'image de marque et la protection SIEM.
+            {isClientOnly
+              ? "Gérez l'apparence et la session de votre espace client."
+              : "Configurez l'environnement de sécurité multi-tenant, l'IA autonome, l'image de marque et la protection SIEM."}
           </p>
         </div>
+
+        {/* Client info banner */}
+        {isClientOnly && (
+          <div className="flex items-start gap-3 p-4 rounded-2xl bg-sky-50 dark:bg-sky-950/30 border border-sky-200/60 dark:border-sky-500/20">
+            <Info className="h-4 w-4 text-sky-500 shrink-0 mt-0.5" />
+            <p className="text-sm text-sky-700 dark:text-sky-400">
+              En tant que client, vous avez accès aux paramètres d'apparence et de session uniquement. Pour toute configuration avancée, contactez votre administrateur SOC.
+            </p>
+          </div>
+        )}
 
         <div className="grid gap-6 md:grid-cols-12">
           
           {/* Main settings options using Tabs (Left side) */}
           <div className="md:col-span-8 space-y-6">
             <Tabs defaultValue="appearance" className="space-y-6">
-              <TabsList className="grid grid-cols-2 sm:grid-cols-5 w-full bg-slate-100/80 dark:bg-slate-900/80 backdrop-blur-sm p-1 rounded-xl gap-1 border border-border/30 h-auto">
+              <TabsList className={`grid w-full bg-slate-100/80 dark:bg-slate-900/80 backdrop-blur-sm p-1 rounded-xl gap-1 border border-border/30 h-auto ${
+                isClientOnly ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-5"
+              }`}>
                 <TabsTrigger value="appearance" className="gap-2 py-2.5 rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-950 shadow-sm transition-all text-xs">
                   <PaintBucket className="h-3.5 w-3.5 text-primary" />
                   <span>Design</span>
@@ -168,18 +186,22 @@ function AdminSettings() {
                   <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
                   <span>Sécurité</span>
                 </TabsTrigger>
-                <TabsTrigger value="ai" className="gap-2 py-2.5 rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-950 shadow-sm transition-all text-xs">
-                  <Brain className="h-3.5 w-3.5 text-purple-500" />
-                  <span>Djib'son IA</span>
-                </TabsTrigger>
-                <TabsTrigger value="siem" className="gap-2 py-2.5 rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-950 shadow-sm transition-all text-xs">
-                  <Cpu className="h-3.5 w-3.5 text-amber-500" />
-                  <span>SIEM & Sync</span>
-                </TabsTrigger>
-                <TabsTrigger value="audit" className="gap-2 py-2.5 rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-950 shadow-sm transition-all text-xs">
-                  <FileText className="h-3.5 w-3.5 text-blue-500" />
-                  <span>Audits</span>
-                </TabsTrigger>
+                {!isClientOnly && (
+                  <>
+                    <TabsTrigger value="ai" className="gap-2 py-2.5 rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-950 shadow-sm transition-all text-xs">
+                      <Brain className="h-3.5 w-3.5 text-purple-500" />
+                      <span>Djib'son IA</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="siem" className="gap-2 py-2.5 rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-950 shadow-sm transition-all text-xs">
+                      <Cpu className="h-3.5 w-3.5 text-amber-500" />
+                      <span>SIEM & Sync</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="audit" className="gap-2 py-2.5 rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-950 shadow-sm transition-all text-xs">
+                      <FileText className="h-3.5 w-3.5 text-blue-500" />
+                      <span>Audits</span>
+                    </TabsTrigger>
+                  </>
+                )}
               </TabsList>
 
               {/* TAB 1: BRANDING & WHITE-LABELING */}
@@ -276,27 +298,34 @@ function AdminSettings() {
                   <CardHeader>
                     <div className="flex items-center gap-2">
                       <ShieldCheck className="h-5 w-5 text-emerald-500" />
-                      <CardTitle className="text-xl">Sécurité & Accès Réseau</CardTitle>
+                      <CardTitle className="text-xl">{isClientOnly ? "Session & Sécurité" : "Sécurité & Accès Réseau"}</CardTitle>
                     </div>
                     <CardDescription>
-                      Gérez les politiques d'authentification forte, l'inactivité et les restrictions d'accès IP/Géo.
+                      {isClientOnly
+                        ? "Configurez la durée d'expiration de votre session de connexion."
+                        : "Gérez les politiques d'authentification forte, l'inactivité et les restrictions d'accès IP/Géo."}
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    <div className="flex items-center justify-between space-x-2">
-                      <div className="space-y-1">
-                        <Label className="font-semibold text-base">Forcer le MFA (Multi-Facteur)</Label>
-                        <p className="text-xs text-muted-foreground">Obligatoire pour tous les Analystes, Superviseurs et Admins.</p>
-                      </div>
-                      <Switch 
-                        checked={settings.forceMfa} 
-                        onCheckedChange={(c) => setSettings({...settings, forceMfa: c})}
-                      />
-                    </div>
-                    
-                    <Separator />
+                    {/* MFA toggle — admin only */}
+                    {!isClientOnly && (
+                      <>
+                        <div className="flex items-center justify-between space-x-2">
+                          <div className="space-y-1">
+                            <Label className="font-semibold text-base">Forcer le MFA (Multi-Facteur)</Label>
+                            <p className="text-xs text-muted-foreground">Obligatoire pour tous les Analystes, Superviseurs et Admins.</p>
+                          </div>
+                          <Switch 
+                            checked={settings.forceMfa} 
+                            onCheckedChange={(c) => setSettings({...settings, forceMfa: c})}
+                          />
+                        </div>
+                        
+                        <Separator />
+                      </>
+                    )}
 
-                    <div className="grid gap-4 sm:grid-cols-2">
+                    <div className={`grid gap-4 ${isClientOnly ? "" : "sm:grid-cols-2"}`}>
                       <div className="space-y-2">
                         <Label className="font-semibold">Expiration Session (Minutes)</Label>
                         <Select value={settings.sessionTimeout} onValueChange={(v) => setSettings({...settings, sessionTimeout: v})}>
@@ -310,64 +339,72 @@ function AdminSettings() {
                             <SelectItem value="240">4 Heures</SelectItem>
                           </SelectContent>
                         </Select>
-                        <p className="text-xs text-muted-foreground">Déconnecte automatiquement l'analyste après inactivité.</p>
+                        <p className="text-xs text-muted-foreground">Déconnecte automatiquement après inactivité.</p>
                       </div>
 
-                      <div className="space-y-2">
-                        <Label className="font-semibold">Source CTI (Cyber Threat Intel)</Label>
-                        <Select value={settings.ctiFeedSource} onValueChange={(v) => setSettings({...settings, ctiFeedSource: v})}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="alienvault">AlienVault OTX (Recommandé)</SelectItem>
-                            <SelectItem value="virustotal">VirusTotal Enterprise API</SelectItem>
-                            <SelectItem value="crowdstrike">CrowdStrike Falcon Intell</SelectItem>
-                            <SelectItem value="misp">MISP Local Instance</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <p className="text-xs text-muted-foreground">Flux d'indicateurs utilisé pour enrichir les alertes SIEM.</p>
-                      </div>
+                      {/* CTI source — admin only */}
+                      {!isClientOnly && (
+                        <div className="space-y-2">
+                          <Label className="font-semibold">Source CTI (Cyber Threat Intel)</Label>
+                          <Select value={settings.ctiFeedSource} onValueChange={(v) => setSettings({...settings, ctiFeedSource: v})}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="alienvault">AlienVault OTX (Recommandé)</SelectItem>
+                              <SelectItem value="virustotal">VirusTotal Enterprise API</SelectItem>
+                              <SelectItem value="crowdstrike">CrowdStrike Falcon Intell</SelectItem>
+                              <SelectItem value="misp">MISP Local Instance</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-muted-foreground">Flux d'indicateurs utilisé pour enrichir les alertes SIEM.</p>
+                        </div>
+                      )}
                     </div>
 
-                    <Separator />
+                    {/* Geo-blocking & IP whitelist — admin only */}
+                    {!isClientOnly && (
+                      <>
+                        <Separator />
 
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-1">
-                          <Label className="font-semibold text-base flex items-center gap-1.5">
-                            <Globe className="h-4 w-4 text-emerald-500 animate-pulse" />
-                            Géo-blocage Actif (Threat Map)
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <div className="space-y-1">
+                              <Label className="font-semibold text-base flex items-center gap-1.5">
+                                <Globe className="h-4 w-4 text-emerald-500 animate-pulse" />
+                                Géo-blocage Actif (Threat Map)
+                              </Label>
+                              <p className="text-xs text-muted-foreground">
+                                Bloque automatiquement l'accès au portail depuis les pays classés "Haut Risque" sur la Threat Map.
+                              </p>
+                            </div>
+                            <Switch 
+                              checked={settings.blockHighRiskCountries} 
+                              onCheckedChange={(c) => setSettings({...settings, blockHighRiskCountries: c})}
+                            />
+                          </div>
+                        </div>
+
+                        <Separator />
+
+                        <div className="space-y-2">
+                          <Label className="font-semibold flex items-center gap-1.5">
+                            <ShieldAlert className="h-4 w-4 text-amber-500" />
+                            Liste Blanche d'IPs Habilitées (CIDR)
                           </Label>
+                          <Textarea 
+                            value={settings.ipWhitelist}
+                            onChange={(e) => setSettings({...settings, ipWhitelist: e.target.value})}
+                            placeholder="Ex: 10.0.0.0/8, 192.168.1.0/24"
+                            rows={3}
+                            className="font-mono text-xs focus:ring-2 focus:ring-emerald-500/20"
+                          />
                           <p className="text-xs text-muted-foreground">
-                            Bloque automatiquement l'accès au portail depuis les pays classés "Haut Risque" sur la Threat Map.
+                            Séparez les plages d'adresses par des virgules. Laisse vide pour autoriser toutes les adresses IPs.
                           </p>
                         </div>
-                        <Switch 
-                          checked={settings.blockHighRiskCountries} 
-                          onCheckedChange={(c) => setSettings({...settings, blockHighRiskCountries: c})}
-                        />
-                      </div>
-                    </div>
-
-                    <Separator />
-
-                    <div className="space-y-2">
-                      <Label className="font-semibold flex items-center gap-1.5">
-                        <ShieldAlert className="h-4 w-4 text-amber-500" />
-                        Liste Blanche d'IPs Habilitées (CIDR)
-                      </Label>
-                      <Textarea 
-                        value={settings.ipWhitelist}
-                        onChange={(e) => setSettings({...settings, ipWhitelist: e.target.value})}
-                        placeholder="Ex: 10.0.0.0/8, 192.168.1.0/24"
-                        rows={3}
-                        className="font-mono text-xs focus:ring-2 focus:ring-emerald-500/20"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Séparez les plages d'adresses par des virgules. Laisse vide pour autoriser toutes les adresses IPs.
-                      </p>
-                    </div>
+                      </>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>

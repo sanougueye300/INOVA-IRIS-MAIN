@@ -11,12 +11,13 @@ import orangeLogo from "@/assets/orange-logo.png";
 import {
   User, Mail, Phone, Building, MapPin, Shield, Loader2, ArrowLeft, Info, Lock,
   Check, ChevronRight, ChevronLeft, CheckCircle2, ChevronDown,
-  Sliders, Key, Users, Fingerprint, Zap, Globe2
+  Sliders, Key, Users, Fingerprint, Zap, Globe2, AlertTriangle
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { RequireAuth } from "@/components/RequireAuth";
 import type { AppRole } from "@/lib/auth-context";
+import { useAuth } from "@/lib/auth-context";
 import { Separator } from "@/components/ui/separator";
 import { invokeAuthSecurity } from "@/lib/auth-security";
 
@@ -70,6 +71,19 @@ const STEPS = [
 
 function NewUserPage() {
   const navigate = useNavigate();
+  const { roles, organization } = useAuth();
+  const isClientOnly = roles.includes("client") && !roles.includes("admin") && !roles.includes("analyste") && !roles.includes("manager");
+
+  // Track user quota for client role (max 3)
+  const CLIENT_MAX_USERS = 3;
+  const [clientUserCount, setClientUserCount] = useState<number>(() => {
+    if (typeof window !== "undefined") {
+      return parseInt(localStorage.getItem("client_user_count") ?? "0", 10);
+    }
+    return 0;
+  });
+  const clientQuotaReached = isClientOnly && clientUserCount >= CLIENT_MAX_USERS;
+
   const [busy, setBusy]           = useState(false);
   const [activeStep, setActiveStep] = useState<number>(1);
 
@@ -83,7 +97,7 @@ function NewUserPage() {
     organization: "",
     physicalAddress: "",
     city: "",
-    role: "client" as AppRole,
+    role: (isClientOnly ? "client" : "client") as AppRole,
     generation: "v1",
     password: "",
     confirmPassword: "",
@@ -155,6 +169,15 @@ function NewUserPage() {
 
   const handleCreate = async () => {
     if (!validateStep(1) || !validateStep(2)) return;
+
+    // Client quota guard
+    if (isClientOnly && clientUserCount >= CLIENT_MAX_USERS) {
+      toast.error("Quota atteint", {
+        description: `Votre abonnement permet un maximum de ${CLIENT_MAX_USERS} utilisateurs. Contactez le support pour augmenter votre quota.`,
+      });
+      return;
+    }
+
     setBusy(true);
     try {
       const org = ORGANIZATIONS.find(o => o.value === form.organization);
@@ -162,7 +185,7 @@ function NewUserPage() {
         email:           form.email,
         fullName,
         organization:    org?.label ?? form.organization,
-        role:            form.role,
+        role:            isClientOnly ? "client" : form.role,
         generation:      form.generation,
         phone:           form.phone,
         matricule:       form.matricule,
@@ -209,10 +232,17 @@ function NewUserPage() {
         description: otpDesc,
       });
 
+      // Update client quota counter
+      if (isClientOnly) {
+        const newCount = clientUserCount + 1;
+        setClientUserCount(newCount);
+        localStorage.setItem("client_user_count", String(newCount));
+      }
+
       if (securityInfo?.devOtp) {
         toast.info("Mode développement", { description: `Code OTP : ${securityInfo.devOtp}` });
       }
-      navigate({ to: "/admin" });
+      navigate({ to: "/admin/new" });
     } catch (e: any) {
       toast.error("Erreur", { description: e.message ?? "Impossible de créer l'agent" });
     } finally {
@@ -291,11 +321,54 @@ function NewUserPage() {
 
       <div className="container mx-auto px-4 py-10 max-w-6xl relative z-10">
 
+        {/* Client Quota Banner */}
+        {isClientOnly && (
+          <div className={`mb-6 flex items-center gap-4 p-4 rounded-2xl border-2 ${
+            clientQuotaReached
+              ? "bg-red-50/80 dark:bg-red-950/30 border-red-300/60 dark:border-red-500/30"
+              : "bg-sky-50/80 dark:bg-sky-950/30 border-sky-300/60 dark:border-sky-500/30"
+          }`}>
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+              clientQuotaReached ? "bg-red-500/10" : "bg-sky-500/10"
+            }`}>
+              {clientQuotaReached
+                ? <AlertTriangle className="h-5 w-5 text-red-500" />
+                : <Users className="h-5 w-5 text-sky-500" />}
+            </div>
+            <div className="flex-1">
+              <p className={`text-sm font-black ${
+                clientQuotaReached ? "text-red-700 dark:text-red-400" : "text-sky-700 dark:text-sky-400"
+              }`}>
+                {clientQuotaReached
+                  ? `Quota utilisateurs atteint (${clientUserCount}/${CLIENT_MAX_USERS})`
+                  : `Utilisateurs de votre organisation : ${clientUserCount}/${CLIENT_MAX_USERS}`}
+              </p>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {clientQuotaReached
+                  ? "Vous avez atteint la limite de votre abonnement. Contactez le support pour augmenter votre quota."
+                  : `Vous pouvez encore ajouter ${CLIENT_MAX_USERS - clientUserCount} utilisateur(s).`}
+              </p>
+            </div>
+            {/* Quota progress bar */}
+            <div className="w-24 shrink-0">
+              <div className="h-2 rounded-full bg-slate-200 dark:bg-zinc-800 overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${
+                    clientQuotaReached ? "bg-red-500" : clientUserCount >= 2 ? "bg-amber-500" : "bg-sky-500"
+                  }`}
+                  style={{ width: `${Math.min((clientUserCount / CLIENT_MAX_USERS) * 100, 100)}%` }}
+                />
+              </div>
+              <p className="text-[10px] text-center text-slate-400 mt-1 font-mono">{clientUserCount}/{CLIENT_MAX_USERS}</p>
+            </div>
+          </div>
+        )}
+
         {/* ── Header ── */}
         <div className="mb-10 flex items-start gap-4">
           <Button
             variant="ghost" size="icon"
-            onClick={() => navigate({ to: "/admin" })}
+            onClick={() => navigate({ to: isClientOnly ? "/admin/new" : "/admin" })}
             className="mt-1 rounded-2xl h-10 w-10 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 hover:border-amber-400 hover:bg-amber-50 dark:hover:bg-amber-500/10 shadow-sm transition-all duration-300"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -303,14 +376,16 @@ function NewUserPage() {
           <div>
             <div className="flex items-center gap-3 mb-1">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-[10px] font-black uppercase tracking-wider">
-                <Fingerprint className="h-3 w-3" /> Onboarding Agent
+                <Fingerprint className="h-3 w-3" /> {isClientOnly ? "Ajouter un Utilisateur" : "Onboarding Agent"}
               </span>
             </div>
             <h1 className="text-3xl font-black bg-gradient-to-r from-slate-900 via-amber-600 to-orange-600 dark:from-white dark:via-amber-400 dark:to-yellow-500 bg-clip-text text-transparent tracking-tight">
-              Créer un Nouvel Agent RH
+              {isClientOnly ? "Nouvel Utilisateur" : "Créer un Nouvel Agent RH"}
             </h1>
             <p className="text-sm text-slate-500 dark:text-zinc-400 mt-1 font-medium">
-              Configurez l'identité, les droits d'accès et les services de l'agent en 4 étapes.
+              {isClientOnly
+                ? "Ajoutez un utilisateur à votre organisation (maximum 3 comptes)."
+                : "Configurez l'identité, les droits d'accès et les services de l'agent en 4 étapes."}
             </p>
           </div>
         </div>

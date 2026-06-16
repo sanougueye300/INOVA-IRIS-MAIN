@@ -8,10 +8,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RequireAuth } from "@/components/RequireAuth";
+import { useAuth } from "@/lib/auth-context";
 import { 
   FileText, Search, Download, Filter, Eye, ShieldAlert, User, 
   Server, Terminal, Lock, CheckCircle2, AlertTriangle, XCircle, 
-  Activity, Database, Calendar, ChevronLeft, ChevronRight 
+  Activity, Database, Calendar, ChevronLeft, ChevronRight, Building2 
 } from "lucide-react";
 import * as XLSX from "xlsx-js-style";
 
@@ -32,13 +33,25 @@ const AUDIT_LOGS = [
 ];
 
 function AdminAuditLogs() {
+  const { roles, organization, user } = useAuth();
+  const isClientOnly = roles.includes("client") && !roles.includes("admin") && !roles.includes("analyste") && !roles.includes("manager");
+
+  // Filter logs to show only the client's organization when client-only
+  const BASE_LOGS = isClientOnly
+    ? AUDIT_LOGS.filter(log =>
+        // Show logs related to this user's email or organization
+        log.user === (user?.email ?? "") ||
+        log.user === "system" && log.resource.toLowerCase().includes((organization ?? "").toLowerCase())
+      )
+    : AUDIT_LOGS;
+
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [isExporting, setIsExporting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 6;
 
-  const filteredLogs = AUDIT_LOGS.filter((log) => {
+  const filteredLogs = BASE_LOGS.filter((log) => {
     const matchesSearch = 
       log.user.toLowerCase().includes(searchTerm.toLowerCase()) || 
       log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -62,10 +75,10 @@ function AdminAuditLogs() {
 
 
   // Calculate statistics
-  const totalEvents = AUDIT_LOGS.length;
-  const successEvents = AUDIT_LOGS.filter(l => l.status === "success").length;
-  const failureEvents = AUDIT_LOGS.filter(l => l.status === "failure").length;
-  const warningEvents = AUDIT_LOGS.filter(l => l.status === "warning").length;
+  const totalEvents = BASE_LOGS.length;
+  const successEvents = BASE_LOGS.filter(l => l.status === "success").length;
+  const failureEvents = BASE_LOGS.filter(l => l.status === "failure").length;
+  const warningEvents = BASE_LOGS.filter(l => l.status === "warning").length;
   const successRate = totalEvents > 0 ? Math.round((successEvents / totalEvents) * 100) : 0;
   
   const getStatusBadge = (status: string) => {
@@ -227,7 +240,7 @@ function AdminAuditLogs() {
     <div className="relative min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans transition-colors duration-300">
       
       {/* Decorative gradient overlay - constrained within the relative wrapper */}
-      <div className="absolute top-0 left-0 right-0 h-[280px] bg-gradient-to-b from-orange-500/5 via-slate-50/0 to-slate-50 dark:via-slate-950/0 dark:to-slate-950 pointer-events-none" />
+      <div className="absolute top-0 left-0 right-0 h-[280px] bg-gradient-to-b from-orange-500/5 via-slate-50/0 to-slate-50 dark:via-slate-950/0 to-slate-950 pointer-events-none" />
 
       <div className="relative container mx-auto px-6 py-10 max-w-7xl space-y-10">
         
@@ -240,17 +253,27 @@ function AdminAuditLogs() {
               </div>
               <div>
                 <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white sm:text-4xl">
-                  Journaux d'Audit SOC
+                  {isClientOnly ? "Mes Journaux d'Activité" : "Journaux d'Audit SOC"}
                 </h1>
                 <p className="text-[11px] font-mono text-orange-600 dark:text-orange-500 uppercase tracking-wider">
-                  TRAÇABILITÉ IMMUABLE & CONTRÔLE DE SÉCURITÉ
+                  {isClientOnly ? "HISTORIQUE DE VOTRE ORGANISATION" : "TRAÇABILITÉ IMMUABLE & CONTRÔLE DE SÉCURITÉ"}
                 </p>
               </div>
             </div>
             <p className="text-sm text-slate-500 dark:text-slate-400 max-w-2xl">
-              Historique complet et cryptographiquement sécurisé de toutes les actions administratives, 
-              techniques et utilisateurs effectuées sur la plateforme.
+              {isClientOnly
+                ? "Consultez l'historique de toutes les actions effectuées par les utilisateurs de votre organisation."
+                : "Historique complet et cryptographiquement sécurisé de toutes les actions administratives, techniques et utilisateurs effectuées sur la plateforme."}
             </p>
+            {isClientOnly && organization && (
+              <div className="flex items-center gap-2 mt-1">
+                <Building2 className="h-3.5 w-3.5 text-sky-500" />
+                <span className="text-xs font-bold text-sky-600 dark:text-sky-400">{organization}</span>
+                <Badge className="bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400 border-sky-200/60 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                  Mon organisation
+                </Badge>
+              </div>
+            )}
           </div>
           
           <Button 
