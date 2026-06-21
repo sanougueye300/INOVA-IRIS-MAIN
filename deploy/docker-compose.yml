@@ -1,0 +1,217 @@
+# =============================================================================
+# Stack SOC INOVA-IRIS — TheHive 5 + Cortex + MISP + Shuffle
+# =============================================================================
+# A déployer sur un VPS Linux (Ubuntu 22.04+) avec Docker + Docker Compose.
+#
+# Wazuh n'est PAS inclus ici :
+#   - soit Wazuh Cloud (recommandé)  -> https://cloud.wazuh.com
+#   - soit le déploiement officiel    -> https://github.com/wazuh/wazuh-docker
+# Le mélanger ici alourdit trop la stack (OpenSearch x2).
+#
+# VirusTotal n'a rien à déployer : juste une clé API sur virustotal.com.
+#
+# Usage :
+#   1. cp .env.example .env  &&  éditer .env (mots de passe !)
+#   2. ./install.sh          (prépare l'hôte : sysctl, dossiers)
+#   3. docker compose up -d
+#   4. Récupérer les clés API dans chaque UI puis les pousser dans Supabase :
+#        npx supabase secrets set THEHIVE_URL=... THEHIVE_API_KEY=...
+# =============================================================================
+
+name: inova-soc
+
+services:
+  # ---------------------------------------------------------------------------
+  # TheHive 5 — Incident Response Platform  (port 9000)
+  # ---------------------------------------------------------------------------
+  thehive:
+    image: strangebee/thehive:5.4
+    restart: unless-stopped
+    depends_on:
+      - cassandra
+      - elasticsearch
+      - minio
+    ports:
+      - "9000:9000"
+    environment:
+      - JVM_OPTS=-Xms2G -Xmx2G
+      # Identifiants lus par application.conf pour le stockage S3/MinIO
+      - MINIO_USER=${MINIO_USER}
+      - MINIO_PASSWORD=${MINIO_PASSWORD}
+      # Clé API Cortex (à renseigner après génération dans l'UI Cortex)
+      - CORTEX_API_KEY=${CORTEX_API_KEY:-}
+    command:
+      - --secret
+      - "${THEHIVE_SECRET}"
+      - "-Dconfig.file=/etc/thehive/application.conf"
+    volumes:
+      - ./thehive/application.conf:/etc/thehive/application.conf:ro
+    networks: [soc]
+
+  cassandra:
+    image: cassandra:4.1
+    restart: unless-stopped
+    environment:
+      - MAX_HEAP_SIZE=1G
+      - HEAP_NEWSIZE=1G
+      - CASSANDRA_CLUSTER_NAME=thehive
+    volumes:
+      - cassandra-data:/var/lib/cassandra
+    networks: [soc]
+
+  elasticsearch:
+    image: elasticsearch:8.13.4
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms1G -Xmx1G"
+      - bootstrap.memory_lock=true
+    ulimits:
+      memlock: { soft: -1, hard: -1 }
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+    networks: [soc]
+
+  minio:
+    image: quay.io/minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9090"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_PASSWORD}
+    volumes:
+      - minio-data:/data
+    networks: [soc]
+
+  # ---------------------------------------------------------------------------
+  # Cortex — Moteur d'analyse/enrichissement de TheHive  (port 9001)
+  # (héberge les analyzers VirusTotal, MISP, etc.)
+  # ---------------------------------------------------------------------------
+  cortex:
+    image: thehiveproject/cortex:3.1.8
+    restart: unless-stopped
+    depends_on:
+      - elasticsearch
+    ports:
+      - "9001:9001"
+    environment:
+      - job_directory=/tmp/cortex-jobs
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /tmp/cortex-jobs:/tmp/cortex-jobs
+    networks: [soc]
+
+  # ---------------------------------------------------------------------------
+  # MISP — Threat Intelligence Platform  (port 8443 -> https)
+  # ---------------------------------------------------------------------------
+  misp:
+    image: ghcr.io/misp/misp-docker/misp-core:latest
+    restart: unless-stopped
+    depends_on:
+      - misp-db
+      - misp-redis
+    ports:
+      - "8443:443"
+    environment:
+      - BASE_URL=https://${VPS_HOST}:8443
+      - MYSQL_HOST=misp-db
+      - MYSQL_USER=misp
+      - MYSQL_PASSWORD=${MISP_DB_PASSWORD}
+      - MYSQL_DATABASE=misp
+      - REDIS_FQDN=misp-redis
+      - ADMIN_EMAIL=${MISP_ADMIN_EMAIL}
+      - ADMIN_PASSWORD=${MISP_ADMIN_PASSWORD}
+    volumes:
+      - misp-data:/var/www/MISP/app/files
+    networks: [soc]
+
+  misp-db:
+    image: mariadb:10.11
+    restart: unless-stopped
+    environment:
+      - MYSQL_USER=misp
+      - MYSQL_PASSWORD=${MISP_DB_PASSWORD}
+      - MYSQL_DATABASE=misp
+      - MYSQL_ROOT_PASSWORD=${MISP_DB_ROOT_PASSWORD}
+    volumes:
+      - misp-db-data:/var/lib/mysql
+    networks: [soc]
+
+  misp-redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    networks: [soc]
+
+  # ---------------------------------------------------------------------------
+  # Shuffle — SOAR / Orchestration  (port 3001)
+  # C'est le chef d'orchestre : reçoit les alertes, enrichit (VT/MISP),
+  # crée les cases TheHive automatiquement.
+  # ---------------------------------------------------------------------------
+  shuffle-backend:
+    image: ghcr.io/shuffle/shuffle-backend:latest
+    restart: unless-stopped
+    depends_on:
+      - shuffle-database
+    environment:
+      - SHUFFLE_APP_HOTLOAD_FOLDER=/shuffle-apps
+      - DATASTORE_EMULATOR_HOST=shuffle-database:8000
+      - SHUFFLE_CLOUDRUN_URL=http://shuffle-backend:5001
+      - ORG_ID=Shuffle
+      - BASE_URL=http://shuffle-backend:5001
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - shuffle-apps:/shuffle-apps
+    networks: [soc]
+
+  shuffle-frontend:
+    image: ghcr.io/shuffle/shuffle-frontend:latest
+    restart: unless-stopped
+    depends_on:
+      - shuffle-backend
+    ports:
+      - "3001:80"
+      - "3443:443"
+    environment:
+      - BACKEND_HOSTNAME=shuffle-backend
+    networks: [soc]
+
+  shuffle-orborus:
+    image: ghcr.io/shuffle/shuffle-orborus:latest
+    restart: unless-stopped
+    environment:
+      - SHUFFLE_APP_SDK_TIMEOUT=300
+      - ORG_ID=Shuffle
+      - ENVIRONMENT_NAME=Shuffle
+      - BASE_URL=http://shuffle-backend:5001
+      - DOCKER_API_VERSION=1.40
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks: [soc]
+
+  shuffle-database:
+    image: ghcr.io/shuffle/shuffle-opensearch:latest
+    restart: unless-stopped
+    environment:
+      - bootstrap.memory_lock=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms1G -Xmx1G"
+      - discovery.type=single-node
+      - DISABLE_SECURITY_PLUGIN=true
+    ulimits:
+      memlock: { soft: -1, hard: -1 }
+    volumes:
+      - shuffle-db-data:/usr/share/opensearch/data
+    networks: [soc]
+
+networks:
+  soc:
+    driver: bridge
+
+volumes:
+  cassandra-data:
+  es-data:
+  minio-data:
+  misp-data:
+  misp-db-data:
+  shuffle-apps:
+  shuffle-db-data:
