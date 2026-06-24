@@ -1,10 +1,12 @@
+import { useState, useEffect, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { mockTheHiveCases } from "@/lib/soc-mock";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Bug, Link2, Webhook, LayoutTemplate, Download, Lock, CheckCircle2, Eye, GitMerge, MessageSquare, PieChart } from "lucide-react";
+import { Bug, Link2, Webhook, LayoutTemplate, Download, Lock, CheckCircle2, Eye, GitMerge, MessageSquare, PieChart, RefreshCw } from "lucide-react";
 
 const stageStyle: Record<string, string> = {
   open: "border-amber-500/50 bg-amber-500/5",
@@ -13,9 +15,70 @@ const stageStyle: Record<string, string> = {
   closed: "border-muted bg-muted/30",
 };
 
-/** Kanban + timeline + stats + intégrations enrichies (mock). */
+type KanbanStage = "open" | "in_progress" | "resolved" | "closed";
+interface KanbanCase { id: string; title: string; severity: number; stage: KanbanStage }
+interface CaseRow { id: string; external_id: string | null; title: string; severity: number; status: string | null; stage: string | null }
+
+/** Mappe le status/stage TheHive vers une colonne du Kanban. */
+function toStage(c: { status?: string | null; stage?: string | null }): KanbanStage {
+  const s = (c.status ?? "").toLowerCase();
+  const st = (c.stage ?? "").toLowerCase();
+  if (s.includes("resolv")) return "resolved";
+  if (s.includes("clos") || s.includes("duplicat") || st.includes("clos")) return "closed";
+  if (st.includes("progress")) return "in_progress";
+  return "open";
+}
+
+/** Kanban (cas TheHive réels) + timeline + stats + intégrations. */
 export function TheHiveToolTab() {
-  const cols: { key: (typeof mockTheHiveCases)[0]["stage"]; title: string }[] = [
+  const [cases, setCases] = useState<KanbanCase[]>(
+    mockTheHiveCases.map((c) => ({ id: c.id, title: c.title, severity: c.severity, stage: c.stage as KanbanStage })),
+  );
+  const [isReal, setIsReal] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+
+  const fetchCases = useCallback(async () => {
+    try {
+      // thehive_cases n'est pas dans les types Supabase générés → accès non typé localisé
+      const { data, error } = await (supabase.from as unknown as (t: string) => ReturnType<typeof supabase.from>)("thehive_cases")
+        .select("id, external_id, title, severity, status, stage")
+        .order("created_at_thehive", { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      const rows = (data ?? []) as CaseRow[];
+      if (rows.length > 0) {
+        setCases(rows.map((c) => ({
+          id: c.external_id ?? c.id,
+          title: c.title,
+          severity: c.severity,
+          stage: toStage(c),
+        })));
+        setIsReal(true);
+      } else {
+        setIsReal(false);
+      }
+    } catch {
+      // conserve les données de démo en cas d'échec
+    }
+  }, []);
+
+  useEffect(() => { void fetchCases(); }, [fetchCases]);
+
+  const syncNow = useCallback(async () => {
+    setSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("sync-thehive-cases");
+      if (error) throw error;
+      toast.success("Synchronisation TheHive", { description: `${data?.imported ?? 0} cas importés sur ${data?.total ?? 0}` });
+      await fetchCases();
+    } catch (e) {
+      toast.error("Échec de la synchronisation", { description: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setSyncing(false);
+    }
+  }, [fetchCases]);
+
+  const cols: { key: KanbanStage; title: string }[] = [
     { key: "open", title: "Ouvert" },
     { key: "in_progress", title: "En cours" },
     { key: "resolved", title: "Résolu" },
@@ -106,12 +169,25 @@ export function TheHiveToolTab() {
 
         <TabsContent value="kanban" className="space-y-4">
 
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Badge variant={isReal ? "secondary" : "outline"}>
+                {isReal ? "Données réelles · TheHive" : "Démo (aucun cas synchronisé)"}
+              </Badge>
+              <span className="text-xs text-muted-foreground">{cases.length} cas</span>
+            </div>
+            <Button size="sm" variant="outline" className="gap-2" onClick={syncNow} disabled={syncing}>
+              <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
+              {syncing ? "Synchronisation…" : "Synchroniser"}
+            </Button>
+          </div>
+
           <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
             {cols.map((c) => (
               <div key={c.key} className="space-y-2">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{c.title}</h3>
                 <div className="flex min-h-[140px] flex-col gap-2 rounded-lg border border-dashed border-border p-2">
-                  {mockTheHiveCases
+                  {cases
                     .filter((k) => k.stage === c.key)
                     .map((k) => (
                       <Card key={k.id} className={`p-3 text-sm ${stageStyle[k.stage]}`}>

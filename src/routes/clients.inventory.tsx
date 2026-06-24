@@ -15,6 +15,7 @@ import {
   RefreshCw, PowerOff, ShieldCheck, Database, ListFilter,
   CheckCircle, AlertTriangle, XCircle, Info
 } from "lucide-react";
+import { getClientExtendedData } from "./clients.index";
 
 export const Route = createFileRoute("/clients/inventory")({
   head: () => ({ meta: [{ title: "Parc & Inventaire EDR — SOC Platform" }] }),
@@ -28,13 +29,13 @@ interface EdrDevice {
 }
 
 const SEED_DEVICES: EdrDevice[] = [
-  { id: "d1", hostname: "desktop-ageroute-01", clientName: "Ageroute Sénégal", ip: "192.168.1.102", os: "windows", status: "active",       cpu: 12, ram: 42, version: "v4.7.2", lastSeen: "À l'instant" },
-  { id: "d2", hostname: "srv-prod-sonabhy-01", clientName: "SONABHY",          ip: "10.0.4.15",    os: "linux",   status: "active",       cpu: 45, ram: 78, version: "v4.7.2", lastSeen: "À l'instant" },
+  { id: "d1", hostname: "desktop-ageroute-01", clientName: "Ageroute Sénégal", ip: "192.168.1.102", os: "windows", status: "active",       cpu: 12, ram: 42, version: "v4.14.5", lastSeen: "À l'instant" },
+  { id: "d2", hostname: "srv-prod-sonabhy-01", clientName: "SONABHY",          ip: "10.0.4.15",    os: "linux",   status: "active",       cpu: 45, ram: 78, version: "v4.14.5", lastSeen: "À l'instant" },
   { id: "d3", hostname: "macbook-minfin-02",   clientName: "Min. Finances",    ip: "172.16.8.50",  os: "macos",   status: "alert",        cpu: 92, ram: 95, version: "v4.7.1", lastSeen: "2 min plus tôt" },
-  { id: "d4", hostname: "desktop-orange-12",   clientName: "Orange Burkina",   ip: "10.20.30.40",  os: "windows", status: "isolated",     cpu: 0,  ram: 0,  version: "v4.7.2", lastSeen: "5h plus tôt" },
-  { id: "d5", hostname: "srv-db-bis-01",       clientName: "BIS Group",        ip: "192.168.10.5", os: "linux",   status: "active",       cpu: 28, ram: 61, version: "v4.7.2", lastSeen: "À l'instant" },
+  { id: "d4", hostname: "desktop-orange-12",   clientName: "Orange Burkina",   ip: "10.20.30.40",  os: "windows", status: "isolated",     cpu: 0,  ram: 0,  version: "v4.14.5", lastSeen: "5h plus tôt" },
+  { id: "d5", hostname: "srv-db-bis-01",       clientName: "BIS Group",        ip: "192.168.10.5", os: "linux",   status: "active",       cpu: 28, ram: 61, version: "v4.14.5", lastSeen: "À l'instant" },
   { id: "d6", hostname: "desktop-cfao-03",     clientName: "Groupe CFAO",      ip: "192.168.4.12", os: "windows", status: "disconnected", cpu: 0,  ram: 0,  version: "v4.7.0", lastSeen: "12h plus tôt" },
-  { id: "d7", hostname: "srv-web-ageroute-02", clientName: "Ageroute Sénégal", ip: "192.168.1.105", os: "linux",   status: "active",       cpu: 18, ram: 35, version: "v4.7.2", lastSeen: "À l'instant" },
+  { id: "d7", hostname: "srv-web-ageroute-02", clientName: "Ageroute Sénégal", ip: "192.168.1.105", os: "linux",   status: "active",       cpu: 18, ram: 35, version: "v4.14.5", lastSeen: "À l'instant" },
 ];
 
 const SHELL_COMMANDS: Record<string, string> = {
@@ -46,7 +47,7 @@ const SHELL_COMMANDS: Record<string, string> = {
 };
 
 function InventoryPage() {
-  const { roles, organization } = useAuth();
+  const { roles, organization, user } = useAuth();
   const isClientOnly = roles.includes("client") && !roles.includes("admin") && !roles.includes("analyste") && !roles.includes("manager");
 
   const [devices, setDevices] = useState<EdrDevice[]>([]);
@@ -55,18 +56,34 @@ function InventoryPage() {
   const [filterStatus, setFilterStatus] = useState("all");
   const [terminalDevice, setTerminalDevice] = useState<EdrDevice | null>(null);
   const [terminalHistory, setTerminalHistory] = useState<string[]>([
-    "=== CONSOLE WAZUH REMOTE EDR v4.7.2 ===",
+    "=== CONSOLE WAZUH REMOTE EDR v4.14.5 ===",
     "Sélectionnez un poste pour ouvrir une session sécurisée.",
   ]);
   const [termInput, setTermInput] = useState("");
 
   useEffect(() => {
-    // Filter devices by client organization if client-only
-    const visible = isClientOnly && organization
-      ? SEED_DEVICES.filter(d => d.clientName.toLowerCase().includes(organization.toLowerCase()))
-      : SEED_DEVICES;
-    setDevices(visible);
-  }, [isClientOnly, organization]);
+    if (isClientOnly && user) {
+      // Espace client : on n'affiche QUE ses propres machines (mêmes données que la vue admin)
+      const orgName = organization || "Client";
+      const ext = getClientExtendedData(user.id, orgName);
+      const ownDevices: EdrDevice[] = ext.pcs.map(pc => ({
+        id: pc.id,
+        hostname: pc.name,
+        clientName: orgName,
+        ip: pc.ip,
+        os: pc.os,
+        status: pc.status,
+        cpu: pc.cpu,
+        ram: pc.ram,
+        version: (pc as any).version || "v4.14.5",
+        lastSeen: pc.lastSeen,
+      }));
+      setDevices(ownDevices);
+    } else {
+      // Staff (admin / analyste / manager) : vue globale de tout le parc
+      setDevices(SEED_DEVICES);
+    }
+  }, [isClientOnly, organization, user]);
 
   const total = devices.length;
   const active = devices.filter(d => d.status === "active").length;
@@ -160,9 +177,13 @@ function InventoryPage() {
             </div>
             <div>
               <h1 className="text-3xl font-extrabold bg-gradient-to-r from-slate-900 via-amber-600 to-amber-800 dark:from-white dark:via-amber-400 dark:to-yellow-500 bg-clip-text text-transparent">
-                Inventaire EDR & Wazuh Global
+                {isClientOnly ? "Mes PC Connectés (EDR)" : "Inventaire EDR & Wazuh Global"}
               </h1>
-              <p className="text-xs text-muted-foreground mt-0.5">Console de gestion centralisée des agents · Télémétrie · Actions de masse</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {isClientOnly
+                  ? `Parc de ${organization || "votre organisation"} · Agents Wazuh · Télémétrie temps réel`
+                  : "Console de gestion centralisée des agents · Télémétrie · Actions de masse"}
+              </p>
             </div>
           </div>
         </div>

@@ -136,29 +136,14 @@ export function SocSidebar({ onNavigate }: { onNavigate?: () => void }) {
             </div>
           </div>
 
-          {/* Supervision */}
-          <div className="px-3">
-            <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Supervision</p>
-            <nav className="space-y-1">
-              {/* Alertes */}
-              {renderItem({ to: "/alertes", label: "Alertes", icon: AlertTriangle })}
-
-              {/* PCs connectés / Inventaire EDR */}
-              {renderItem({ to: "/clients/inventory", label: "PCs connectés (EDR)", icon: Laptop })}
-            </nav>
-          </div>
-
           {/* Administration Client */}
           <div className="px-3">
             <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Administration</p>
             <nav className="space-y-1">
-              {/* Gestion des agents */}
-              {renderItem({ to: "/admin", label: "Gestion des Agents", icon: Users })}
-
               <button
                 onClick={() => setAdminOpen(o => !o)}
                 className={`group flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors ${
-                  pathname === "/admin/new" || pathname === "/settings" || pathname === "/audit"
+                  pathname === "/admin" || pathname === "/admin/new" || pathname === "/settings" || pathname === "/audit"
                     ? "border-l-4 border-primary bg-accent font-semibold text-accent-foreground"
                     : "border-l-4 border-transparent text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                 }`}
@@ -173,10 +158,23 @@ export function SocSidebar({ onNavigate }: { onNavigate?: () => void }) {
               {adminOpen && (
                 <div className="ml-4 space-y-0.5 border-l pl-2" style={{ borderColor: isDarker ? "#3f3f46" : "hsl(var(--border))" }}>
                   {renderItem({ to: "/admin/new", label: "Nouveau RH", icon: UserPlus })}
+                  {renderItem({ to: "/admin", label: "Gestion des Agents", icon: Users })}
                   {renderItem({ to: "/settings", label: "Paramètres Globaux", icon: Sliders })}
                   {renderItem({ to: "/audit", label: "Journaux d'Audit", icon: FileText })}
                 </div>
               )}
+            </nav>
+          </div>
+
+          {/* Supervision */}
+          <div className="px-3">
+            <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Supervision</p>
+            <nav className="space-y-1">
+              {/* Alertes */}
+              {renderItem({ to: "/alertes", label: "Alertes", icon: AlertTriangle })}
+
+              {/* PCs connectés / Inventaire EDR */}
+              {renderItem({ to: "/clients/inventory", label: "PCs connectés (EDR)", icon: Laptop })}
             </nav>
           </div>
 
@@ -284,6 +282,7 @@ export function SocSidebar({ onNavigate }: { onNavigate?: () => void }) {
                 {renderItem({ to: "/admin/new", label: "Nouveau RH", icon: UserPlus })}
                 {renderItem({ to: "/admin/profiles", label: "Gestion des profils", icon: Shield })}
                 {renderItem({ to: "/admin/offres", label: "Catalogues Offres", icon: CreditCard })}
+                {renderItem({ to: "/abonnements", label: "Abonnements Stripe", icon: CreditCard })}
                 {renderItem({ to: "/settings", label: "Paramètres Globaux", icon: Sliders })}
                 {renderItem({ to: "/integrations", label: "Connecteurs & API", icon: Plug })}
                 {renderItem({ to: "/audit", label: "Journaux d'Audit", icon: FileText })}
@@ -404,6 +403,7 @@ export function SocSidebar({ onNavigate }: { onNavigate?: () => void }) {
         <div className="px-3">
           <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("Module Facturation")}</p>
           <nav className="space-y-1">
+            {renderItem({ to: "/abonnements", label: "Abonnements Stripe", icon: CreditCard })}
             {/* ── Facturation dropdown ── */}
             <button
               onClick={() => setFacturationOpen(o => !o)}

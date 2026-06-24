@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,7 +29,6 @@ export const Route = createFileRoute("/admin/new")({
 /* ─── Data Constants ─────────────────────────────────────────────── */
 
 const ROLES: { value: AppRole; label: string; desc: string; icon: React.ReactNode; color: string }[] = [
-  { value: "client",   label: "Client",          desc: "Accès limité aux tableaux de bord de son organisation",    icon: <Users className="h-4 w-4" />,       color: "text-sky-500"     },
   { value: "analyste", label: "Analyste Cyber",   desc: "Gestion des alertes, audits de sécurité et SOC",           icon: <Zap className="h-4 w-4" />,         color: "text-violet-500"  },
   { value: "manager",  label: "Manager SOC",      desc: "Supervision des processus et répartition des tâches",      icon: <Sliders className="h-4 w-4" />,     color: "text-amber-500"   },
   { value: "admin",    label: "Administrateur",   desc: "Contrôle total sur la plateforme et les utilisateurs",     icon: <Shield className="h-4 w-4" />,      color: "text-rose-500"    },
@@ -97,7 +96,7 @@ function NewUserPage() {
     organization: "",
     physicalAddress: "",
     city: "",
-    role: (isClientOnly ? "client" : "client") as AppRole,
+    role: (isClientOnly ? "client" : "analyste") as AppRole,
     generation: "v1",
     password: "",
     confirmPassword: "",
@@ -364,6 +363,25 @@ function NewUserPage() {
           </div>
         )}
 
+        {/* Bannière info pour les admins Sonatel */}
+        {!isClientOnly && (
+          <div className="mb-6 flex items-center gap-4 p-4 rounded-2xl border-2 bg-amber-50/80 dark:bg-amber-950/20 border-amber-300/60 dark:border-amber-500/30">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
+              <Info className="h-5 w-5 text-amber-500" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-black text-amber-700 dark:text-amber-400">Création de comptes RH Sonatel uniquement</p>
+              <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">
+                Cette page est réservée aux agents internes (Analyste, Manager SOC, Administrateur).{" "}
+                Pour créer un compte client, utilisez{" "}
+                <Link to="/clients/new" className="font-bold underline text-amber-600 dark:text-amber-400 hover:text-amber-700">
+                  Nouveau Client
+                </Link>.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* ── Header ── */}
         <div className="mb-10 flex items-start gap-4">
           <Button
@@ -549,32 +567,44 @@ function NewUserPage() {
                       </div>
                     </div>
 
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      {ROLES.map(r => (
-                        <div
-                          key={r.value}
-                          onClick={() => setForm({ ...form, role: r.value })}
-                          className={`
-                            cursor-pointer rounded-2xl p-4 border-2 transition-all duration-300 relative overflow-hidden group
-                            ${form.role === r.value
-                              ? "border-amber-500 bg-amber-500/8 shadow-[0_0_20px_rgba(245,158,11,0.15)]"
-                              : "border-slate-100 dark:border-zinc-800 bg-slate-50/60 dark:bg-zinc-800/20 hover:border-amber-300 hover:bg-amber-50/50 dark:hover:bg-amber-500/5"
-                            }
-                          `}
-                        >
-                          {form.role === r.value && (
-                            <div className="absolute top-3 right-3">
-                              <span className="w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center">
-                                <Check className="h-3 w-3 text-white stroke-[3]" />
-                              </span>
-                            </div>
-                          )}
-                          <div className={`flex items-center gap-2 mb-2 ${r.color}`}>{r.icon}</div>
-                          <div className="text-sm font-black text-slate-800 dark:text-zinc-100 mb-1">{r.label}</div>
-                          <p className="text-[11px] text-slate-400 dark:text-zinc-500 leading-snug">{r.desc}</p>
+                    {isClientOnly ? (
+                      <div className="flex items-start gap-3 rounded-2xl p-4 bg-sky-50/80 dark:bg-sky-950/30 border border-sky-300/60 dark:border-sky-500/30">
+                        <Users className="h-5 w-5 text-sky-500 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-black text-sky-700 dark:text-sky-400">Rôle attribué : Client</p>
+                          <p className="text-[11px] text-slate-500 dark:text-zinc-400 mt-0.5">
+                            Les utilisateurs ajoutés depuis votre espace auront automatiquement le rôle <strong>Client</strong> avec accès restreint à votre organisation.
+                          </p>
                         </div>
-                      ))}
-                    </div>
+                      </div>
+                    ) : (
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {ROLES.map(r => (
+                          <div
+                            key={r.value}
+                            onClick={() => setForm({ ...form, role: r.value })}
+                            className={`
+                              cursor-pointer rounded-2xl p-4 border-2 transition-all duration-300 relative overflow-hidden group
+                              ${form.role === r.value
+                                ? "border-amber-500 bg-amber-500/8 shadow-[0_0_20px_rgba(245,158,11,0.15)]"
+                                : "border-slate-100 dark:border-zinc-800 bg-slate-50/60 dark:bg-zinc-800/20 hover:border-amber-300 hover:bg-amber-50/50 dark:hover:bg-amber-500/5"
+                              }
+                            `}
+                          >
+                            {form.role === r.value && (
+                              <div className="absolute top-3 right-3">
+                                <span className="w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center">
+                                  <Check className="h-3 w-3 text-white stroke-[3]" />
+                                </span>
+                              </div>
+                            )}
+                            <div className={`flex items-center gap-2 mb-2 ${r.color}`}>{r.icon}</div>
+                            <div className="text-sm font-black text-slate-800 dark:text-zinc-100 mb-1">{r.label}</div>
+                            <p className="text-[11px] text-slate-400 dark:text-zinc-500 leading-snug">{r.desc}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
 
                     <Separator className="my-6 border-slate-100 dark:border-zinc-800" />
 

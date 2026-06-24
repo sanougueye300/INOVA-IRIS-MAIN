@@ -244,48 +244,69 @@ function AdminAuditLogs() {
 
       <div className="relative container mx-auto px-6 py-10 max-w-7xl space-y-10">
         
-        {/* Header Block */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-slate-200 dark:border-white/5">
-          <div className="space-y-2">
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-orange-500 to-amber-500 shadow-md shadow-orange-500/10">
-                <FileText className="h-6 w-6 text-white" />
+        {/* Header Block — bandeau photo Sonatel HQ en arrière-plan */}
+        <div className="relative overflow-hidden rounded-3xl border border-slate-800/60 shadow-xl"
+          style={{ backgroundColor: "#0f172a" }}>
+          {/* Image de fond : tente .jpg → .png → .webp → .jpeg, sinon fond sombre */}
+          <img
+            src="/sonatel-hq.jpg"
+            alt=""
+            aria-hidden="true"
+            onError={(e) => {
+              const el = e.currentTarget;
+              const exts = ["/sonatel-hq.png", "/sonatel-hq.webp", "/sonatel-hq.jpeg"];
+              const i = Number(el.dataset.i || "0");
+              if (i < exts.length) { el.dataset.i = String(i + 1); el.src = exts[i]; }
+              else { el.style.display = "none"; }
+            }}
+            className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+          />
+          {/* Overlay dégradé pour lisibilité du texte */}
+          <div className="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/70 to-slate-900/40 pointer-events-none" />
+          <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-orange-400 via-amber-400 to-orange-300" />
+
+          <div className="relative flex flex-col lg:flex-row lg:items-center justify-between gap-6 p-7 lg:p-8">
+            <div className="space-y-2">
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-orange-500 to-amber-500 shadow-md shadow-orange-500/30">
+                  <FileText className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-3xl font-black tracking-tight text-white sm:text-4xl drop-shadow-lg">
+                    {isClientOnly ? "Mes Journaux d'Activité" : "Journaux d'Audit SOC"}
+                  </h1>
+                  <p className="text-[11px] font-mono text-orange-400 uppercase tracking-wider">
+                    {isClientOnly ? "HISTORIQUE DE VOTRE ORGANISATION" : "TRAÇABILITÉ IMMUABLE & CONTRÔLE DE SÉCURITÉ"}
+                  </p>
+                </div>
               </div>
-              <div>
-                <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white sm:text-4xl">
-                  {isClientOnly ? "Mes Journaux d'Activité" : "Journaux d'Audit SOC"}
-                </h1>
-                <p className="text-[11px] font-mono text-orange-600 dark:text-orange-500 uppercase tracking-wider">
-                  {isClientOnly ? "HISTORIQUE DE VOTRE ORGANISATION" : "TRAÇABILITÉ IMMUABLE & CONTRÔLE DE SÉCURITÉ"}
-                </p>
-              </div>
+              <p className="text-sm text-slate-200/90 max-w-2xl drop-shadow">
+                {isClientOnly
+                  ? "Consultez l'historique de toutes les actions effectuées par les utilisateurs de votre organisation."
+                  : "Historique complet et cryptographiquement sécurisé de toutes les actions administratives, techniques et utilisateurs effectuées sur la plateforme."}
+              </p>
+              {isClientOnly && organization && (
+                <div className="flex items-center gap-2 mt-1">
+                  <Building2 className="h-3.5 w-3.5 text-sky-400" />
+                  <span className="text-xs font-bold text-sky-300">{organization}</span>
+                  <Badge className="bg-sky-500/20 text-sky-200 border-sky-400/30 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                    Mon organisation
+                  </Badge>
+                </div>
+              )}
             </div>
-            <p className="text-sm text-slate-500 dark:text-slate-400 max-w-2xl">
-              {isClientOnly
-                ? "Consultez l'historique de toutes les actions effectuées par les utilisateurs de votre organisation."
-                : "Historique complet et cryptographiquement sécurisé de toutes les actions administratives, techniques et utilisateurs effectuées sur la plateforme."}
-            </p>
-            {isClientOnly && organization && (
-              <div className="flex items-center gap-2 mt-1">
-                <Building2 className="h-3.5 w-3.5 text-sky-500" />
-                <span className="text-xs font-bold text-sky-600 dark:text-sky-400">{organization}</span>
-                <Badge className="bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400 border-sky-200/60 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                  Mon organisation
-                </Badge>
-              </div>
-            )}
+
+            <Button
+              onClick={handleExportExcel}
+              disabled={isExporting}
+              className="relative overflow-hidden group h-12 px-6 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold shadow-lg shadow-orange-500/30 border-none transition-all duration-300 hover:-translate-y-0.5 active:translate-y-0 cursor-pointer shrink-0"
+            >
+              <span className="flex items-center gap-2">
+                <Download className={`h-4.5 w-4.5 ${isExporting ? 'animate-bounce' : 'group-hover:translate-y-0.5 transition-transform'}`} />
+                {isExporting ? "Génération Excel..." : "Exporter au format Excel"}
+              </span>
+            </Button>
           </div>
-          
-          <Button 
-            onClick={handleExportExcel} 
-            disabled={isExporting}
-            className="relative overflow-hidden group h-12 px-6 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold shadow-md shadow-orange-500/20 border-none transition-all duration-300 hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
-          >
-            <span className="flex items-center gap-2">
-              <Download className={`h-4.5 w-4.5 ${isExporting ? 'animate-bounce' : 'group-hover:translate-y-0.5 transition-transform'}`} />
-              {isExporting ? "Génération Excel..." : "Exporter au format Excel"}
-            </span>
-          </Button>
         </div>
 
         {/* Next-gen Dashboard Statistics Panel */}

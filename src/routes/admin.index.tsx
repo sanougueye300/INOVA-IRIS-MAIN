@@ -293,12 +293,21 @@ function Admin() {
       const visibleProfiles = isClientOnly && organization
         ? allProfiles.filter(pr => pr.organization?.toLowerCase() === organization.toLowerCase())
         : allProfiles;
-      setProfiles(visibleProfiles);
 
       const map: Record<string, AppRole[]> = {};
       ((r as RoleRow[]) ?? []).forEach(x => { (map[x.user_id] ||= []).push(x.role); });
       if (!hasSanou) map["default-sanou"] = ["admin"];
       setRolesByUser(map);
+
+      // La page admin n'affiche que les RH Sonatel (analyste, manager, admin)
+      // Les comptes "client" appartiennent à /clients
+      const rhProfiles = isClientOnly
+        ? visibleProfiles
+        : visibleProfiles.filter(pr => {
+            const userRoles = map[pr.id] ?? [];
+            return userRoles.length === 0 || userRoles.some(role => role !== "client");
+          });
+      setProfiles(rhProfiles);
     } finally {
       setLoading(false);
     }

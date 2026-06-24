@@ -26,6 +26,7 @@ import { Route as AssistantRouteImport } from './routes/assistant'
 import { Route as ArchitectureRouteImport } from './routes/architecture'
 import { Route as AlertesRouteImport } from './routes/alertes'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AbonnementsRouteImport } from './routes/abonnements'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ClientsIndexRouteImport } from './routes/clients.index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
@@ -131,6 +132,11 @@ const AdminRoute = AdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AbonnementsRoute = AbonnementsRouteImport.update({
+  id: '/abonnements',
+  path: '/abonnements',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -229,6 +235,7 @@ const AccountSecurityRoute = AccountSecurityRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/abonnements': typeof AbonnementsRoute
   '/admin': typeof AdminRouteWithChildren
   '/alertes': typeof AlertesRoute
   '/architecture': typeof ArchitectureRoute
@@ -267,6 +274,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/abonnements': typeof AbonnementsRoute
   '/alertes': typeof AlertesRoute
   '/architecture': typeof ArchitectureRoute
   '/assistant': typeof AssistantRoute
@@ -305,6 +313,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/abonnements': typeof AbonnementsRoute
   '/admin': typeof AdminRouteWithChildren
   '/alertes': typeof AlertesRoute
   '/architecture': typeof ArchitectureRoute
@@ -345,6 +354,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/abonnements'
     | '/admin'
     | '/alertes'
     | '/architecture'
@@ -383,6 +393,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/abonnements'
     | '/alertes'
     | '/architecture'
     | '/assistant'
@@ -420,6 +431,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/abonnements'
     | '/admin'
     | '/alertes'
     | '/architecture'
@@ -459,6 +471,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AbonnementsRoute: typeof AbonnementsRoute
   AdminRoute: typeof AdminRouteWithChildren
   AlertesRoute: typeof AlertesRoute
   ArchitectureRoute: typeof ArchitectureRoute
@@ -604,6 +617,13 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/abonnements': {
+      id: '/abonnements'
+      path: '/abonnements'
+      fullPath: '/abonnements'
+      preLoaderRoute: typeof AbonnementsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -782,6 +802,7 @@ const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AbonnementsRoute: AbonnementsRoute,
   AdminRoute: AdminRouteWithChildren,
   AlertesRoute: AlertesRoute,
   ArchitectureRoute: ArchitectureRoute,

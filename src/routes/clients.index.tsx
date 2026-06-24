@@ -115,74 +115,261 @@ export function getClientExtendedData(clientId: string, orgName: string): Client
   return data;
 }
 
+const OFFER_NAMES: Record<string, string> = {
+  Bronze: "Inova Secure",
+  Argent: "Terranga Secure",
+  Or: "Gainde Secure",
+  Platine: "Gainde Secure Premium",
+};
+
+const OFFER_SLA: Record<string, { mttd: string; mttr: string; support: string }> = {
+  Bronze: { mttd: "< 30 min", mttr: "< 4 heures", support: "8h-18h L-V" },
+  Argent: { mttd: "< 15 min", mttr: "< 2 heures", support: "24h/7 L-V" },
+  Or:     { mttd: "< 10 min", mttr: "< 1 heure",  support: "24h/7/365 Dédié" },
+  Platine:{ mttd: "< 5 min",  mttr: "< 30 min",   support: "24h/7/365 Dédié+" },
+};
+
 export function downloadContractFile(orgName: string, fullName: string, extData: ClientExtendedData) {
-  const content = `================================================================================
-                     CONTRAT DE SERVICES DE CYBERSÉCURITÉ SOC / EDR
-================================================================================
+  generateContractPDF(orgName, fullName, extData);
+}
 
-RÉFÉRENCE CONTRAT : CONT-${extData.clientId.slice(0, 8).toUpperCase()}-${new Date(extData.contractStart).getFullYear()}
-DATE D'EFFET      : ${extData.contractStart}
-DATE D'ÉCHÉANCE   : ${extData.contractEnd}
-STATUT DU CONTRAT : ${extData.contractStatus.toUpperCase()}
+export function generateContractPDF(orgName: string, fullName: string, extData: ClientExtendedData) {
+  const ref = `CONT-${extData.clientId.slice(0, 8).toUpperCase()}-${new Date(extData.contractStart).getFullYear()}`;
+  const offerName = OFFER_NAMES[extData.contractTier] ?? extData.contractTier;
+  const sla = OFFER_SLA[extData.contractTier] ?? { mttd: "< 15 min", mttr: "< 2 heures", support: "24h/7" };
+  const today = new Date().toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
 
---------------------------------------------------------------------------------
-1. PARTIES CONTRACTANTES
---------------------------------------------------------------------------------
-PRESTATAIRE : INOVA CYBER SOC PLATFORM
-              Représenté par l'équipe SOC d'Administration
+  const pcRows = extData.pcs.map((pc, i) => `
+    <tr style="background:${i % 2 === 0 ? "#f9fafb" : "#ffffff"}">
+      <td style="padding:6px 10px;font-weight:600;color:#1e293b">${i + 1}</td>
+      <td style="padding:6px 10px;font-family:monospace;font-size:11px">${pc.name}</td>
+      <td style="padding:6px 10px;text-transform:uppercase;font-size:11px">${pc.os}</td>
+      <td style="padding:6px 10px;font-family:monospace;font-size:11px">${pc.ip}</td>
+      <td style="padding:6px 10px;font-family:monospace;font-size:11px">WZ-${pc.wazuhId}</td>
+      <td style="padding:6px 10px">
+        <span style="background:${pc.status==="active"?"#dcfce7":pc.status==="alert"?"#fef3c7":"#fee2e2"};color:${pc.status==="active"?"#166534":pc.status==="alert"?"#92400e":"#991b1b"};padding:2px 8px;border-radius:999px;font-size:10px;font-weight:700;text-transform:uppercase">${pc.status}</span>
+      </td>
+    </tr>`).join("");
 
-CLIENT      : ${orgName || "Non spécifié"}
-              Représenté par : ${fullName || "Non spécifié"}
+  const html = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<title>Contrat — ${offerName} — ${orgName}</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; color: #1e293b; background: #fff; }
+  .page { max-width: 780px; margin: 0 auto; }
 
---------------------------------------------------------------------------------
-2. NIVEAU DE SERVICE & ABONNEMENT (SLA)
---------------------------------------------------------------------------------
-FORMULE SOUSCRITE   : OFFRE ${extData.contractTier.toUpperCase()}
-VALEUR DU CONTRAT   : ${extData.contractValue.toLocaleString("fr-FR")} FCFA / MOIS
-NOMBRE MAX DE PC    : ${extData.pcs.length} Postes connectés autorisés
+  /* Header */
+  .header { background: linear-gradient(135deg, #0f172a 0%, #1e293b 60%, #f97316 100%); padding: 28px 32px; color: white; border-radius: 4px 4px 0 0; display: flex; justify-content: space-between; align-items: center; }
+  .logo-area { display: flex; flex-direction: column; gap: 4px; }
+  .logo-name { font-size: 22px; font-weight: 900; letter-spacing: -0.5px; color: #fff; }
+  .logo-sub  { font-size: 10px; font-weight: 600; letter-spacing: 3px; text-transform: uppercase; color: #f97316; }
+  .ref-area  { text-align: right; }
+  .ref-label { font-size: 9px; text-transform: uppercase; letter-spacing: 2px; color: #94a3b8; }
+  .ref-val   { font-size: 13px; font-weight: 800; font-family: monospace; color: #fb923c; margin-top: 2px; }
+  .ref-date  { font-size: 10px; color: #cbd5e1; margin-top: 4px; }
 
-NIVEAUX DE SERVICE (SLA) GARANTIS :
-- MTTD (Temps moyen de détection)  : < 15 minutes
-- MTTR (Temps moyen de réponse)    : < 2 heures
-- Support technique                : 24h/24, 7j/7
-- Plateforme EDR active            : Oui, avec isolation à distance autorisée
+  /* Title band */
+  .title-band { background: #f97316; padding: 10px 32px; }
+  .title-band h1 { font-size: 13px; font-weight: 800; color: white; letter-spacing: 1px; text-transform: uppercase; }
+  .title-band p  { font-size: 10px; color: #fed7aa; margin-top: 2px; }
 
---------------------------------------------------------------------------------
-3. INVENTAIRE TECHNIQUE DES POSTES SÉCURISÉS (ACTIFS)
---------------------------------------------------------------------------------
-Voici la liste des machines connectées et couvertes par la technologie EDR :
+  /* Status bar */
+  .status-bar { background: #ecfdf5; border-bottom: 2px solid #10b981; padding: 8px 32px; display: flex; align-items: center; gap: 8px; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #10b981; }
+  .status-text { font-size: 10px; font-weight: 700; color: #065f46; text-transform: uppercase; letter-spacing: 1px; }
 
-${extData.pcs.map((pc, idx) => `${String(idx + 1).padStart(2, " ")}. MACHINE : ${pc.name.padEnd(30)} OS : ${pc.os.toUpperCase().padEnd(10)} IP : ${pc.ip.padEnd(15)} ID AGENT : ${pc.wazuhId}`).join("\n")}
+  /* Body */
+  .body { padding: 24px 32px; }
 
---------------------------------------------------------------------------------
-4. CLAUSE DE CONFIDENTIALITÉ & RESPONSABILITÉ
---------------------------------------------------------------------------------
-Les deux parties s'engagent à maintenir une stricte confidentialité concernant
-les informations de sécurité, logs, et vulnérabilités détectées sur le réseau.
-Le client autorise expressément l'équipe SOC à isoler en quarantaine tout
-terminal présentant un comportement hautement suspect ou compromis afin de
-prévenir la propagation d'incidents (Ransomware, Bruteforce interne).
+  /* Section */
+  .section { margin-bottom: 20px; }
+  .section-title { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; color: #f97316; border-left: 3px solid #f97316; padding-left: 8px; margin-bottom: 10px; }
 
---------------------------------------------------------------------------------
-5. SIGNATURES ÉLECTRONIQUES VALIDES
---------------------------------------------------------------------------------
-Signé numériquement par :
-- Pour le Prestataire : Administration INOVA SOC
-- Pour le Client      : ${fullName || "Non spécifié"} (Signature certifiée le ${extData.contractStart})
+  /* Parties grid */
+  .parties { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .party-box { border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 12px 14px; background: #f8fafc; }
+  .party-role { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; color: #64748b; margin-bottom: 6px; }
+  .party-name { font-size: 13px; font-weight: 800; color: #0f172a; }
+  .party-sub  { font-size: 10px; color: #64748b; margin-top: 3px; }
 
-================================================================================
-              INOVA CYBER SOC — TOUS DROITS RÉSERVÉS — CONTRAT SÉCURISÉ
-================================================================================`;
+  /* Offer badge */
+  .offer-badge { display: inline-flex; align-items: center; gap: 8px; background: linear-gradient(135deg, #f97316, #f59e0b); padding: 8px 16px; border-radius: 8px; color: white; font-weight: 800; font-size: 14px; margin-bottom: 12px; }
+  .offer-badge span { font-size: 10px; opacity: 0.85; font-weight: 600; }
 
-  const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `Contrat_${(orgName || "Client").replace(/[^a-zA-Z0-9]/g, "_")}.txt`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  /* SLA grid */
+  .sla-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .sla-card { border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; background: #fff; text-align: center; }
+  .sla-value { font-size: 14px; font-weight: 900; color: #0f172a; }
+  .sla-label { font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: #64748b; margin-top: 2px; }
+
+  /* Table */
+  table { width: 100%; border-collapse: collapse; border-radius: 8px; overflow: hidden; border: 1px solid #e2e8f0; }
+  th { background: #1e293b; color: white; padding: 8px 10px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; text-align: left; }
+
+  /* Clause */
+  .clause-box { background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; padding: 12px 14px; font-size: 11px; line-height: 1.6; color: #7c2d12; }
+
+  /* Signatures */
+  .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 20px; }
+  .sig-box { border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 14px; }
+  .sig-role { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; color: #64748b; }
+  .sig-name { font-size: 12px; font-weight: 800; color: #0f172a; margin: 6px 0; }
+  .sig-badge { background: #ecfdf5; border: 1px solid #6ee7b7; color: #065f46; font-size: 10px; font-weight: 700; padding: 3px 10px; border-radius: 999px; display: inline-block; }
+  .sig-date  { font-size: 10px; color: #64748b; margin-top: 6px; }
+  .sig-line  { border-top: 1.5px dashed #cbd5e1; margin: 10px 0 6px; }
+
+  /* Footer */
+  .footer { background: #0f172a; color: #64748b; padding: 10px 32px; font-size: 9px; display: flex; justify-content: space-between; align-items: center; border-radius: 0 0 4px 4px; margin-top: 24px; }
+  .footer-brand { color: #f97316; font-weight: 800; font-size: 10px; }
+
+  @media print {
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .page { max-width: 100%; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="logo-area">
+      <div class="logo-name">INOVA IRIS</div>
+      <div class="logo-sub">Security Operations Center</div>
+    </div>
+    <div class="ref-area">
+      <div class="ref-label">Référence contrat</div>
+      <div class="ref-val">${ref}</div>
+      <div class="ref-date">Généré le ${today}</div>
+    </div>
+  </div>
+
+  <!-- Title band -->
+  <div class="title-band">
+    <h1>Contrat de Prestation de Cybersécurité SOC / EDR</h1>
+    <p>Contrat de services de sécurité managée — Protection Endpoint & Surveillance Active</p>
+  </div>
+
+  <!-- Status bar -->
+  <div class="status-bar">
+    <div class="status-dot"></div>
+    <div class="status-text">✓ Contrat signé électroniquement & en règle — Statut : ${extData.contractStatus}</div>
+  </div>
+
+  <div class="body">
+
+    <!-- 1. Parties -->
+    <div class="section">
+      <div class="section-title">1. Parties contractantes</div>
+      <div class="parties">
+        <div class="party-box">
+          <div class="party-role">Prestataire</div>
+          <div class="party-name">INOVA CYBER SOC PLATFORM</div>
+          <div class="party-sub">Représenté par l'équipe SOC d'Administration</div>
+          <div class="party-sub" style="margin-top:4px;color:#f97316;font-weight:700">soc@inova-iris.sn</div>
+        </div>
+        <div class="party-box">
+          <div class="party-role">Client</div>
+          <div class="party-name">${orgName || "Non renseigné"}</div>
+          <div class="party-sub">Représentant habilité : <strong>${fullName || "Non renseigné"}</strong></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. Offre & SLA -->
+    <div class="section">
+      <div class="section-title">2. Offre souscrite & Niveaux de service (SLA)</div>
+      <div class="offer-badge">
+        ${offerName}
+        <span>— ${extData.contractValue.toLocaleString("fr-FR")} FCFA / mois</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;font-size:11px">
+        <div><strong>Date d'effet :</strong> ${extData.contractStart}</div>
+        <div><strong>Date d'échéance :</strong> ${extData.contractEnd}</div>
+        <div><strong>Postes autorisés :</strong> ${extData.pcs.length} machine(s) active(s)</div>
+        <div><strong>Support :</strong> ${sla.support}</div>
+      </div>
+      <div class="sla-grid">
+        <div class="sla-card">
+          <div class="sla-value">${sla.mttd}</div>
+          <div class="sla-label">MTTD — Détection</div>
+        </div>
+        <div class="sla-card">
+          <div class="sla-value">${sla.mttr}</div>
+          <div class="sla-label">MTTR — Réponse</div>
+        </div>
+        <div class="sla-card">
+          <div class="sla-value">99.98%</div>
+          <div class="sla-label">Disponibilité</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. Inventaire -->
+    <div class="section">
+      <div class="section-title">3. Inventaire des terminaux sécurisés</div>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th><th>Machine</th><th>OS</th><th>Adresse IP</th><th>ID Agent Wazuh</th><th>Statut</th>
+          </tr>
+        </thead>
+        <tbody>${pcRows}</tbody>
+      </table>
+    </div>
+
+    <!-- 4. Clause -->
+    <div class="section">
+      <div class="section-title">4. Clause d'isolation active & Confidentialité</div>
+      <div class="clause-box">
+        ⚠ Le Client autorise formellement l'équipe SOC INOVA à exécuter une commande de mise en quarantaine réseau immédiate (Isolation EDR) sur toute machine répertoriée ci-dessus présentant un comportement d'infection avéré (chiffrement Ransomware, Bruteforce interne SSH, connexions C2 actives). Les deux parties s'engagent à maintenir une stricte confidentialité concernant les informations de sécurité, journaux d'événements et vulnérabilités détectées sur le réseau du client.
+      </div>
+    </div>
+
+    <!-- 5. Signatures -->
+    <div class="section">
+      <div class="section-title">5. Signatures électroniques</div>
+      <div class="signatures">
+        <div class="sig-box">
+          <div class="sig-role">Signataire Prestataire</div>
+          <div class="sig-line"></div>
+          <div class="sig-name">INOVA SECURITY SERVICES</div>
+          <div><span class="sig-badge">✓ Signé électroniquement</span></div>
+          <div class="sig-date">Date d'effet : ${extData.contractStart}</div>
+        </div>
+        <div class="sig-box">
+          <div class="sig-role">Signataire Client</div>
+          <div class="sig-line"></div>
+          <div class="sig-name">${orgName || "Client"}</div>
+          <div style="font-size:11px;color:#475569;margin-bottom:6px">${fullName || ""}</div>
+          <div><span class="sig-badge">✓ Signé électroniquement</span></div>
+          <div class="sig-date">Date de certification : ${extData.contractStart}</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /body -->
+
+  <div class="footer">
+    <div class="footer-brand">INOVA IRIS — SOC Platform</div>
+    <div>${ref} • ${today} • Confidentiel</div>
+    <div>© ${new Date().getFullYear()} INOVA Cyber SOC — Tous droits réservés</div>
+  </div>
+
+</div>
+<script>window.onload = function(){ window.print(); }</script>
+</body>
+</html>`;
+
+  const w = window.open("", "_blank", "width=900,height=1200,scrollbars=yes");
+  if (!w) { alert("Autorisez les popups pour générer le PDF."); return; }
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
 }
 
 interface Profile { id: string; email: string | null; full_name: string | null; organization: string | null; is_active: boolean; created_at: string; matricule?: string | null }

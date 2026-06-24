@@ -119,7 +119,9 @@ services:
       - MYSQL_USER=misp
       - MYSQL_PASSWORD=${MISP_DB_PASSWORD}
       - MYSQL_DATABASE=misp
-      - REDIS_FQDN=misp-redis
+      # L'image misp-core attend par défaut l'hôte "redis" + mot de passe "redispassword"
+      - REDIS_FQDN=redis
+      - REDIS_PASSWORD=redispassword
       - ADMIN_EMAIL=${MISP_ADMIN_EMAIL}
       - ADMIN_PASSWORD=${MISP_ADMIN_PASSWORD}
     volumes:
@@ -141,7 +143,12 @@ services:
   misp-redis:
     image: redis:7-alpine
     restart: unless-stopped
-    networks: [soc]
+    # Mot de passe + alias "redis" pour correspondre à la config attendue par misp-core
+    command: redis-server --requirepass redispassword
+    networks:
+      soc:
+        aliases:
+          - redis
 
   # ---------------------------------------------------------------------------
   # Shuffle — SOAR / Orchestration  (port 3001)
@@ -155,7 +162,8 @@ services:
       - shuffle-database
     environment:
       - SHUFFLE_APP_HOTLOAD_FOLDER=/shuffle-apps
-      - DATASTORE_EMULATOR_HOST=shuffle-database:8000
+      # Shuffle utilise OpenSearch (port 9200), pas l'émulateur Datastore (8000)
+      - SHUFFLE_OPENSEARCH_URL=http://shuffle-database:9200
       - SHUFFLE_CLOUDRUN_URL=http://shuffle-backend:5001
       - ORG_ID=Shuffle
       - BASE_URL=http://shuffle-backend:5001
@@ -190,13 +198,15 @@ services:
     networks: [soc]
 
   shuffle-database:
-    image: ghcr.io/shuffle/shuffle-opensearch:latest
+    # Image officielle OpenSearch (l'ancienne ghcr.io/shuffle/shuffle-opensearch n'existe pas → registry denied)
+    image: opensearchproject/opensearch:2.14.0
     restart: unless-stopped
     environment:
       - bootstrap.memory_lock=true
       - "OPENSEARCH_JAVA_OPTS=-Xms1G -Xmx1G"
       - discovery.type=single-node
       - DISABLE_SECURITY_PLUGIN=true
+      - DISABLE_INSTALL_DEMO_CONFIG=true
     ulimits:
       memlock: { soft: -1, hard: -1 }
     volumes:

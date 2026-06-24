@@ -8,9 +8,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { RefreshCw, Search, Play, ExternalLink, ThumbsUp, ThumbsDown, ShieldAlert } from "lucide-react";
+import { RefreshCw, Search, Play, ExternalLink, ThumbsUp, ThumbsDown, ShieldAlert, Network } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { RequireAuth } from "@/components/RequireAuth";
+import { useAuth } from "@/lib/auth-context";
+import { ClientEndpointTopology } from "@/components/soc/ClientEndpointTopology";
 import { toast } from "sonner";
 import { SocAlertCorrelationGraph } from "@/components/soc/SocAlertCorrelationGraph";
 import { SocAttackTimeline } from "@/components/soc/SocAttackTimeline";
@@ -123,6 +125,8 @@ function Alertes() {
   const [syncing, setSyncing] = useState(false);
   const [sel, setSel] = useState<Set<string>>(new Set());
   const { t } = useSocPreferences();
+  const { roles } = useAuth();
+  const isClientOnly = roles.includes("client") && !roles.includes("admin") && !roles.includes("analyste") && !roles.includes("manager");
   const [fpFeedback, setFpFeedback] = useState<Record<string, "up" | "down" | undefined>>({});
 
   const [fSev, setFSev] = useState<string>("all");
@@ -254,12 +258,23 @@ function Alertes() {
         </div>
       </header>
 
-      <Tabs defaultValue="liste" className="space-y-6 relative z-10">
+      <Tabs defaultValue={isClientOnly ? "topology" : "liste"} className="space-y-6 relative z-10">
         <TabsList className="bg-slate-100/80 dark:bg-zinc-900/80 border border-slate-200/50 dark:border-zinc-800 rounded-2xl p-1 shadow-sm">
+          {isClientOnly && (
+            <TabsTrigger value="topology" className="rounded-xl px-4 py-2 text-xs font-bold transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-950 data-[state=active]:shadow-sm flex items-center gap-1.5">
+              <Network className="h-3.5 w-3.5" /> {t("PC Connectés")}
+            </TabsTrigger>
+          )}
           <TabsTrigger value="liste" className="rounded-xl px-4 py-2 text-xs font-bold transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-950 data-[state=active]:shadow-sm">{t("Liste & actions")}</TabsTrigger>
           <TabsTrigger value="correlation" className="rounded-xl px-4 py-2 text-xs font-bold transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-950 data-[state=active]:shadow-sm">{t("Corrélation visuelle")}</TabsTrigger>
           <TabsTrigger value="timeline" className="rounded-xl px-4 py-2 text-xs font-bold transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-950 data-[state=active]:shadow-sm">{t("Chronologie d'attaque")}</TabsTrigger>
         </TabsList>
+
+        {isClientOnly && (
+          <TabsContent value="topology" className="space-y-5 animate-in fade-in duration-300">
+            <ClientEndpointTopology />
+          </TabsContent>
+        )}
 
         <TabsContent value="liste" className="space-y-5 animate-in fade-in duration-300">
           <Card className="p-6 bg-white/70 dark:bg-zinc-900/60 border border-white/80 dark:border-zinc-800/80 backdrop-blur-xl rounded-3xl shadow-xl shadow-slate-200/50 dark:shadow-black/30 overflow-hidden">

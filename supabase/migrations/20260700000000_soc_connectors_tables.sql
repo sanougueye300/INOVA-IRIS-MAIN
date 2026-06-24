@@ -76,6 +76,17 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_alerts_external_id ON public.alerts(extern
 CREATE UNIQUE INDEX IF NOT EXISTS idx_iocs_external_id ON public.iocs(external_id)
   WHERE external_id IS NOT NULL;
 
+-- Multi-tenant SaaS : colonne organization + isolation par tenant
+-- (déplacé depuis 20260620100000 car ces tables sont créées ici)
+ALTER TABLE public.shuffle_runs ADD COLUMN IF NOT EXISTS organization TEXT;
+CREATE INDEX IF NOT EXISTS idx_shuffle_runs_org ON public.shuffle_runs(organization);
+
+DROP POLICY IF EXISTS "Client see own thehive cases" ON public.thehive_cases;
+CREATE POLICY "Client see own thehive cases" ON public.thehive_cases
+  FOR SELECT TO authenticated USING (
+    organization = (SELECT organization FROM public.profiles WHERE id = auth.uid())
+  );
+
 -- Commentaires de documentation
 COMMENT ON TABLE public.thehive_cases IS 'Cas d''incidents synchronisés depuis TheHive 5 via la Edge Function sync-thehive-cases';
 COMMENT ON TABLE public.shuffle_runs IS 'Exécutions de workflows SOAR synchronisées depuis Shuffle via la Edge Function sync-shuffle-runs';

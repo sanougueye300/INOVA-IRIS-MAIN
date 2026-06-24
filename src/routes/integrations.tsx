@@ -44,9 +44,10 @@ const CONNECTOR_DEFS: ConnectorConfig[] = [
     bg: "bg-blue-500/10",
     docsUrl: "https://documentation.wazuh.com/current/user-manual/api/getting-started.html",
     fields: [
-      { key: "WAZUH_URL", label: "URL de l'API (ex: https://IP:55000)", placeholder: "https://your-vps-ip:55000" },
-      { key: "WAZUH_USER", label: "Utilisateur API", placeholder: "wazuh-wui" },
-      { key: "WAZUH_PASSWORD", label: "Mot de passe API", placeholder: "••••••••", type: "password" },
+      { key: "WAZUH_CLOUD_API_KEY", label: "Clé API Wazuh Cloud (recommandé)", placeholder: "••••••••", type: "password" },
+      { key: "WAZUH_URL", label: "URL auto-hébergé (ex: https://IP:55000)", placeholder: "https://your-vps-ip:55000" },
+      { key: "WAZUH_USER", label: "Utilisateur auto-hébergé", placeholder: "wazuh-wui" },
+      { key: "WAZUH_PASSWORD", label: "Mot de passe auto-hébergé", placeholder: "••••••••", type: "password" },
     ],
   },
   {
@@ -149,7 +150,8 @@ function AdminIntegrations() {
 
   // Récupère le client Supabase
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
-  const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+  const supabaseKey = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+    || import.meta.env.VITE_SUPABASE_ANON_KEY) as string;
 
   const supabase = supabaseUrl && supabaseKey
     ? createClient(supabaseUrl, supabaseKey)
@@ -503,10 +505,10 @@ function AdminIntegrations() {
             Guide de connexion rapide
           </h2>
           <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
-            <li>Installez vos outils SOC sur un <strong className="text-foreground">VPS Linux dédié</strong> (Hetzner, OVH, DigitalOcean…) — pas sur votre machine locale.</li>
-            <li>Ouvrez les ports nécessaires : <code className="font-mono bg-muted px-1 rounded">55000</code> (Wazuh), <code className="font-mono bg-muted px-1 rounded">9000</code> (TheHive), <code className="font-mono bg-muted px-1 rounded">443</code> (MISP), <code className="font-mono bg-muted px-1 rounded">3001</code> (Shuffle).</li>
-            <li>Récupérez les clés API depuis chaque outil et définissez-les via <code className="font-mono bg-muted px-1 rounded">npx supabase secrets set CLE=valeur</code>.</li>
-            <li>Déployez les Edge Functions : <code className="font-mono bg-muted px-1 rounded">npx supabase functions deploy check-connector</code></li>
+            <li><strong className="text-foreground">Wazuh Cloud</strong> : récupérez votre clé API sur <code className="font-mono bg-muted px-1 rounded">console.cloud.wazuh.com → API-WAZUH-INOVA-IRIS</code>, puis définissez-la : <code className="font-mono bg-muted px-1 rounded">npx supabase secrets set WAZUH_CLOUD_API_KEY=votre_clé</code>.</li>
+            <li><strong className="text-foreground">Wazuh auto-hébergé</strong> : installez Wazuh sur un VPS Linux et ouvrez le port <code className="font-mono bg-muted px-1 rounded">55000</code>. Configurez <code className="font-mono bg-muted px-1 rounded">WAZUH_URL</code>, <code className="font-mono bg-muted px-1 rounded">WAZUH_USER</code> et <code className="font-mono bg-muted px-1 rounded">WAZUH_PASSWORD</code>.</li>
+            <li>Pour les autres outils, ouvrez les ports : <code className="font-mono bg-muted px-1 rounded">9000</code> (TheHive), <code className="font-mono bg-muted px-1 rounded">443</code> (MISP), <code className="font-mono bg-muted px-1 rounded">3001</code> (Shuffle).</li>
+            <li>Déployez les Edge Functions : <code className="font-mono bg-muted px-1 rounded">npx supabase functions deploy --no-verify-jwt check-connector sync-wazuh-alerts get-wazuh-agents</code></li>
             <li>Cliquez <strong className="text-foreground">Tester</strong> sur chaque connecteur pour vérifier la connexion en temps réel.</li>
           </ol>
         </div>

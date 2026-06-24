@@ -76,8 +76,48 @@ async function callGeminiApi(messages: ChatMessage[], apiKey: string): Promise<s
   return typeof text === "string" && text.trim() ? text.trim() : "(réponse vide)";
 }
 
-/** Appelle Lovable Gateway ou Gemini selon les clés disponibles. */
+async function callClaudeApi(messages: ChatMessage[], apiKey: string): Promise<string> {
+  // Anthropic Messages API
+  const model = process.env.ANTHROPIC_MODEL ?? "claude-3-5-sonnet-20241022";
+  const url = "https://api.anthropic.com/v1/messages";
+  const chatMessages = filterMessages(messages);
+
+  const resp = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model,
+      system: SYSTEM_PROMPT,
+      max_tokens: 2048,
+      temperature: 0.4,
+      messages: chatMessages.map((m) => ({
+        role: m.role,
+        content: [{ type: "text", text: m.content }],
+      })),
+    }),
+  });
+
+  if (!resp.ok) {
+    const txt = await resp.text();
+    throw new Error(`Claude: ${resp.status} ${txt.slice(0, 200)}`);
+  }
+
+  const data = await resp.json();
+  const text = data?.content?.map((c: any) => (c?.type === "text" ? c?.text : "")).join("");
+  return typeof text === "string" && text.trim() ? text.trim() : "(réponse vide)";
+}
+
+/** Appelle Claude en priorité (si clé), sinon Lovable/Gemini selon les clés disponibles. */
 export async function callSocAiGateway(messages: ChatMessage[]): Promise<string> {
+  const claudeKey = process.env.ANTHROPIC_API_KEY;
+  if (claudeKey) {
+    return callClaudeApi(messages, claudeKey);
+  }
+
   const lovableKey = process.env.LOVABLE_API_KEY ?? process.env.OPENAI_API_KEY;
   if (lovableKey) {
     return callLovableGateway(messages, lovableKey);
@@ -94,3 +134,4 @@ export async function callSocAiGateway(messages: ChatMessage[]): Promise<string>
 
   throw new Error("AI_KEY_MISSING");
 }
+

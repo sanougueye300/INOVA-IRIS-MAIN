@@ -41,20 +41,19 @@ export const stripeDisplaySettings = {
 };
 
 /**
- * Map offres to Stripe products
- * Format: offerId -> stripeProductId
+ * Map offres to Stripe price IDs (set VITE_STRIPE_PRICE_* in .env)
  */
-export const OFFER_TO_STRIPE_PRODUCT: Record<string, string> = {
-  "inova-secure": process.env.VITE_STRIPE_PRODUCT_INOVA || "",
-  "terranga-secure": process.env.VITE_STRIPE_PRODUCT_TERRANGA || "",
-  "gainde-secure": process.env.VITE_STRIPE_PRODUCT_GAINDE || "",
+export const OFFER_TO_STRIPE_PRICE: Record<string, string> = {
+  "inova-secure": import.meta.env.VITE_STRIPE_PRICE_INOVA || "",
+  "terranga-secure": import.meta.env.VITE_STRIPE_PRICE_TERRANGA || "",
+  "gainde-secure": import.meta.env.VITE_STRIPE_PRICE_GAINDE || "",
 };
 
 /**
- * Get Stripe product ID for an offer
+ * Get Stripe price ID for an offer (used by stripe-checkout edge function)
  */
-export function getStripeProductId(offerId: string): string | null {
-  return OFFER_TO_STRIPE_PRODUCT[offerId] || null;
+export function getStripePriceId(offerId: string): string | null {
+  return OFFER_TO_STRIPE_PRICE[offerId] || null;
 }
 
 /**

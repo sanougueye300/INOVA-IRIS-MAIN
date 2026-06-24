@@ -15,11 +15,30 @@ interface CheckResult {
 }
 
 async function checkWazuh(): Promise<CheckResult> {
+  const cloudKey = Deno.env.get("WAZUH_CLOUD_API_KEY");
   const url = Deno.env.get("WAZUH_URL");
   const user = Deno.env.get("WAZUH_USER");
   const pass = Deno.env.get("WAZUH_PASSWORD");
+
+  // Wazuh Cloud prend priorité
+  if (cloudKey) {
+    const t0 = Date.now();
+    try {
+      const res = await fetch("https://api.cloud.wazuh.com/v2/info", {
+        headers: { "x-api-key": cloudKey },
+        signal: AbortSignal.timeout(8000),
+      });
+      const latencyMs = Date.now() - t0;
+      if (res.ok) return { id: "wazuh", status: "online", latencyMs, message: `Cloud OK (${latencyMs}ms)` };
+      return { id: "wazuh", status: "warning", latencyMs, message: `Cloud HTTP ${res.status}` };
+    } catch (e) {
+      return { id: "wazuh", status: "offline", latencyMs: null, message: e instanceof Error ? e.message : "Timeout" };
+    }
+  }
+
+  // Fallback auto-hébergé
   if (!url || !user || !pass) {
-    return { id: "wazuh", status: "offline", latencyMs: null, message: "Variables manquantes" };
+    return { id: "wazuh", status: "offline", latencyMs: null, message: "Variables manquantes (WAZUH_CLOUD_API_KEY ou WAZUH_URL+WAZUH_USER+WAZUH_PASSWORD)" };
   }
   const t0 = Date.now();
   try {
@@ -83,22 +102,24 @@ async function checkVirusTotal(): Promise<CheckResult> {
   }
   const t0 = Date.now();
   try {
-    // Utilise l'endpoint API key info pour vérifier les quotas
-    const res = await fetch("https://www.virustotal.com/api/v3/api_usage/monthly", {
+    // Endpoint de quotas : la clé API sert d'identifiant utilisateur dans l'URL.
+    const res = await fetch(`https://www.virustotal.com/api/v3/users/${key}/overall_quotas`, {
       headers: { "x-apikey": key },
       signal: AbortSignal.timeout(5000),
     });
     const latencyMs = Date.now() - t0;
     if (res.ok) {
       const data = await res.json();
-      const used = data?.data?.api_requests_daily ?? 0;
-      const limit = data?.data?.api_requests_daily_limit ?? 500;
-      const pct = Math.round((used / limit) * 100);
+      const daily = data?.data?.api_requests_daily?.user;
+      const used = daily?.used ?? 0;
+      const limit = daily?.allowed ?? 500;
+      const pct = limit > 0 ? Math.round((used / limit) * 100) : 0;
       if (pct >= 90) {
-        return { id: "virustotal", status: "warning", latencyMs, message: `Quota ${pct}% utilisé` };
+        return { id: "virustotal", status: "warning", latencyMs, message: `Quota jour ${pct}% (${used}/${limit})` };
       }
-      return { id: "virustotal", status: "online", latencyMs, message: `OK — quota ${pct}%` };
+      return { id: "virustotal", status: "online", latencyMs, message: `OK — quota jour ${used}/${limit}` };
     }
+    if (res.status === 401) return { id: "virustotal", status: "offline", latencyMs, message: "Clé API invalide (401)" };
     return { id: "virustotal", status: "warning", latencyMs, message: `HTTP ${res.status}` };
   } catch (e) {
     return { id: "virustotal", status: "offline", latencyMs: null, message: e instanceof Error ? e.message : "Timeout" };

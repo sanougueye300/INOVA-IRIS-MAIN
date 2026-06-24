@@ -4,12 +4,27 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { User, Building, Mail, Phone, Globe, Shield, ArrowLeft, Loader2, Save, Power, PowerOff, KeyRound, Laptop, Download, UploadCloud, Copy, Check, Activity, FileText, Sparkles, Cpu, AlertTriangle, ShieldAlert, Terminal, Network, Zap, Settings, RefreshCw, AlertCircle, CircleDot, Play, Lock, Trash2, FolderSync } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { User, Building, Mail, Phone, Globe, Shield, ArrowLeft, Loader2, Save, Power, PowerOff, KeyRound, Laptop, Download, UploadCloud, Copy, Check, Activity, FileText, Sparkles, Cpu, AlertTriangle, ShieldAlert, Terminal, Network, Zap, Sliders, Settings, RefreshCw, AlertCircle, CircleDot, Play, Lock, Trash2, FolderSync, MapPin, Hash, Wifi, HardDrive, Plus, Monitor, Edit3, ChevronRight, ChevronDown, TrendingUp, Clock, Server, ExternalLink, CreditCard, CalendarDays, CheckCircle2, XCircle, AlertCircle as AlertCircleIcon, Receipt } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { RequireAuth } from "@/components/RequireAuth";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
-import { getClientExtendedData, downloadContractFile, ClientExtendedData, DEMO_CLIENTS } from "./clients.index";
+import { Separator } from "@/components/ui/separator";
+import { getClientExtendedData, downloadContractFile, generateContractPDF, ClientExtendedData, DEMO_CLIENTS } from "./clients.index";
+
+/* ── Mapping offres réelles (aligné sur src/lib/offers.ts) ── */
+const OFFER_BY_TIER: Record<string, {
+  name: string; color: string; maxPcs: number;
+  mttd: string; mttr: string; support: string;
+}> = {
+  Bronze:  { name: "Inova Secure",          color: "#f97316", maxPcs: 10,  mttd: "< 30 min", mttr: "< 4 heures", support: "8h-18h L-V"      },
+  Argent:  { name: "Terranga Secure",        color: "#3b82f6", maxPcs: 25,  mttd: "< 15 min", mttr: "< 2 heures", support: "24h/7 L-V"        },
+  Or:      { name: "Gainde Secure",          color: "#f59e0b", maxPcs: 50,  mttd: "< 10 min", mttr: "< 1 heure",  support: "24h/7/365 Dédié"  },
+  Platine: { name: "Gainde Secure Premium",  color: "#8b5cf6", maxPcs: 100, mttd: "< 5 min",  mttr: "< 30 min",   support: "24h/7/365 Dédié+" },
+};
 
 export const Route = createFileRoute("/clients/$clientId")({
   head: () => ({ meta: [{ title: "Console Client 360° — SOC Platform" }] }),
@@ -24,7 +39,7 @@ function ClientProfile() {
   const [profile, setProfile] = useState<any>(null);
   
   // Onglet actif : overview | pcs | contract | alerts
-  const [activeTab, setActiveTab] = useState<"overview" | "pcs" | "contract" | "alerts">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "pcs" | "contract" | "alerts">("pcs");
   
   // Données étendues EDR & Contrat (persistance locale via localStorage)
   const [extData, setExtData] = useState<ClientExtendedData | null>(null);
@@ -63,13 +78,28 @@ function ClientProfile() {
     type: "input" | "output" | "error" | "system";
     text: string;
   }>>([
-    { type: "system", text: "=== CONSOLE AGENT WAZUH EDR REMOTE SHELL v4.7.2 ===" },
+    { type: "system", text: "=== CONSOLE AGENT WAZUH EDR REMOTE SHELL v4.14.5 ===" },
     { type: "system", text: "Tapez 'help' pour lister les commandes de diagnostic et remédiation." }
   ]);
   const [terminalInput, setTerminalInput] = useState("");
   const [activePlaybook, setActivePlaybook] = useState<string | null>(null);
   const [playbookStep, setPlaybookStep] = useState<number>(0);
   const [playbookLogs, setPlaybookLogs] = useState<string[]>([]);
+  const [editMode, setEditMode] = useState(false);
+  const [wazuhPassword, setWazuhPassword] = useState("");
+  const [deployGuideOpen, setDeployGuideOpen] = useState(false);
+
+  // Modal ajout de machine
+  const [addMachineOpen, setAddMachineOpen] = useState(false);
+  const [addingMachine, setAddingMachine] = useState(false);
+  const [newMachineForm, setNewMachineForm] = useState({
+    name: "",
+    ip: "",
+    owner: "",
+    os: "windows" as "windows" | "linux" | "macos",
+    mac: "",
+    department: "",
+  });
 
   // Initialisation des données de télémétrie
   useEffect(() => {
@@ -134,6 +164,10 @@ function ClientProfile() {
         setSelectedPcId(firstActive.id);
       }
     }
+
+    // Auto-expand deployment guide only when agents are missing or disconnected
+    const allReady = extData.pcs.length > 0 && extData.pcs.every(pc => pc.status !== "disconnected");
+    setDeployGuideOpen(!allReady);
   }, [extData]);
 
   // Simulation de télémétrie et logs en continu
@@ -400,7 +434,7 @@ function ClientProfile() {
           { type: "output" as const, text: `Statut de l'agent : ${telemetry?.wazuhStatus.toUpperCase()}` },
           { type: "output" as const, text: `Identifiant de l'agent : WZ-${activePc.wazuhId}` },
           { type: "output" as const, text: `Uptime : 14 jours, 3 heures, 21 minutes` },
-          { type: "output" as const, text: `Version de l'agent : Wazuh EDR v4.7.2` },
+          { type: "output" as const, text: `Version de l'agent : Wazuh EDR v4.14.5` },
           { type: "output" as const, text: `Canaux de surveillance : File Integrity (Actif), Rootkit Check (Actif), Process Reputation (Actif).` },
           { type: "output" as const, text: `Clé d'authentification active : RSA-3072 Validée.` }
         ]);
@@ -567,6 +601,7 @@ function ClientProfile() {
       }
 
       toast.success("Profil mis à jour", { description: "Les modifications ont été enregistrées avec succès." });
+      setEditMode(false);
       await loadProfile();
     } catch (e: any) {
       toast.error("Erreur", { description: e.message });
@@ -734,7 +769,7 @@ UDP   0.0.0.0:123            *:*
   // ----------------------------------------------------
   const handleDownloadContract = () => {
     if (!extData) return;
-    downloadContractFile(form.organization || "Client", form.fullName || "Représentant", extData);
+    generateContractPDF(form.organization || "Client", form.fullName || "Représentant", extData);
     toast.success("Contrat généré", {
       description: "Le contrat de services a été structuré et téléchargé."
     });
@@ -783,13 +818,77 @@ UDP   0.0.0.0:123            *:*
     setTimeout(() => setCopiedScript(null), 2500);
   };
 
+  const handleAddMachine = () => {
+    if (!newMachineForm.name.trim()) { toast.error("Nom de la machine requis"); return; }
+    if (!newMachineForm.ip.trim()) { toast.error("Adresse IP requise"); return; }
+    if (!/^(\d{1,3}\.){3}\d{1,3}$/.test(newMachineForm.ip.trim())) { toast.error("Adresse IP invalide"); return; }
+    if (!newMachineForm.owner.trim()) { toast.error("Nom du propriétaire requis"); return; }
+    if (!extData) return;
+
+    setAddingMachine(true);
+    setTimeout(() => {
+      const newId = `${extData.clientId}-pc-${Date.now()}`;
+      const newPc = {
+        id: newId,
+        name: newMachineForm.name.trim(),
+        os: newMachineForm.os,
+        ip: newMachineForm.ip.trim(),
+        status: "active" as const,
+        cpu: Math.floor(Math.random() * 20) + 5,
+        ram: Math.floor(Math.random() * 30) + 15,
+        lastSeen: "À l'instant",
+        wazuhId: String(300 + extData.pcs.length).padStart(3, "0"),
+        owner: newMachineForm.owner.trim(),
+        mac: newMachineForm.mac.trim(),
+        department: newMachineForm.department.trim(),
+      };
+      const updated = { ...extData, pcs: [...extData.pcs, newPc] };
+      setExtData(updated);
+      localStorage.setItem(`client_ext_${clientId}`, JSON.stringify(updated));
+      toast.success("Machine enregistrée !", {
+        description: `${newPc.name} (${newPc.ip}) est maintenant surveillée par l'agent EDR.`,
+      });
+      setAddMachineOpen(false);
+      setNewMachineForm({ name: "", ip: "", owner: "", os: "windows", mac: "", department: "" });
+      setAddingMachine(false);
+    }, 1200);
+  };
+
   const getScripts = () => {
-    const serverIp = "10.0.0.1";
-    const groupName = form.organization ? form.organization.toLowerCase().replace(/[^a-z0-9]/g, "") : "client-default";
+    const cloudManager = "3a1uer3pl3hr.cloud.wazuh.com";
+    const groupName = form.organization ? form.organization.toLowerCase().replace(/[^a-z0-9]/g, "-") : "client-default";
     return {
-      windows: `[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri "https://soc.inova.sn/deploy/edr-agent.msi" -OutFile "edr-agent.msi"; Start-Process msiexec.exe -ArgumentList "/i edr-agent.msi WAZUH_MANAGER='${serverIp}' WAZUH_REGISTRATION_SERVER='${serverIp}' WAZUH_AGENT_GROUP='${groupName}' /q" -Wait`,
-      linux: `wget https://soc.inova.sn/deploy/edr-agent.deb && WAZUH_MANAGER='${serverIp}' WAZUH_AGENT_GROUP='${groupName}' dpkg -i edr-agent.deb && systemctl daemon-reload && systemctl enable wazuh-agent && systemctl start wazuh-agent`,
-      macos: `curl -so edr-agent.pkg https://soc.inova.sn/deploy/edr-agent.pkg && sudo installer -pkg edr-agent.pkg -target / && echo "WAZUH_MANAGER='${serverIp}'\nWAZUH_AGENT_GROUP='${groupName}'" | sudo tee /Library/Ossec/etc/local_internal_options.conf && sudo /Library/Ossec/bin/wazuh-control start`,
+      windows: [
+        `# Étape 1 : Télécharger l'agent Wazuh`,
+        `Invoke-WebRequest -Uri "https://packages.wazuh.com/4.x/windows/wazuh-agent-4.14.5-1.msi" -OutFile "$env:TEMP\\wazuh-agent.msi"`,
+        ``,
+        `# Étape 2 : Installer et enregistrer sur Wazuh Cloud`,
+        `msiexec.exe /i "$env:TEMP\\wazuh-agent.msi" WAZUH_MANAGER="${cloudManager}" WAZUH_REGISTRATION_SERVER="${cloudManager}" WAZUH_AGENT_GROUP="${groupName}" /q`,
+        ``,
+        `# Étape 3 : Démarrer l'agent`,
+        `NET START WazuhSvc`,
+      ].join("\n"),
+      linux: [
+        `# Étape 1 : Ajouter le dépôt Wazuh`,
+        `curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import`,
+        `echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages.wazuh.com/4.x/apt/ stable main" | tee /etc/apt/sources.list.d/wazuh.list`,
+        ``,
+        `# Étape 2 : Installer et enregistrer l'agent`,
+        `WAZUH_MANAGER="${cloudManager}" WAZUH_AGENT_GROUP="${groupName}" apt-get install -y wazuh-agent`,
+        ``,
+        `# Étape 3 : Activer et démarrer`,
+        `systemctl enable --now wazuh-agent`,
+      ].join("\n"),
+      macos: [
+        `# Étape 1 : Télécharger l'agent`,
+        `curl -so /tmp/wazuh-agent.pkg https://packages.wazuh.com/4.x/macos/wazuh-agent-4.14.5-1.intel64.pkg`,
+        ``,
+        `# Étape 2 : Installer et enregistrer l'agent`,
+        `WAZUH_MANAGER="${cloudManager}" WAZUH_AGENT_GROUP="${groupName}" installer -pkg /tmp/wazuh-agent.pkg -target /`,
+        ``,
+        `# Étape 3 : Démarrer l'agent`,
+        `/Library/Ossec/bin/wazuh-control start`,
+      ].join("\n"),
     };
   };
 
@@ -806,376 +905,711 @@ UDP   0.0.0.0:123            *:*
   const connectedPcs = extData.pcs.filter(pc => pc.status !== "disconnected").length;
   const scripts = getScripts();
 
+  const offerMeta = OFFER_BY_TIER[extData.contractTier] ?? OFFER_BY_TIER.Bronze;
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
-        
-        {/* En-tête Client Premium */}
-        <div className="mb-8 flex items-center justify-between gap-4 flex-wrap pb-6 border-b border-border/40">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" asChild className="rounded-full hover:bg-slate-200 dark:hover:bg-slate-800">
-              <Link to="/clients">
-                <ArrowLeft className="h-5 w-5" />
-              </Link>
-            </Button>
-            <div>
-              <div className="flex items-center gap-3">
-                <h1 className="text-3xl font-extrabold bg-gradient-to-r from-gray-900 via-gray-700 to-gray-600 dark:from-gray-100 dark:via-gray-300 dark:to-gray-400 bg-clip-text text-transparent">
-                  {form.organization || form.fullName || profile.email}
-                </h1>
-                <Badge variant={profile.is_active ? "default" : "secondary"} className="rounded-lg font-medium px-2 py-0.5">
-                  {profile.is_active ? "Abonnement Actif" : "Accès Suspendu"}
-                </Badge>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-orange-50/20 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+      <div className="container mx-auto px-4 py-6 max-w-7xl">
+
+        {/* ── HEADER ── */}
+        <div className="relative mb-5 rounded-2xl overflow-hidden bg-white border border-slate-200/90 shadow-[0_2px_24px_0_rgba(0,0,0,0.06)]">
+          {/* Subtle warm gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-br from-orange-50/50 via-white to-slate-50/30 pointer-events-none" />
+          {/* Top accent bar */}
+          <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-orange-400 via-amber-400 to-orange-300" />
+
+          <div className="relative z-10 px-6 pt-5 pb-5">
+
+            {/* Row 1 : breadcrumb + actions */}
+            <div className="flex items-center justify-between mb-5">
+              <Button variant="ghost" size="sm" asChild
+                className="text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl gap-2 border border-slate-200 text-xs h-8 font-medium transition-all">
+                <Link to="/clients">
+                  <ArrowLeft className="h-3.5 w-3.5" /> Retour aux clients
+                </Link>
+              </Button>
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="outline"
+                  className="h-8 rounded-xl gap-2 text-xs font-semibold bg-white border-slate-200 text-slate-700 hover:bg-orange-50 hover:border-orange-300 hover:text-orange-600 transition-all shadow-sm"
+                  onClick={() => navigate({ to: "/admin/$userId", params: { userId: profile.id } })}
+                >
+                  <ExternalLink className="h-3.5 w-3.5" /> Espace client
+                </Button>
+                <Button size="sm" onClick={toggleActive}
+                  className={`h-8 rounded-xl gap-2 font-bold text-xs shadow-sm transition-all ${
+                    profile.is_active
+                      ? "bg-rose-500 hover:bg-rose-600 text-white border border-rose-400/60"
+                      : "bg-emerald-500 hover:bg-emerald-600 text-white border border-emerald-400/60"
+                  }`}>
+                  {profile.is_active
+                    ? <><PowerOff className="h-3.5 w-3.5" /> Suspendre</>
+                    : <><Power className="h-3.5 w-3.5" /> Activer</>}
+                </Button>
               </div>
-              <p className="text-muted-foreground mt-1 flex items-center gap-2 text-sm">
-                <Building className="h-4 w-4" /> Représentant : <span className="font-semibold text-foreground">{form.fullName}</span> | Email : <span className="font-semibold text-foreground">{profile.email}</span>
-              </p>
             </div>
-          </div>
-          <div className="flex gap-2">
-            <Button 
-              variant={profile.is_active ? "destructive" : "default"} 
-              className="shadow-md rounded-xl hover:translate-y-[-1px] transition-all"
-              onClick={toggleActive}
-            >
-              {profile.is_active ? (
-                <><PowerOff className="mr-2 h-4 w-4" /> Suspendre le client</>
-              ) : (
-                <><Power className="mr-2 h-4 w-4" /> Activer le client</>
-              )}
-            </Button>
-          </div>
-        </div>
 
-        {/* Barre d'Onglets Premium */}
-        <div className="flex gap-1.5 p-1 bg-slate-100 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/80 rounded-2xl mb-8 w-fit">
-          <Button 
-            variant={activeTab === "overview" ? "default" : "ghost"}
-            className={`rounded-xl px-5 py-2 transition-all font-medium ${activeTab === "overview" ? "shadow-md" : "text-muted-foreground hover:text-foreground"}`}
-            onClick={() => setActiveTab("overview")}
-          >
-            <Activity className="h-4 w-4 mr-2" /> Vue générale
-          </Button>
-          <Button 
-            variant={activeTab === "pcs" ? "default" : "ghost"}
-            className={`rounded-xl px-5 py-2 transition-all font-medium ${activeTab === "pcs" ? "shadow-md" : "text-muted-foreground hover:text-foreground"}`}
-            onClick={() => setActiveTab("pcs")}
-          >
-            <Laptop className="h-4 w-4 mr-2" /> PC Connectés ({connectedPcs})
-          </Button>
-          <Button 
-            variant={activeTab === "contract" ? "default" : "ghost"}
-            className={`rounded-xl px-5 py-2 transition-all font-medium ${activeTab === "contract" ? "shadow-md" : "text-muted-foreground hover:text-foreground"}`}
-            onClick={() => setActiveTab("contract")}
-          >
-            <FileText className="h-4 w-4 mr-2" /> Contrats & Facturation
-          </Button>
-        </div>
+            {/* Row 2 : identité */}
+            <div className="flex items-center gap-4 mb-5">
+              {/* Logo/initiales */}
+              <div className="w-[52px] h-[52px] rounded-2xl flex items-center justify-center shrink-0 shadow-md"
+                style={{ background: "linear-gradient(135deg, #fff7ed 0%, #ffedd5 60%, #fed7aa 100%)", border: "1.5px solid #fed7aa" }}>
+                <Building className="h-6 w-6" style={{ color: "#f97316" }} />
+              </div>
 
-        {/* Onglet 1 : VUE D'ENSEMBLE */}
-        {activeTab === "overview" && (
-          <div className="grid gap-6 md:grid-cols-3">
-            
-            {/* Colonne de Gauche : Cyber Health & SLAs */}
-            <div className="space-y-6 md:col-span-1">
-              
-              {/* Jauge animée SVG de Score Cyber */}
-              <Card className="shadow-lg border-border/50 bg-card/60 backdrop-blur-sm overflow-hidden text-center p-6 relative">
-                <div className="absolute top-3 right-3">
-                  <Badge className="bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/10 border-none font-bold">EDR ACTIF</Badge>
+              {/* Nom + badge + meta */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-3 flex-wrap mb-1.5">
+                  <h1 className="text-[19px] font-black text-slate-900 tracking-tight truncate leading-none">
+                    {form.organization || form.fullName || profile.email}
+                  </h1>
+                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-[5px] rounded-full text-[10px] font-black uppercase tracking-wider border ${
+                    profile.is_active
+                      ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                      : "bg-rose-50 border-rose-200 text-rose-700"
+                  }`}>
+                    <span className={`h-1.5 w-1.5 rounded-full ${profile.is_active ? "bg-emerald-500 animate-pulse" : "bg-rose-500"}`} />
+                    {profile.is_active ? "Abonnement Actif" : "Suspendu"}
+                  </span>
                 </div>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg font-bold flex items-center justify-center gap-2">
-                    <Shield className="h-5 w-5 text-primary" />
-                    Indice de Santé Cyber
-                  </CardTitle>
-                  <CardDescription>Évaluation de conformité EDR globale</CardDescription>
-                </CardHeader>
-                <CardContent className="pt-4 flex flex-col items-center">
-                  <div className="relative h-36 w-36 flex items-center justify-center">
-                    <svg className="absolute w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                      {/* Cercle arrière */}
-                      <circle cx="50" cy="50" r="40" stroke="currentColor" className="text-slate-100 dark:text-slate-800" strokeWidth="8" fill="transparent" />
-                      {/* Cercle actif avec animation */}
-                      <circle 
-                        cx="50" 
-                        cy="50" 
-                        r="40" 
-                        stroke="oklch(0.72 0.20 50)" 
-                        strokeWidth="8" 
-                        fill="transparent" 
-                        strokeDasharray={251.2}
-                        strokeDashoffset={251.2 - (251.2 * extData.cyberScore) / 100}
-                        strokeLinecap="round"
-                        className="transition-all duration-1000 ease-out"
-                      />
-                    </svg>
-                    <div className="text-center">
-                      <span className="text-3xl font-extrabold tracking-tight">{extData.cyberScore}%</span>
-                      <p className="text-xs text-emerald-500 dark:text-emerald-400 font-bold mt-0.5">EXCELLENT</p>
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-4 px-2">
-                    Le score prend en compte les machines actives, le niveau d'alertes résolues et la conformité aux signatures SOC.
-                  </p>
-                </CardContent>
-              </Card>
-
-              {/* Statuts des SLAs du Contrat */}
-              <Card className="shadow-lg border-border/50 bg-card/60 backdrop-blur-sm">
-                <CardHeader>
-                  <CardTitle className="text-lg font-bold flex items-center gap-2">
-                    <Activity className="h-5 w-5 text-primary" /> Garanties de Service (SLA)
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between border-b border-border/30 pb-2.5">
-                    <div>
-                      <p className="text-sm font-semibold">Temps de Détection (MTTD)</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">Alerte initiale d'intrusion</p>
-                    </div>
-                    <Badge className="bg-emerald-500 text-white font-bold border-none">&lt; 15 min</Badge>
-                  </div>
-                  <div className="flex items-center justify-between border-b border-border/30 pb-2.5">
-                    <div>
-                      <p className="text-sm font-semibold">Temps de Réponse (MTTR)</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">Isolation / Résolution</p>
-                    </div>
-                    <Badge className="bg-emerald-500 text-white font-bold border-none">&lt; 2 heures</Badge>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-semibold">Disponibilité Connecteurs</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">Wazuh, MISP & TheHive</p>
-                    </div>
-                    <span className="text-sm font-bold text-emerald-500">99.98% OK</span>
-                  </div>
-                </CardContent>
-              </Card>
-
+                <div className="flex items-center gap-4 flex-wrap text-[12px] text-slate-400">
+                  <span className="flex items-center gap-1.5">
+                    <User className="h-3.5 w-3.5 text-slate-300" />
+                    <span className="text-slate-600 font-medium">{form.fullName || "—"}</span>
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <Mail className="h-3.5 w-3.5 text-slate-300" />
+                    <span className="text-slate-500">{profile.email}</span>
+                  </span>
+                  {form.phone && (
+                    <span className="flex items-center gap-1.5">
+                      <Phone className="h-3.5 w-3.5 text-slate-300" />
+                      <span className="text-slate-500">{form.phone}</span>
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
 
-            {/* Colonne de Droite (2/3) : Formulaire d'information Client */}
-            <div className="space-y-6 md:col-span-2">
-              <form onSubmit={handleSave}>
-                <Card className="shadow-lg border-border/50 bg-card/60 backdrop-blur-sm">
-                  <CardHeader>
-                    <CardTitle className="text-xl font-extrabold flex items-center gap-2">
-                      <User className="h-5 w-5 text-primary" />
-                      Fiche d'identité & Profil
-                    </CardTitle>
-                    <CardDescription>Gérez les coordonnées officielles de votre client.</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-5">
-                    
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label htmlFor="fullName" className="font-semibold text-sm">Nom complet du contact</Label>
-                        <Input
-                          id="fullName"
-                          required
-                          value={form.fullName}
-                          onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-                          className="bg-background/40 transition-all focus:ring-2 focus:ring-primary/20"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="phone" className="font-semibold text-sm">Téléphone professionnel</Label>
-                        <Input
-                          id="phone"
-                          type="tel"
-                          placeholder="+221 33 800 00 00"
-                          value={form.phone}
-                          onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                          className="bg-background/40 transition-all focus:ring-2 focus:ring-primary/20"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="email" className="font-semibold text-sm">Adresse e-mail (Lecture seule)</Label>
-                      <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          id="email"
-                          type="email"
-                          disabled
-                          value={form.email}
-                          className="pl-9 bg-muted/40 cursor-not-allowed text-muted-foreground border-border/40"
-                        />
-                      </div>
-                      <p className="text-xs text-muted-foreground">L'email du profil est lié à ses identifiants d'authentification.</p>
-                    </div>
-
-                    <div className="grid gap-4 md:grid-cols-2 pt-2 border-t border-border/30">
-                      <div className="space-y-2">
-                        <Label htmlFor="organization" className="font-semibold text-sm">Nom de l'entreprise</Label>
-                        <div className="relative">
-                          <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            id="organization"
-                            required
-                            value={form.organization}
-                            onChange={(e) => setForm({ ...form, organization: e.target.value })}
-                            className="pl-9 bg-background/40 transition-all focus:ring-2 focus:ring-primary/20"
-                          />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="website" className="font-semibold text-sm">Site Internet</Label>
-                        <div className="relative">
-                          <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            id="website"
-                            type="url"
-                            placeholder="https://client-corp.com"
-                            value={form.website}
-                            onChange={(e) => setForm({ ...form, website: e.target.value })}
-                            className="pl-9 bg-background/40 transition-all focus:ring-2 focus:ring-primary/20"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex justify-end pt-4">
-                      <Button type="submit" disabled={saving} className="shadow-md rounded-xl hover:translate-y-[-1px] transition-all">
-                        {saving ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Enregistrement...
-                          </>
-                        ) : (
-                          <>
-                            <Save className="mr-2 h-4 w-4" />
-                            Enregistrer la fiche
-                          </>
-                        )}
-                      </Button>
-                    </div>
-
-                  </CardContent>
-                </Card>
-              </form>
+            {/* Row 3 : KPIs */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              {[
+                { icon: Shield,     label: "Score Cyber",   value: `${extData.cyberScore}%`,                       sub: "Conformité EDR",    color: "#059669", bg: "#f0fdf4", border: "#bbf7d0", iconColor: "#34d399" },
+                { icon: Laptop,     label: "PC Connectés",  value: `${connectedPcs}/${extData.pcs.length}`,         sub: "Agents actifs",     color: "#0284c7", bg: "#f0f9ff", border: "#bae6fd", iconColor: "#38bdf8" },
+                { icon: TrendingUp, label: "Offre",         value: offerMeta.name,                                 sub: extData.contractStatus, color: offerMeta.color, bg: "#fff7ed", border: "#fed7aa", iconColor: offerMeta.color },
+                { icon: Clock,      label: "MTTR SOC",      value: offerMeta.mttr,                                 sub: "Temps de réponse",  color: "#7c3aed", bg: "#faf5ff", border: "#ddd6fe", iconColor: "#a78bfa" },
+              ].map(kpi => (
+                <div key={kpi.label} className="rounded-xl px-3.5 py-3 border transition-shadow hover:shadow-sm"
+                  style={{ backgroundColor: kpi.bg, borderColor: kpi.border }}>
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <kpi.icon className="h-3.5 w-3.5" style={{ color: kpi.iconColor }} />
+                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">{kpi.label}</span>
+                  </div>
+                  <p className="text-[15px] font-black leading-none truncate" style={{ color: kpi.color }}>{kpi.value}</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">{kpi.sub}</p>
+                </div>
+              ))}
             </div>
-
           </div>
-        )}
+        </div>
 
-        {/* Onglet 2 : PC CONNECTÉS & AGENT DEPLOYER */}
+        {/* ── ONGLETS ── */}
+        <div className="flex gap-0 mb-5 bg-white border border-slate-200/90 rounded-xl px-1.5 shadow-sm">
+          {[
+            { key: "pcs",       label: `PC Connectés (${connectedPcs})`,  icon: Laptop     },
+          ].map(tab => {
+            const Icon = tab.icon;
+            const active = activeTab === tab.key;
+            return (
+              <button key={tab.key} onClick={() => setActiveTab(tab.key as any)}
+                className={`relative flex items-center gap-2 px-5 py-3.5 text-sm font-semibold transition-all duration-200 rounded-lg my-1 ${
+                  active
+                    ? "bg-orange-50 text-orange-600"
+                    : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
+                }`}>
+                <Icon className={`h-4 w-4 ${active ? "text-orange-500" : ""}`} />
+                {tab.label}
+                {active && <span className="absolute bottom-[-1px] left-3 right-3 h-0.5 bg-gradient-to-r from-orange-500 to-amber-400 rounded-full opacity-0" />}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Onglet : PC CONNECTÉS & AGENT DEPLOYER */}
         {activeTab === "pcs" && (
           <div className="space-y-6">
-            
+
+            {/* ── GUIDE D'ENRÔLEMENT WAZUH CLOUD ── */}
+            {(() => {
+              const offerInfo = OFFER_BY_TIER[extData.contractTier] ?? OFFER_BY_TIER.Bronze;
+              const groupName = form.organization
+                ? form.organization.toLowerCase().replace(/[^a-z0-9]/g, "-")
+                : "client-default";
+              const cloudManager = "3a1uer3pl3hr.cloud.wazuh.com";
+              const usedPcs = extData.pcs.length;
+              const maxPcs = offerInfo.maxPcs;
+              const quotaPct = Math.round((usedPcs / maxPcs) * 100);
+              const allConnected = extData.pcs.every(pc => pc.status !== "disconnected");
+              const agentInstalled = usedPcs > 0 && extData.pcs.some(p => p.status === "active");
+
+              const pwdParam = wazuhPassword ? ` WAZUH_REGISTRATION_PASSWORD="${wazuhPassword}"` : ` WAZUH_REGISTRATION_PASSWORD="VOTRE_MOT_DE_PASSE"`;
+              const pwdParamLinux = wazuhPassword ? ` WAZUH_REGISTRATION_PASSWORD="${wazuhPassword}"` : ` WAZUH_REGISTRATION_PASSWORD="VOTRE_MOT_DE_PASSE"`;
+
+              const osScripts: Record<string, { label: string; badge: string; steps: { title: string; cmd: string; comment: string }[] }> = {
+                windows: {
+                  label: "Windows",
+                  badge: "PowerShell Admin",
+                  steps: [
+                    {
+                      title: "Télécharger l'agent (.msi)",
+                      comment: "# Étape 1 — Exécuter dans PowerShell en tant qu'Administrateur",
+                      cmd: `Invoke-WebRequest -Uri "https://packages.wazuh.com/4.x/windows/wazuh-agent-4.14.5-1.msi" -OutFile "$env:TEMP\\wazuh-agent.msi"`,
+                    },
+                    {
+                      title: "Installer & enregistrer sur Wazuh Cloud",
+                      comment: "# Étape 2 — Installation avec mot de passe d'enrollment",
+                      cmd: `msiexec.exe /i "$env:TEMP\\wazuh-agent.msi" WAZUH_MANAGER="${cloudManager}" WAZUH_REGISTRATION_SERVER="${cloudManager}"${pwdParam} WAZUH_AGENT_GROUP="${groupName}" /q`,
+                    },
+                    {
+                      title: "Démarrer le service",
+                      comment: "# Étape 3 — Démarrage du service Wazuh",
+                      cmd: `NET START WazuhSvc`,
+                    },
+                  ],
+                },
+                linux: {
+                  label: "Linux",
+                  badge: "Terminal root",
+                  steps: [
+                    {
+                      title: "Ajouter le dépôt Wazuh",
+                      comment: "# Étape 1 — Ajout du dépôt officiel Wazuh",
+                      cmd: `curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import\necho "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages.wazuh.com/4.x/apt/ stable main" | tee /etc/apt/sources.list.d/wazuh.list && apt-get update`,
+                    },
+                    {
+                      title: "Installer & enregistrer l'agent",
+                      comment: "# Étape 2 — Installation avec mot de passe d'enrollment",
+                      cmd: `WAZUH_MANAGER="${cloudManager}"${pwdParamLinux} WAZUH_AGENT_GROUP="${groupName}" apt-get install -y wazuh-agent`,
+                    },
+                    {
+                      title: "Activer & démarrer",
+                      comment: "# Étape 3 — Activation du service au démarrage",
+                      cmd: `systemctl enable --now wazuh-agent`,
+                    },
+                  ],
+                },
+                macos: {
+                  label: "macOS",
+                  badge: "Terminal Admin",
+                  steps: [
+                    {
+                      title: "Télécharger l'agent (.pkg)",
+                      comment: "# Étape 1 — Téléchargement du paquet macOS",
+                      cmd: `curl -so /tmp/wazuh-agent.pkg https://packages.wazuh.com/4.x/macos/wazuh-agent-4.14.5-1.intel64.pkg`,
+                    },
+                    {
+                      title: "Installer & enregistrer l'agent",
+                      comment: "# Étape 2 — Installation avec mot de passe d'enrollment",
+                      cmd: `WAZUH_MANAGER="${cloudManager}"${pwdParamLinux} WAZUH_AGENT_GROUP="${groupName}" installer -pkg /tmp/wazuh-agent.pkg -target /`,
+                    },
+                    {
+                      title: "Démarrer l'agent",
+                      comment: "# Étape 3 — Démarrage du service Wazuh",
+                      cmd: `/Library/Ossec/bin/wazuh-control start`,
+                    },
+                  ],
+                },
+              };
+
+              const activeOs = edrDeployOs;
+              const activeScript = osScripts[activeOs];
+
+              const osIcons: Record<string, React.ReactNode> = {
+                windows: (
+                  <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+                ),
+                linux: (
+                  <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current"><path d="M12.504 0c-.155 0-.315.008-.48.021-4.226.333-3.105 4.807-3.17 6.298-.076 1.092-.3 1.953-1.05 3.02-.885 1.051-2.127 2.75-2.716 4.521-.278.832-.41 1.684-.287 2.489a.424.424 0 00-.11.135c-.26.268-.45.6-.663.839-.199.199-.485.267-.797.4-.313.136-.658.269-.864.68-.09.189-.136.394-.132.602 0 .199.027.4.055.536.058.399.116.728.04.97-.249.68-.28 1.145-.106 1.484.174.334.535.47.94.601.81.2 1.91.135 2.774.6.926.466 1.866.67 2.616.47.526-.116.97-.464 1.208-.946.587.026 1.row21-.274 1.666-.869.393-.56.458-1.419.458-2.178 0-.609.013-1.291.17-1.825.155-.54.427-.87.917-1.18.484-.308.947-.559 1.323-.896.765-.661 1.073-1.474.73-2.643-.343-1.169-1.37-2.216-2.09-3.338-.657-1.015-.998-2.064-1.095-3.232-.097-1.168.024-2.515.464-4.043.131-.484.191-.938.191-1.36C15.7 1.062 14.137 0 12.504 0zM9.304 7.742c.03-.013.085-.027.154-.027.207 0 .49.09.573.306a.42.42 0 01-.017.354c-.084.161-.261.27-.46.27a.43.43 0 01-.413-.43c0-.242.143-.434.163-.473zm5.358 0c.02.039.163.231.163.473a.43.43 0 01-.413.43c-.199 0-.376-.109-.46-.27a.42.42 0 01-.017-.354c.083-.216.366-.306.573-.306.069 0 .124.014.154.027zm-5.75 2.786c.37 0 .67.3.67.67s-.3.67-.67.67-.67-.3-.67-.67.3-.67.67-.67zm6.142 0c.37 0 .67.3.67.67s-.3.67-.67.67-.67-.3-.67-.67.3-.67.67-.67z"/></svg>
+                ),
+                macos: (
+                  <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></svg>
+                ),
+              };
+
+              const tierGradients: Record<string, string> = {
+                Bronze:  "from-orange-950/80 via-slate-950 to-slate-950",
+                Argent:  "from-blue-950/80 via-slate-950 to-slate-950",
+                Or:      "from-amber-950/80 via-slate-950 to-slate-950",
+                Platine: "from-violet-950/80 via-slate-950 to-slate-950",
+              };
+              const tierAccent: Record<string, string> = {
+                Bronze:  "text-orange-400 border-orange-500/30 bg-orange-500/10",
+                Argent:  "text-blue-400 border-blue-500/30 bg-blue-500/10",
+                Or:      "text-amber-400 border-amber-500/30 bg-amber-500/10",
+                Platine: "text-violet-400 border-violet-500/30 bg-violet-500/10",
+              };
+              const tierBorder: Record<string, string> = {
+                Bronze:  "border-orange-500/20",
+                Argent:  "border-blue-500/20",
+                Or:      "border-amber-500/20",
+                Platine: "border-violet-500/20",
+              };
+              const tier = extData.contractTier as string;
+              const accentCls = tierAccent[tier] ?? tierAccent.Bronze;
+              const borderCls = tierBorder[tier] ?? tierBorder.Bronze;
+              const gradientCls = tierGradients[tier] ?? tierGradients.Bronze;
+
+              const steps = [
+                { num: 1, done: true,           icon: User,     label: "Client créé",        sub: form.organization || "Client" },
+                { num: 2, done: usedPcs > 0,    icon: Monitor,  label: "Machines ajoutées",  sub: `${usedPcs} / ${maxPcs}` },
+                { num: 3, done: agentInstalled,  icon: Download, label: "Agent déployé",      sub: "Wazuh 4.14.5" },
+                { num: 4, done: allConnected && usedPcs > 0, icon: Activity, label: "Supervision active", sub: "SOC temps réel" },
+              ];
+
+              return (
+                <div className="space-y-2">
+                  {/* ── Collapsible toggle ── */}
+                  <button
+                    onClick={() => setDeployGuideOpen(v => !v)}
+                    className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-zinc-800/80 bg-zinc-900/60 hover:bg-zinc-900/90 transition-all duration-200"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-lg border ${accentCls} flex items-center justify-center`}>
+                        <Download className="h-3.5 w-3.5" />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-sm font-bold text-white">Guide de déploiement EDR</p>
+                        <p className="text-[11px] text-zinc-500">{usedPcs}/{maxPcs} agents · Wazuh Cloud v4.14.5 · Groupe : <span className="text-zinc-300 font-mono">{groupName}</span></p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {allConnected && usedPcs > 0 ? (
+                        <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />Tous actifs
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-bold">
+                          <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />Action requise
+                        </span>
+                      )}
+                      <ChevronDown className={`h-4 w-4 text-zinc-400 transition-transform duration-200 ${deployGuideOpen ? "rotate-180" : ""}`} />
+                    </div>
+                  </button>
+
+                  {deployGuideOpen && (
+                  <div className={`rounded-2xl border ${borderCls} bg-gradient-to-br ${gradientCls} overflow-hidden shadow-2xl`}>
+
+                  {/* ── HERO BANNER ── */}
+                  <div className="relative px-6 pt-6 pb-5 border-b border-white/5">
+                    <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: "radial-gradient(circle at 20% 50%, white 1px, transparent 1px), radial-gradient(circle at 80% 20%, white 1px, transparent 1px)", backgroundSize: "30px 30px" }} />
+                    <div className="relative flex items-start justify-between gap-4">
+                      <div className="flex items-center gap-4">
+                        <div className={`w-12 h-12 rounded-2xl border ${accentCls} flex items-center justify-center shadow-lg`}>
+                          <Shield className="h-6 w-6" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className={`text-[10px] font-black uppercase tracking-[0.15em] px-2 py-0.5 rounded-full border ${accentCls}`}>
+                              {offerInfo.name}
+                            </span>
+                            <span className="text-[10px] text-zinc-500 font-mono">Wazuh Cloud v4.14.5</span>
+                          </div>
+                          <h2 className="text-lg font-black text-white tracking-tight">
+                            Guide de déploiement EDR
+                          </h2>
+                          <p className="text-xs text-zinc-400 mt-0.5">
+                            {form.organization || "Client"} · Groupe :
+                            <code className={`ml-1.5 font-mono text-[11px] px-2 py-0.5 rounded-md border ${accentCls}`}>{groupName}</code>
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="shrink-0 text-right space-y-2">
+                        {allConnected && usedPcs > 0 ? (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-xs font-bold">
+                            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                            Toutes les machines actives
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/25 text-amber-400 text-xs font-bold">
+                            <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
+                            Déploiement en cours
+                          </span>
+                        )}
+                        <div className="flex items-center gap-2 justify-end">
+                          <div className="w-24 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all duration-700 ${quotaPct >= 90 ? "bg-rose-500" : quotaPct >= 60 ? "bg-amber-500" : "bg-emerald-500"}`}
+                              style={{ width: `${Math.min(quotaPct, 100)}%` }}
+                            />
+                          </div>
+                          <span className={`text-[11px] font-black ${usedPcs >= maxPcs ? "text-rose-400" : "text-zinc-300"}`}>
+                            {usedPcs}/{maxPcs}
+                          </span>
+                          <span className="text-[10px] text-zinc-500">machines</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Timeline progress */}
+                    <div className="relative mt-6 flex items-center gap-0">
+                      {steps.map((step, idx) => {
+                        const Icon = step.icon;
+                        const isLast = idx === steps.length - 1;
+                        return (
+                          <div key={step.num} className="flex items-center flex-1">
+                            <div className="flex flex-col items-center gap-1.5 min-w-0">
+                              <div className={`w-9 h-9 rounded-xl flex items-center justify-center border transition-all duration-300 ${
+                                step.done
+                                  ? `${accentCls} shadow-lg`
+                                  : "border-white/10 bg-white/5 text-zinc-600"
+                              }`}>
+                                {step.done
+                                  ? <CheckCircle2 className="h-4 w-4" />
+                                  : <Icon className="h-4 w-4" />
+                                }
+                              </div>
+                              <div className="text-center">
+                                <p className={`text-[10px] font-black uppercase tracking-widest ${step.done ? "text-white" : "text-zinc-600"}`}>
+                                  {step.label}
+                                </p>
+                                <p className={`text-[9px] mt-0.5 ${step.done ? "text-zinc-400" : "text-zinc-700"}`}>{step.sub}</p>
+                              </div>
+                            </div>
+                            {!isLast && (
+                              <div className={`flex-1 h-px mx-2 mb-5 transition-all ${steps[idx + 1].done ? "bg-gradient-to-r from-current to-current opacity-40" : "bg-white/8"}`} />
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* ── SCRIPTS SECTION ── */}
+                  <div className="p-6 space-y-4">
+
+                    {/* Mot de passe d'enrollment */}
+                    <div className="rounded-xl border border-rose-500/20 bg-rose-950/20 p-4 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <KeyRound className="h-3.5 w-3.5 text-rose-400" />
+                        <span className="text-[11px] font-black text-rose-300">Mot de passe d'enrollment Wazuh Cloud</span>
+                        <span className="text-[9px] px-2 py-0.5 rounded bg-rose-500/15 text-rose-400 font-mono">Requis</span>
+                      </div>
+                      <p className="text-[10px] text-zinc-500">
+                        Allez sur <strong className="text-zinc-300">console.cloud.wazuh.com → Deploy new agent → Windows</strong> — copiez la valeur <code className="font-mono text-rose-300 bg-rose-900/30 px-1 rounded">WAZUH_REGISTRATION_PASSWORD</code> dans la commande générée.
+                      </p>
+                      <div className="flex gap-2">
+                        <input
+                          type="password"
+                          placeholder="Collez votre mot de passe d'enrollment ici..."
+                          value={wazuhPassword}
+                          onChange={e => setWazuhPassword(e.target.value)}
+                          className="flex-1 h-8 text-xs font-mono bg-black/40 border border-rose-500/20 rounded-lg px-3 text-white placeholder:text-zinc-600 focus:outline-none focus:border-rose-500/50"
+                        />
+                        {wazuhPassword && (
+                          <span className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold">
+                            <Check className="h-3 w-3" /> Défini
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* OS Selector Tabs */}
+                    <div className="flex items-center gap-1 p-1 rounded-xl bg-black/30 border border-white/5 w-fit">
+                      {(["windows", "linux", "macos"] as const).map((os) => (
+                        <button
+                          key={os}
+                          onClick={() => setEdrDeployOs(os)}
+                          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all duration-200 ${
+                            activeOs === os
+                              ? `${accentCls} shadow-md`
+                              : "text-zinc-500 hover:text-zinc-300"
+                          }`}
+                        >
+                          <span className={activeOs === os ? "" : "opacity-40"}>{osIcons[os]}</span>
+                          {osScripts[os].label}
+                          <span className={`text-[9px] px-1.5 py-0.5 rounded font-mono ${activeOs === os ? "bg-black/20" : "bg-white/5 text-zinc-600"}`}>
+                            {osScripts[os].badge}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Copy all button */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Terminal className="h-3.5 w-3.5 text-zinc-500" />
+                        <span className="text-[11px] text-zinc-500">
+                          3 commandes — <span className="text-zinc-300 font-semibold">{activeScript.badge}</span>
+                        </span>
+                      </div>
+                      <button
+                        className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-400 hover:text-emerald-300 px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/15 border border-emerald-500/20 transition-all"
+                        onClick={() => {
+                          const all = activeScript.steps.map(s => `${s.comment}\n${s.cmd}`).join("\n\n");
+                          navigator.clipboard.writeText(all);
+                          toast.success(`Script ${activeScript.label} complet copié`, {
+                            description: "Collez dans un terminal administrateur et exécutez séquentiellement."
+                          });
+                        }}
+                      >
+                        <Copy className="h-3 w-3" /> Copier tout le script
+                      </button>
+                    </div>
+
+                    {/* Steps */}
+                    <div className="space-y-3">
+                      {activeScript.steps.map((step, i) => (
+                        <div key={i} className="rounded-xl border border-white/6 bg-black/40 overflow-hidden">
+                          {/* Step header */}
+                          <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/5 bg-white/[0.02]">
+                            <div className="flex items-center gap-2.5">
+                              <span className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-black border ${accentCls}`}>
+                                {i + 1}
+                              </span>
+                              <span className="text-xs font-bold text-zinc-200">{step.title}</span>
+                            </div>
+                            <button
+                              className="flex items-center gap-1 text-[10px] font-bold text-zinc-400 hover:text-white px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/8 transition-all"
+                              onClick={() => {
+                                navigator.clipboard.writeText(step.cmd);
+                                setCopiedScript(`${activeOs}-${i}`);
+                                setTimeout(() => setCopiedScript(null), 2000);
+                                toast.success(`Étape ${i + 1} copiée`);
+                              }}
+                            >
+                              {copiedScript === `${activeOs}-${i}`
+                                ? <><Check className="h-3 w-3 text-emerald-400" /> Copié</>
+                                : <><Copy className="h-3 w-3" /> Copier</>
+                              }
+                            </button>
+                          </div>
+                          {/* Comment line */}
+                          <div className="px-4 pt-2.5 pb-1">
+                            <span className="text-[10px] font-mono text-zinc-600">{step.comment}</span>
+                          </div>
+                          {/* Command */}
+                          <div className="px-4 pb-3">
+                            <pre className="text-[11px] font-mono text-emerald-300 leading-relaxed whitespace-pre-wrap break-all">
+                              {step.cmd}
+                            </pre>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Script tout-en-un Windows */}
+                    {activeOs === "windows" && (
+                      <div className={`rounded-xl border overflow-hidden ${wazuhPassword ? "border-emerald-500/20 bg-emerald-950/20" : "border-zinc-500/20 bg-zinc-900/30"}`}>
+                        <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/5 bg-white/[0.02]">
+                          <div className="flex items-center gap-2">
+                            <Zap className={`h-3.5 w-3.5 ${wazuhPassword ? "text-emerald-400" : "text-zinc-500"}`} />
+                            <span className={`text-[11px] font-black ${wazuhPassword ? "text-emerald-300" : "text-zinc-400"}`}>Script tout-en-un</span>
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/5 text-zinc-500 font-mono">PowerShell Admin</span>
+                            {!wazuhPassword && <span className="text-[9px] text-amber-400 font-bold">← Entrez le mot de passe ci-dessus</span>}
+                          </div>
+                          <button
+                            disabled={!wazuhPassword}
+                            className={`flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-lg border transition-all ${wazuhPassword ? "text-emerald-400 hover:text-emerald-200 bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/20" : "text-zinc-600 bg-white/5 border-white/5 cursor-not-allowed"}`}
+                            onClick={() => {
+                              if (!wazuhPassword) return;
+                              const script = [
+                                `# INOVA-IRIS - Installation Wazuh Agent pour ${form.organization || groupName}`,
+                                `$EP="${cloudManager}"; $GRP="${groupName}"; $PWD="${wazuhPassword}"; $MSI="$env:TEMP\\wazuh.msi"`,
+                                `NET STOP WazuhSvc 2>$null; Start-Sleep 1`,
+                                `Invoke-WebRequest -Uri "https://packages.wazuh.com/4.x/windows/wazuh-agent-4.14.5-1.msi" -OutFile $MSI -UseBasicParsing`,
+                                `msiexec /i $MSI WAZUH_MANAGER="$EP" WAZUH_REGISTRATION_SERVER="$EP" WAZUH_REGISTRATION_PASSWORD="$PWD" WAZUH_AGENT_GROUP="$GRP" /q`,
+                                `Clear-Content "C:\\Program Files (x86)\\ossec-agent\\client.keys" -ErrorAction SilentlyContinue`,
+                                `Start-Sleep 3; NET START WazuhSvc`,
+                                `Write-Host "Agent demarre !" -ForegroundColor Green`,
+                              ].join("\n");
+                              navigator.clipboard.writeText(script);
+                              toast.success("Script complet copié !", {
+                                description: "Collez et exécutez dans PowerShell Administrateur."
+                              });
+                            }}
+                          >
+                            <Copy className="h-3 w-3" /> Copier le script complet
+                          </button>
+                        </div>
+                        <div className="px-4 py-3">
+                          <pre className="text-[10px] font-mono leading-relaxed whitespace-pre-wrap">
+                            <span className="text-zinc-600">{`$EP="${cloudManager}"; $GRP="${groupName}"; $PWD="`}</span>
+                            <span className={wazuhPassword ? "text-rose-300" : "text-zinc-600"}>{wazuhPassword || "MOT_DE_PASSE_ICI"}</span>
+                            <span className="text-zinc-600">{`"; $MSI="$env:TEMP\\wazuh.msi"\n`}</span>
+                            <span className="text-emerald-300/70">{`NET STOP WazuhSvc 2>$null; Start-Sleep 1\n`}</span>
+                            <span className="text-emerald-300/70">{`Invoke-WebRequest -Uri "https://packages.wazuh.com/4.x/windows/wazuh-agent-4.14.5-1.msi" -OutFile $MSI -UseBasicParsing\n`}</span>
+                            <span className="text-emerald-300/70">{`msiexec /i $MSI WAZUH_MANAGER="$EP" WAZUH_REGISTRATION_SERVER="$EP" WAZUH_REGISTRATION_PASSWORD="$PWD" WAZUH_AGENT_GROUP="$GRP" /q\n`}</span>
+                            <span className="text-emerald-300/70">{`Clear-Content "C:\\Program Files (x86)\\ossec-agent\\client.keys" -ErrorAction SilentlyContinue\n`}</span>
+                            <span className="text-emerald-300/70">{`Start-Sleep 3; NET START WazuhSvc`}</span>
+                          </pre>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Footer info */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="flex items-start gap-3 rounded-xl bg-blue-950/30 border border-blue-500/10 p-3">
+                        <div className="w-6 h-6 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0 mt-0.5">
+                          <Activity className="h-3 w-3 text-blue-400" />
+                        </div>
+                        <div className="space-y-0.5">
+                          <p className="text-[11px] font-bold text-blue-200">Vérifier la connexion</p>
+                          <p className="text-[10px] text-zinc-500 leading-relaxed">
+                            L'agent apparaît dans la topologie (point vert) sous 30 secondes. Filtrez par groupe
+                            <code className="mx-1 font-mono text-[9px] px-1 py-0.5 rounded bg-blue-900/40 text-blue-300">{groupName}</code>
+                            dans Wazuh Cloud.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3 rounded-xl bg-amber-950/20 border border-amber-500/10 p-3">
+                        <div className="w-6 h-6 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0 mt-0.5">
+                          <Network className="h-3 w-3 text-amber-400" />
+                        </div>
+                        <div className="space-y-0.5">
+                          <p className="text-[11px] font-bold text-amber-200">Ports requis (sortant)</p>
+                          <p className="text-[10px] text-zinc-500 leading-relaxed">
+                            TCP <code className="font-mono text-amber-300">1514</code> (événements agent) ·
+                            TCP <code className="font-mono text-amber-300">1515</code> (enrollment) ·
+                            TCP <code className="font-mono text-amber-300">443</code> (API Cloud)
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+                  )}
+                </div>
+              );
+            })()}
+
             {/* Topologie et Flux de Logs Temps Réel (Grid 2 Colonnes) */}
             <div className="grid gap-6 md:grid-cols-3">
               
-              {/* Carte Topologique EDR/Wazuh (2/3 de large sur desktop) */}
-              <Card className="md:col-span-2 shadow-lg border-border/50 bg-card/60 backdrop-blur-sm p-5 relative overflow-hidden flex flex-col justify-between min-h-[350px]">
-                <div className="absolute top-4 left-4 z-10">
-                  <h3 className="text-lg font-bold flex items-center gap-2 text-foreground">
-                    <Network className="h-5 w-5 text-primary" /> Topologie de Protection Endpoint
-                  </h3>
-                  <p className="text-xs text-muted-foreground">Cartographie dynamique des agents Wazuh & Connecteurs</p>
-                </div>
-                <div className="absolute top-4 right-4 z-10 flex gap-2">
-                  <Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/10 border-none font-bold text-[10px] px-2 py-0.5 rounded-md flex items-center gap-1 animate-pulse">
-                    <span className="h-1.5 w-1.5 bg-emerald-500 rounded-full"></span> 10.0.0.1 SOC HUB CONNECTÉ
-                  </Badge>
+              {/* ── CARTE TOPOLOGIE REDESIGNÉE (thème clair) ── */}
+              <div className="md:col-span-2 rounded-2xl overflow-hidden border border-slate-200/90 shadow-[0_2px_24px_0_rgba(0,0,0,0.06)] flex flex-col relative" style={{ background: "linear-gradient(135deg, #ffffff 0%, #f8fafc 55%, #f1f5f9 100%)" }}>
+
+                {/* Barre dégradée top */}
+                <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-orange-400 via-amber-400 to-orange-300 z-10" />
+
+                {/* Header topologie */}
+                <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-200/80">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-100 to-amber-100 border border-orange-200/60 flex items-center justify-center shadow-sm">
+                      <Network className="h-4 w-4 text-orange-500" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-black text-slate-900 tracking-wide">Topologie de Protection Endpoint</p>
+                      <p className="text-[10px] text-slate-400">Cartographie des agents Wazuh en temps réel</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-[10px] font-bold text-emerald-600 shadow-sm">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      SOC HUB · 10.0.0.1
+                    </span>
+                  </div>
                 </div>
 
-                {/* SVG Visual Node Graph — Laptops + Server */}
-                <div className="flex-1 flex items-center justify-center min-h-[260px] relative pt-12">
+                {/* SVG zone */}
+                <div className="flex-1 relative px-4 pt-2 pb-3">
                   {(() => {
-                    // Quota par tier d'offre
-                    const QUOTA_BY_TIER: Record<string, number> = {
-                      Bronze: 5, Argent: 10, Or: 20, Platine: 50
-                    };
-                    const maxPcs = QUOTA_BY_TIER[extData.contractTier] ?? 10;
+                    const offerInfo = OFFER_BY_TIER[extData.contractTier] ?? OFFER_BY_TIER.Bronze;
+                    const maxPcs = offerInfo.maxPcs;
                     const usedPcs = extData.pcs.length;
                     const quotaReached = usedPcs >= maxPcs;
 
                     const addMachine = () => {
                       if (quotaReached) {
-                        toast.error(`Quota atteint (${maxPcs} PC max pour l'offre ${extData.contractTier})`, {
+                        toast.error(`Quota atteint (${maxPcs} PC max — ${offerInfo.name})`, {
                           description: "Mettez à niveau votre offre pour ajouter plus de machines."
                         });
                         return;
                       }
-                      const newId = `${extData.clientId}-pc-${Date.now()}`;
-                      const osList = ["windows", "linux", "macos"] as const;
-                      const os = osList[usedPcs % osList.length];
-                      const prefix = os === "windows" ? "desktop" : os === "linux" ? "srv" : "macbook";
-                      const orgSlug = (form.organization || "client").toLowerCase().replace(/[^a-z0-9]/g, "-");
-                      const newPc = {
-                        id: newId,
-                        name: `${prefix}-${orgSlug}-${String(usedPcs + 1).padStart(2, "0")}`,
-                        os,
-                        ip: `192.168.${Math.floor(Math.random() * 50) + 1}.${Math.floor(Math.random() * 200) + 10}`,
-                        status: "active" as const,
-                        cpu: Math.floor(Math.random() * 30) + 5,
-                        ram: Math.floor(Math.random() * 40) + 20,
-                        lastSeen: "À l'instant",
-                        wazuhId: String(300 + usedPcs).padStart(3, "0"),
-                      };
-                      const updated = { ...extData, pcs: [...extData.pcs, newPc] };
-                      setExtData(updated);
-                      localStorage.setItem(`client_ext_${clientId}`, JSON.stringify(updated));
-                      toast.success("Machine ajoutée !", { description: `${newPc.name} est maintenant surveillée par l'agent EDR.` });
+                      setAddMachineOpen(true);
                     };
 
                     return (
-                      <div className="w-full flex flex-col gap-4">
-                        {/* Quota bar */}
-                        <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl px-4 py-2.5 border border-border/30">
+                      <div className="w-full flex flex-col gap-3">
+                        {/* Quota bar redesignée (thème clair) */}
+                        <div className="flex items-center gap-3 rounded-xl px-4 py-2.5 border border-slate-200/80 bg-white/70 shadow-sm">
                           <div className="flex-1">
-                            <div className="flex items-center justify-between text-xs mb-1.5">
-                              <span className="font-bold text-slate-700 dark:text-slate-300">
-                                Quota machines — Offre <span className="text-primary">{extData.contractTier}</span>
+                            <div className="flex items-center justify-between mb-1.5">
+                              <span className="text-[11px] font-bold text-slate-600 flex items-center gap-1.5">
+                                <span className="inline-block w-2 h-2 rounded-full" style={{ background: offerInfo.color }} />
+                                {offerInfo.name}
                               </span>
-                              <span className={`font-black ${quotaReached ? "text-rose-500" : "text-emerald-500"}`}>
-                                {usedPcs} / {maxPcs} PC
+                              <span className={`text-[11px] font-black ${quotaReached ? "text-rose-500" : "text-emerald-600"}`}>
+                                {usedPcs} / {maxPcs} postes
                               </span>
                             </div>
-                            <div className="h-2 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
-                              <div
-                                className={`h-full rounded-full transition-all duration-700 ${
-                                  quotaReached ? "bg-rose-500 animate-pulse" :
-                                  usedPcs / maxPcs > 0.8 ? "bg-amber-500" : "bg-emerald-500"
-                                }`}
-                                style={{ width: `${Math.min((usedPcs / maxPcs) * 100, 100)}%` }}
+                            <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                              <div className="h-full rounded-full transition-all duration-700"
+                                style={{
+                                  width: `${Math.min((usedPcs / maxPcs) * 100, 100)}%`,
+                                  background: quotaReached ? "#ef4444" : usedPcs / maxPcs > 0.8 ? "#f59e0b" : offerInfo.color,
+                                }}
                               />
                             </div>
                           </div>
-                          <button
-                            onClick={addMachine}
-                            disabled={quotaReached}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wide transition-all border ${
+                          <button onClick={addMachine} disabled={quotaReached}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all ${
                               quotaReached
-                                ? "bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700 cursor-not-allowed"
-                                : "bg-emerald-500 hover:bg-emerald-600 text-white border-emerald-500 shadow-md shadow-emerald-500/20 hover:shadow-emerald-500/40 hover:scale-105"
-                            }`}
-                            title={quotaReached ? `Quota atteint (${maxPcs} max)` : "Ajouter une nouvelle machine"}
-                          >
-                            <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 fill-current"><path d="M8 1a.5.5 0 0 1 .5.5v6h6a.5.5 0 0 1 0 1h-6v6a.5.5 0 0 1-1 0v-6h-6a.5.5 0 0 1 0-1h6v-6A.5.5 0 0 1 8 1z"/></svg>
-                            {quotaReached ? "Quota max" : "Ajouter machine"}
+                                ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+                                : "bg-orange-500 hover:bg-orange-600 text-white shadow-lg shadow-orange-500/30 hover:scale-105"
+                            }`}>
+                            <Plus className="h-3 w-3" />
+                            {quotaReached ? "Quota max" : "Ajouter"}
                           </button>
                         </div>
 
                         {/* SVG topology */}
-                        <svg className="w-full max-w-[600px] mx-auto" viewBox="0 0 540 260" style={{ minHeight: 200 }}>
+                        <svg className="w-full" viewBox="0 0 580 280" style={{ minHeight: 220 }}>
                           <defs>
-                            <radialGradient id="hubGlow2" cx="50%" cy="50%" r="50%">
-                              <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.35" />
-                              <stop offset="100%" stopColor="var(--primary)" stopOpacity="0" />
+                            {/* Gradient pour lignes actives */}
+                            <linearGradient id="lineGradActive" x1="0%" y1="0%" x2="100%" y2="0%">
+                              <stop offset="0%" stopColor="#f97316" stopOpacity="0.8"/>
+                              <stop offset="100%" stopColor="#10b981" stopOpacity="0.8"/>
+                            </linearGradient>
+                            <linearGradient id="lineGradAlert" x1="0%" y1="0%" x2="100%" y2="0%">
+                              <stop offset="0%" stopColor="#f97316" stopOpacity="0.8"/>
+                              <stop offset="100%" stopColor="#f59e0b" stopOpacity="0.8"/>
+                            </linearGradient>
+                            {/* Glow filters */}
+                            <filter id="glow-hub" x="-50%" y="-50%" width="200%" height="200%">
+                              <feGaussianBlur stdDeviation="6" result="blur"/>
+                              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                            </filter>
+                            <filter id="glow-node" x="-30%" y="-30%" width="160%" height="160%">
+                              <feGaussianBlur stdDeviation="3" result="blur"/>
+                              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                            </filter>
+                            <filter id="glow-red" x="-30%" y="-30%" width="160%" height="160%">
+                              <feGaussianBlur stdDeviation="3" result="blur"/>
+                              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                            </filter>
+                            {/* Hub glow radial */}
+                            <radialGradient id="hubBg" cx="50%" cy="50%" r="50%">
+                              <stop offset="0%" stopColor="#f97316" stopOpacity="0.18"/>
+                              <stop offset="100%" stopColor="#f97316" stopOpacity="0"/>
                             </radialGradient>
-                            <filter id="glow-green">
-                              <feGaussianBlur stdDeviation="2.5" result="blur"/>
-                              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-                            </filter>
-                            <filter id="glow-red">
-                              <feGaussianBlur stdDeviation="2" result="blur"/>
-                              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-                            </filter>
+                            {/* Background grid (clair) */}
+                            <pattern id="bgGrid" width="28" height="28" patternUnits="userSpaceOnUse">
+                              <path d="M 28 0 L 0 0 0 28" fill="none" stroke="#475569" strokeWidth="0.4" opacity="0.06"/>
+                            </pattern>
                           </defs>
+
+                          {/* Background */}
+                          <rect width="580" height="280" fill="url(#bgGrid)" />
+
+                          {/* Rings around hub */}
+                          {[52, 70, 90].map((r, i) => (
+                            <circle key={r} cx="290" cy="140" r={r}
+                              fill="none" stroke="#f97316"
+                              strokeWidth={i === 0 ? 0.8 : 0.5}
+                              strokeDasharray={i === 2 ? "4,8" : ""}
+                              opacity={0.22 - i * 0.05} />
+                          ))}
 
                           {/* Connection lines */}
                           {extData.pcs.map((pc, idx) => {
@@ -1183,126 +1617,151 @@ UDP   0.0.0.0:123            *:*
                             const status = telemetry?.wazuhStatus || pc.status;
                             const total = extData.pcs.length;
                             const angle = (idx * 2 * Math.PI) / total - Math.PI / 2;
-                            const rx = 190, ry = 88;
-                            const tx = 270 + rx * Math.cos(angle);
-                            const ty = 130 + ry * Math.sin(angle);
-                            const strokeColor = status === "active" ? "#10b981" : status === "alert" ? "#f59e0b" : status === "isolated" ? "#ef4444" : "#64748b";
-                            const dash = status === "isolated" ? "5,4" : status === "disconnected" ? "3,5" : "";
+                            const rx = 200, ry = 95;
+                            const tx = 290 + rx * Math.cos(angle);
+                            const ty = 140 + ry * Math.sin(angle);
+                            const strokeColor = status === "active" ? "#10b981" : status === "alert" ? "#f59e0b" : status === "isolated" ? "#ef4444" : "#cbd5e1";
+                            const dash = status === "isolated" ? "6,4" : status === "disconnected" ? "3,6" : "";
+                            const gradId = status === "active" ? "url(#lineGradActive)" : status === "alert" ? "url(#lineGradAlert)" : strokeColor;
                             return (
                               <g key={`ln-${pc.id}`}>
-                                <line x1="270" y1="130" x2={tx} y2={ty}
-                                  stroke={strokeColor} strokeWidth="1.5" strokeDasharray={dash} opacity="0.5" />
+                                {/* Glow line */}
+                                <line x1="290" y1="140" x2={tx} y2={ty}
+                                  stroke={strokeColor} strokeWidth="3" strokeDasharray={dash} opacity="0.08" />
+                                {/* Main line */}
+                                <line x1="290" y1="140" x2={tx} y2={ty}
+                                  stroke={status === "active" || status === "alert" ? gradId : strokeColor}
+                                  strokeWidth="1.5" strokeDasharray={dash} opacity={status === "disconnected" ? 0.25 : 0.7} />
+                                {/* Animated particle */}
                                 {(status === "active" || status === "alert") && (
-                                  <circle r="3" fill={strokeColor} opacity="0.85">
-                                    <animateMotion dur={`${1.8 + idx * 0.35}s`} repeatCount="indefinite"
-                                      path={`M270,130 L${tx},${ty}`} />
+                                  <circle r="2.5" fill={strokeColor} opacity="0.9">
+                                    <animateMotion dur={`${2 + idx * 0.4}s`} repeatCount="indefinite"
+                                      path={`M290,140 L${tx},${ty}`} />
                                   </circle>
                                 )}
                               </g>
                             );
                           })}
 
-                          {/* ── SOC MANAGER — Server rack icon ── */}
+                          {/* ── SOC HUB redessiné ── */}
                           <g className="cursor-pointer" onClick={() => setSelectedPcId(null)}>
-                            <circle cx="270" cy="130" r="36" fill="url(#hubGlow2)" />
-                            {/* Server rack body */}
-                            <rect x="252" y="112" width="36" height="36" rx="4" className="fill-slate-900" stroke="hsl(var(--primary))" strokeWidth="1.5" />
+                            {/* Glow halo */}
+                            <circle cx="290" cy="140" r="44" fill="url(#hubBg)" />
+                            {/* Outer ring */}
+                            <circle cx="290" cy="140" r="34" fill="none" stroke="#f97316" strokeWidth="1.5" opacity="0.4">
+                              <animateTransform attributeName="transform" type="rotate"
+                                from="0 290 140" to="360 290 140" dur="12s" repeatCount="indefinite"/>
+                              <animate attributeName="stroke-dasharray" values="8,4;4,8;8,4" dur="3s" repeatCount="indefinite"/>
+                            </circle>
+                            {/* Body */}
+                            <rect x="274" y="122" width="32" height="36" rx="5" fill="#ffffff" stroke="#f97316" strokeWidth="1.8" filter="url(#glow-hub)" />
                             {/* Server slots */}
                             {[0,1,2].map(i => (
                               <g key={i}>
-                                <rect x="256" y={116 + i * 10} width="28" height="7" rx="1.5" className="fill-slate-800" />
-                                <circle cx="260" cy={119.5 + i * 10} r="1.5" fill={i === 0 ? "#10b981" : i === 1 ? "#10b981" : "#f59e0b"} />
-                                <rect x="264" y={118 + i * 10} width="16" height="2" rx="1" className="fill-slate-700" />
+                                <rect x="278" y={126 + i * 10} width="24" height="7" rx="2" fill="#f1f5f9" stroke="#e2e8f0" strokeWidth="0.5" />
+                                <circle cx="282" cy={129.5 + i * 10} r="2" fill={i < 2 ? "#10b981" : "#f59e0b"} filter="url(#glow-node)" />
+                                <rect x="286" y={128 + i * 10} width="12" height="2" rx="1" fill="#cbd5e1" />
+                                <rect x="286" y={131 + i * 10} width="8" height="1.5" rx="1" fill="#e2e8f0" />
                               </g>
                             ))}
-                            {/* Pulsing dot */}
-                            <circle cx="270" cy="156" r="4" className="fill-primary opacity-20 animate-ping" />
-                            <circle cx="270" cy="156" r="2.5" className="fill-primary" />
-                            <text x="270" y="174" textAnchor="middle" fontSize="8" fontWeight="800"
-                              className="fill-primary font-mono tracking-wider" letterSpacing="0.08em">
-                              SOC MANAGER
-                            </text>
+                            {/* Pulse */}
+                            <circle cx="290" cy="163" r="5" fill="#f97316" opacity="0.15">
+                              <animate attributeName="r" values="5;9;5" dur="2s" repeatCount="indefinite"/>
+                              <animate attributeName="opacity" values="0.15;0;0.15" dur="2s" repeatCount="indefinite"/>
+                            </circle>
+                            <circle cx="290" cy="163" r="2.5" fill="#f97316" />
+                            <text x="290" y="178" textAnchor="middle" fontSize="7" fontWeight="900"
+                              fill="#ea580c" letterSpacing="1.5">SOC MANAGER</text>
+                            <text x="290" y="187" textAnchor="middle" fontSize="6" fill="#94a3b8" letterSpacing="0.5">INOVA IRIS</text>
                           </g>
 
-                          {/* ── ENDPOINT NODES — Laptop icons ── */}
+                          {/* ── ENDPOINT NODES redessinés ── */}
                           {extData.pcs.map((pc, idx) => {
                             const telemetry = pcTelemetry[pc.id];
                             const status = telemetry?.wazuhStatus || pc.status;
                             const isSelected = selectedPcId === pc.id;
                             const total = extData.pcs.length;
                             const angle = (idx * 2 * Math.PI) / total - Math.PI / 2;
-                            const rx = 190, ry = 88;
-                            const cx = 270 + rx * Math.cos(angle);
-                            const cy = 130 + ry * Math.sin(angle);
+                            const rx = 200, ry = 95;
+                            const cx = 290 + rx * Math.cos(angle);
+                            const cy = 140 + ry * Math.sin(angle);
 
-                            const borderColor = status === "active" ? "#10b981" : status === "alert" ? "#f59e0b" : status === "isolated" ? "#ef4444" : "#64748b55";
-                            const screenColor = status === "active" ? "#052e16" : status === "alert" ? "#451a03" : status === "isolated" ? "#450a0a" : "#1e293b";
+                            const borderColor = status === "active" ? "#10b981" : status === "alert" ? "#f59e0b" : status === "isolated" ? "#ef4444" : "#94a3b8";
+                            const bgColor = status === "active" ? "#ecfdf5" : status === "alert" ? "#fffbeb" : status === "isolated" ? "#fef2f2" : "#f8fafc";
                             const dotColor = status === "active" ? "#10b981" : status === "alert" ? "#f59e0b" : status === "isolated" ? "#ef4444" : "#94a3b8";
-
-                            // OS label character
                             const osChar = pc.os === "windows" ? "W" : pc.os === "linux" ? "L" : "M";
+                            const shortName = pc.name.length > 12 ? `${pc.name.slice(0, 9)}…` : pc.name;
 
                             return (
                               <g key={`node-${pc.id}`} className="cursor-pointer"
                                 onClick={() => setSelectedPcId(pc.id)}>
-
-                                {/* Selection ring */}
+                                {/* Selection halo */}
                                 {isSelected && (
-                                  <circle cx={cx} cy={cy} r="22" fill="none" stroke="hsl(var(--primary))"
-                                    strokeWidth="2" strokeDasharray="4,3" opacity="0.7">
+                                  <circle cx={cx} cy={cy} r="24" fill="none" stroke="#f97316"
+                                    strokeWidth="1.5" strokeDasharray="3,3" opacity="0.8">
                                     <animateTransform attributeName="transform" type="rotate"
-                                      from={`0 ${cx} ${cy}`} to={`360 ${cx} ${cy}`} dur="4s" repeatCount="indefinite" />
+                                      from={`0 ${cx} ${cy}`} to={`360 ${cx} ${cy}`} dur="4s" repeatCount="indefinite"/>
                                   </circle>
                                 )}
-
-                                {/* Laptop screen */}
-                                <rect x={cx - 12} y={cy - 13} width="24" height="15" rx="2"
-                                  fill={screenColor} stroke={borderColor} strokeWidth={isSelected ? 2 : 1.5} />
-                                {/* Screen glow / content */}
-                                <rect x={cx - 10} y={cy - 11} width="20" height="11" rx="1" fill={screenColor} opacity="0.9" />
-                                {/* OS text on screen */}
-                                <text x={cx} y={cy - 4} textAnchor="middle" fontSize="6" fontWeight="900"
+                                {/* Glow */}
+                                {status !== "disconnected" && (
+                                  <circle cx={cx} cy={cy} r="18" fill={borderColor} opacity="0.08" filter="url(#glow-node)" />
+                                )}
+                                {/* Laptop body */}
+                                <rect x={cx - 14} y={cy - 12} width="28" height="18" rx="3"
+                                  fill={bgColor} stroke={borderColor} strokeWidth={isSelected ? 2 : 1.5} />
+                                {/* Screen inner */}
+                                <rect x={cx - 12} y={cy - 10} width="24" height="13" rx="1.5" fill={bgColor} opacity="0.9" />
+                                {/* OS char on screen */}
+                                <text x={cx} y={cy - 2} textAnchor="middle" fontSize="7" fontWeight="900"
                                   fill={borderColor} fontFamily="monospace">{osChar}</text>
-
-                                {/* Laptop base/keyboard */}
-                                <rect x={cx - 14} y={cy + 2} width="28" height="4" rx="1"
-                                  fill="#1e293b" stroke={borderColor} strokeWidth="1" />
-                                {/* Hinge notch */}
-                                <rect x={cx - 4} y={cy + 5} width="8" height="2" rx="1" fill="#0f172a" />
-
-                                {/* Status indicator dot */}
-                                <circle cx={cx + 11} cy={cy - 12} r="3.5" fill={dotColor}
-                                  filter={status === "active" ? "url(#glow-green)" : status === "isolated" ? "url(#glow-red)" : ""}>
+                                {/* Base */}
+                                <rect x={cx - 16} y={cy + 6} width="32" height="4" rx="1.5"
+                                  fill="#e2e8f0" stroke={borderColor} strokeWidth="1" />
+                                <rect x={cx - 5} y={cy + 9} width="10" height="1.5" rx="1" fill="#cbd5e1" />
+                                {/* Status dot */}
+                                <circle cx={cx + 12} cy={cy - 11} r="3.5" fill={dotColor} filter={status !== "disconnected" ? "url(#glow-node)" : ""}>
                                   {(status === "active" || status === "alert") && (
-                                    <animate attributeName="opacity" values="1;0.4;1" dur="1.8s" repeatCount="indefinite" />
+                                    <animate attributeName="opacity" values="1;0.5;1" dur="2s" repeatCount="indefinite"/>
                                   )}
                                 </circle>
-
-                                {/* PC name label */}
-                                <text x={cx} y={cy + 18} textAnchor="middle" fontSize="7.5" fontWeight="600"
-                                  fontFamily="monospace"
-                                  className={isSelected ? "fill-primary" : "fill-muted-foreground"}>
-                                  {pc.name.length > 14 ? `${pc.name.slice(0, 11)}…` : pc.name}
+                                {/* Name label */}
+                                <text x={cx} y={cy + 20} textAnchor="middle" fontSize="7" fontWeight="700"
+                                  fontFamily="monospace" fill={isSelected ? "#ea580c" : "#475569"}>
+                                  {shortName}
+                                </text>
+                                {/* IP label */}
+                                <text x={cx} y={cy + 28} textAnchor="middle" fontSize="6"
+                                  fontFamily="monospace" fill="#94a3b8">
+                                  {pc.ip}
                                 </text>
                               </g>
                             );
                           })}
                         </svg>
+
+                        {/* Légende */}
+                        <div className="flex items-center justify-between px-1">
+                          <div className="flex gap-4">
+                            {[
+                              { color: "#10b981", label: "En ligne" },
+                              { color: "#f59e0b", label: "Alerte SOC", pulse: true },
+                              { color: "#ef4444", label: "Quarantaine" },
+                              { color: "#cbd5e1", label: "Hors ligne" },
+                            ].map(s => (
+                              <span key={s.label} className="flex items-center gap-1.5 text-[10px] text-slate-500 font-medium">
+                                <span className={`h-2 w-2 rounded-full ${s.pulse ? "animate-pulse" : ""}`} style={{ background: s.color }} />
+                                {s.label}
+                              </span>
+                            ))}
+                          </div>
+                          <span className="text-[9px] font-mono text-slate-400">TLS v1.3 · AES-256-GCM</span>
+                        </div>
                       </div>
                     );
                   })()}
                 </div>
-
-                <div className="flex justify-between items-center text-[10px] text-muted-foreground border-t border-border/30 pt-3 mt-2">
-                  <div className="flex gap-4">
-                    <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500"></span> En Ligne</span>
-                    <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse"></span> Alerte SOC</span>
-                    <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-rose-500"></span> Quarantaine</span>
-                    <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-slate-500/50"></span> Hors Ligne</span>
-                  </div>
-                  <div className="font-mono text-xs">Télémétrie : Chiffrement TLSv1.3 Actif</div>
-                </div>
-              </Card>
+              </div>
 
               {/* Flux de logs en temps réel (1/3 de large sur desktop) */}
               <Card className="shadow-lg border-border/50 bg-card/60 backdrop-blur-sm p-4 relative overflow-hidden flex flex-col justify-between min-h-[350px]">
@@ -1581,7 +2040,7 @@ UDP   0.0.0.0:123            *:*
                         <span className="text-xs font-bold text-slate-200">EDR Shell Terminal : {pc.name}</span>
                       </div>
                       <Badge variant="outline" className="font-mono text-[9px] text-primary border-primary/20 bg-primary/5 rounded px-1.5">
-                        WZ-AGENT v4.7.2
+                        WZ-AGENT v4.14.5
                       </Badge>
                     </CardHeader>
                     
@@ -1831,260 +2290,144 @@ UDP   0.0.0.0:123            *:*
               );
             })()}
 
-            {/* EDR Installation Helper */}
-            <Card className="shadow-lg border-border/50 bg-card/60 backdrop-blur-sm">
-              <CardHeader>
-                <CardTitle className="text-lg font-bold flex items-center gap-2">
-                  <Terminal className="h-5 w-5 text-primary" />
-                  Guide de déploiement de l'agent EDR
-                </CardTitle>
-                <CardDescription>
-                  Générez et copiez la commande d'installation silencieuse pour connecter de nouveaux PC.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                
-                {/* OS Switcher */}
-                <div className="flex gap-2 border-b border-border/20 pb-3">
-                  <Button
-                    variant={edrDeployOs === "windows" ? "default" : "outline"}
-                    size="sm"
-                    className="rounded-lg text-xs"
-                    onClick={() => setEdrDeployOs("windows")}
-                  >
-                    🖥️ Windows (PowerShell)
-                  </Button>
-                  <Button
-                    variant={edrDeployOs === "linux" ? "default" : "outline"}
-                    size="sm"
-                    className="rounded-lg text-xs"
-                    onClick={() => setEdrDeployOs("linux")}
-                  >
-                    🐧 Linux (Debian/Ubuntu)
-                  </Button>
-                  <Button
-                    variant={edrDeployOs === "macos" ? "default" : "outline"}
-                    size="sm"
-                    className="rounded-lg text-xs"
-                    onClick={() => setEdrDeployOs("macos")}
-                  >
-                    🍎 macOS (pkg)
-                  </Button>
-                </div>
-
-                {/* Console Code Box */}
-                <div className="relative">
-                  <pre className="p-4 bg-slate-950 dark:bg-black rounded-xl text-slate-100 font-mono text-xs overflow-x-auto whitespace-pre-wrap leading-relaxed border border-border/40 select-all max-h-40">
-                    {edrDeployOs === "windows" ? scripts.windows : edrDeployOs === "linux" ? scripts.linux : scripts.macos}
-                  </pre>
-                  
-                  <div className="absolute top-2 right-2">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="h-8 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-white text-xs border border-slate-700"
-                      onClick={() => copyScriptToClipboard(edrDeployOs === "windows" ? scripts.windows : edrDeployOs === "linux" ? scripts.linux : scripts.macos, edrDeployOs)}
-                    >
-                      {copiedScript === edrDeployOs ? (
-                        <><Check className="h-3.5 w-3.5 mr-1.5 text-emerald-400" /> Copié</>
-                      ) : (
-                        <><Copy className="h-3.5 w-3.5 mr-1.5" /> Copier la commande</>
-                      )}
-                    </Button>
-                  </div>
-                </div>
-
-                <p className="text-xs text-muted-foreground flex items-center gap-2">
-                  <ShieldAlert className="h-4 w-4 text-amber-500" /> Note : Cette commande intègre automatiquement les variables de pré-authentification et d'affectation au groupe <span className="font-mono bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded text-primary">{form.organization.toLowerCase().replace(/[^a-z0-9]/g, "")}</span>.
-                </p>
-
-              </CardContent>
-            </Card>
 
           </div>
         )}
 
-        {/* Onglet 3 : CONTRATS & FACTURATION */}
-        {activeTab === "contract" && (
-          <div className="grid gap-6 md:grid-cols-3">
-            
-            {/* Colonne de Gauche : Métriques du contrat */}
-            <div className="space-y-6 md:col-span-1">
-              
-              <Card className="shadow-lg border-border/50 bg-card/60 backdrop-blur-sm">
-                <CardHeader>
-                  <CardTitle className="text-lg font-bold flex items-center gap-2">
-                    <FileText className="h-5 w-5 text-primary" /> Détails du contrat
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <span className="text-xs text-muted-foreground font-medium block">Formule d'offre active</span>
-                    <Badge className="bg-gradient-to-r from-amber-400 to-orange-500 text-white border-none font-bold text-sm px-2.5 py-0.5 mt-1 rounded-lg">
-                      OFFRE {extData.contractTier.toUpperCase()}
-                    </Badge>
-                  </div>
-                  <div>
-                    <span className="text-xs text-muted-foreground font-medium block">Valeur de l'abonnement</span>
-                    <span className="text-2xl font-extrabold text-foreground">{extData.contractValue.toLocaleString("fr-FR")} EUR <span className="text-xs font-normal text-muted-foreground">/ an</span></span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4 border-t border-border/30 pt-3">
-                    <div>
-                      <span className="text-xs text-muted-foreground font-semibold">Effet</span>
-                      <span className="text-sm font-medium block mt-0.5">{extData.contractStart}</span>
-                    </div>
-                    <div>
-                      <span className="text-xs text-muted-foreground font-semibold">Échéance</span>
-                      <span className="text-sm font-medium block mt-0.5">{extData.contractEnd}</span>
-                    </div>
-                  </div>
-                  <div className="border-t border-border/30 pt-3">
-                    <span className="text-xs text-muted-foreground font-medium block">Statut juridique</span>
-                    <Badge className="bg-emerald-500/10 text-emerald-500 border-none font-bold rounded-lg mt-1 px-2.5">
-                      ✓ CONTRAT SIGNÉ & EN RÈGLE
-                    </Badge>
-                  </div>
-                  
-                  <div className="pt-2">
-                    <Button 
-                      className="w-full shadow-md rounded-xl hover:translate-y-[-1px] transition-all gap-2"
-                      onClick={handleDownloadContract}
-                    >
-                      <Download className="h-4.5 w-4.5" /> Télécharger le Contrat (txt)
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Téléverser un nouveau contrat signé */}
-              <Card className="shadow-lg border-border/50 bg-card/60 backdrop-blur-sm">
-                <CardHeader>
-                  <CardTitle className="text-md font-bold flex items-center gap-2">
-                    <UploadCloud className="h-4.5 w-4.5 text-primary" /> Mettre à jour le document
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="border-2 border-dashed border-border/70 hover:border-primary/50 transition-all rounded-xl p-6 text-center bg-slate-50/50 dark:bg-slate-900/30 cursor-pointer relative">
-                    <input 
-                      type="file" 
-                      accept=".pdf,.doc,.docx,.txt"
-                      onChange={simulateContractUpload}
-                      className="absolute inset-0 opacity-0 cursor-pointer"
-                      disabled={uploadingContract}
-                    />
-                    
-                    {uploadingContract ? (
-                      <div className="space-y-2">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
-                        <p className="text-xs font-semibold text-foreground">Importation en cours... {contractUploadProgress}%</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        <UploadCloud className="h-8 w-8 text-muted-foreground/60 mx-auto" />
-                        <p className="text-xs font-semibold text-foreground">Déposez le contrat signé ici</p>
-                        <p className="text-[10px] text-muted-foreground">PDF, DOCX ou TXT (Max 10 Mo)</p>
-                      </div>
-                    )}
-                  </div>
-                  <p className="text-[11px] text-muted-foreground">
-                    Le téléversement d'un nouveau contrat renouvelle automatiquement l'échéance et met à jour l'historique d'audit.
-                  </p>
-                </CardContent>
-              </Card>
-
-            </div>
-
-            {/* Colonne de Droite (2/3) : Simulateur visuel de Contrat */}
-            <div className="md:col-span-2">
-              <Card className="shadow-lg border-border/50 bg-card/60 backdrop-blur-sm overflow-hidden h-full flex flex-col">
-                <CardHeader className="pb-3 border-b border-border/30">
-                  <div className="flex justify-between items-center flex-wrap gap-2">
-                    <div>
-                      <CardTitle className="text-lg font-bold flex items-center gap-2">
-                        <FileText className="h-5 w-5 text-primary" />
-                        Aperçu de conformité numérique du contrat
-                      </CardTitle>
-                      <CardDescription>Document actif signé de manière électronique par les deux entités.</CardDescription>
-                    </div>
-                    <Badge variant="outline" className="font-mono text-xs">CONT-{clientId.slice(0, 8).toUpperCase()}</Badge>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-4 flex-1">
-                  
-                  {/* Digital replica box */}
-                  <div className="border border-border/40 bg-white/70 dark:bg-zinc-950/80 rounded-xl p-6 font-mono text-xs text-foreground/80 leading-relaxed overflow-y-auto max-h-[380px] scrollbar-thin shadow-inner relative">
-                    
-                    {/* Watermark of signature */}
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.03] dark:opacity-[0.05] select-none rotate-12">
-                      <div className="border-4 border-emerald-500 rounded-xl p-4 text-center">
-                        <span className="text-5xl font-black block">SIGNÉ ÉLECTRONIQUEMENT</span>
-                        <span className="text-3xl font-bold mt-1 block">INOVA CYBER SOC</span>
-                      </div>
-                    </div>
-
-                    <div className="text-center font-bold border-b border-dashed border-border/60 pb-4 mb-4">
-                      CONTRAT DE PRESTATION : SÉCURITÉ DE TERMINAUX & SOC DE DERNIÈRE GÉNÉRATION<br/>
-                      INOVA PLATFORM SAAS • FORMULE : OFFER {extData.contractTier.toUpperCase()}
-                    </div>
-
-                    <div className="space-y-4">
-                      <div>
-                        <span className="font-bold block text-primary underline">1. ORGANISATION ET COORDONNÉES CLIENT :</span>
-                        • Raison sociale : {form.organization || "Non renseignée"}<br/>
-                        • Représentant habilité : {form.fullName || "Non renseigné"}<br/>
-                        • Statut de l'agent EDR : Actif ({connectedPcs} machines connectées)<br/>
-                        • Seuil de sécurité minimum : {extData.cyberScore}% requis.
-                      </div>
-
-                      <div>
-                        <span className="font-bold block text-primary underline">2. NIVEAUX DE SERVICE ET FACTURATION (SLA) :</span>
-                        • Montant récurrent : {extData.contractValue.toLocaleString("fr-FR")} EUR par an.<br/>
-                        • Niveau de support : 24/7/365 avec astreinte technique de niveau 3.<br/>
-                        • Temps de détection des cyber-menaces : Inférieur à 15 minutes.<br/>
-                        • Temps de réponse par blocage et isolation EDR : Inférieur à 2 heures.
-                      </div>
-
-                      <div>
-                        <span className="font-bold block text-primary underline">3. INVENTAIRE TECHNIQUE DES TERMINAUX COUVERTS :</span>
-                        {extData.pcs.map((pc, idx) => (
-                          <div key={pc.id} className="pl-4">
-                            • [{idx + 1}] {pc.name} ({pc.os.toUpperCase()} • IP: {pc.ip} • ID Agent: WZ-{pc.wazuhId})
-                          </div>
-                        ))}
-                      </div>
-
-                      <div>
-                        <span className="font-bold block text-primary underline">4. CLAUSE D'ISOLATION ACTIVE EN CAS D'INTRUSION :</span>
-                        Le Client autorise formellement et explicitement le SOC INOVA à exécuter une commande de mise en quarantaine réseau immédiate (Isolation EDR) sur toute machine répertoriée ci-dessus présentant un comportement d'infection avéré (ex: Chiffrement ransomware en cours, bruteforce interne SSH, connexions C2).
-                      </div>
-
-                      <div className="border-t border-dashed border-border/60 pt-4 flex justify-between gap-6 flex-wrap font-bold text-[10px]">
-                        <div>
-                          SIGNATAIRE PRESTATAIRE :<br/>
-                          INOVA SECURITY SERVICES<br/>
-                          <span className="text-emerald-500">[SIGNÉ ÉLECTRONIQUEMENT ✓]</span><br/>
-                          Date d'effet : {extData.contractStart}
-                        </div>
-                        <div>
-                          SIGNATAIRE CLIENT :<br/>
-                          {form.organization || "Client"}<br/>
-                          <span className="text-emerald-500">[SIGNÉ ÉLECTRONIQUEMENT ✓]</span><br/>
-                          Date d'effet : {extData.contractStart}
-                        </div>
-                      </div>
-
-                    </div>
-
-                  </div>
-
-                </CardContent>
-              </Card>
-            </div>
-
-          </div>
-        )}
 
       </div>
+
+      {/* ── Dialog : Ajouter une machine ── */}
+      <Dialog open={addMachineOpen} onOpenChange={setAddMachineOpen}>
+        <DialogContent className="max-w-lg bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-2xl p-0 overflow-hidden">
+          {/* Header du dialog */}
+          <div className="h-1.5 bg-gradient-to-r from-emerald-400 via-teal-500 to-emerald-400" />
+          <div className="px-6 pt-5 pb-2">
+            <DialogHeader>
+              <div className="flex items-center gap-3 mb-1">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                  <Monitor className="h-5 w-5 text-emerald-500" />
+                </div>
+                <div>
+                  <DialogTitle className="text-base font-black text-slate-800 dark:text-zinc-100 uppercase tracking-wide">
+                    Enregistrer une nouvelle machine
+                  </DialogTitle>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Organisation : <span className="font-bold text-slate-600 dark:text-zinc-300">{form.organization || "Client"}</span>
+                  </p>
+                </div>
+              </div>
+            </DialogHeader>
+          </div>
+
+          <div className="px-6 pb-2 space-y-4">
+            <Separator className="border-slate-100 dark:border-zinc-800" />
+
+            {/* Nom de la machine */}
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label className="text-[11px] font-extrabold text-slate-500 dark:text-zinc-400 uppercase tracking-widest flex items-center gap-1.5">
+                  <Hash className="h-3 w-3" /> Nom de la machine <span className="text-rose-500">*</span>
+                </Label>
+                <Input
+                  placeholder="ex: desktop-rh-01"
+                  value={newMachineForm.name}
+                  onChange={e => setNewMachineForm({ ...newMachineForm, name: e.target.value })}
+                  className="h-9 text-sm bg-slate-50 dark:bg-zinc-900 border-slate-200 dark:border-zinc-700 rounded-lg focus:ring-2 focus:ring-emerald-500/30"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[11px] font-extrabold text-slate-500 dark:text-zinc-400 uppercase tracking-widest flex items-center gap-1.5">
+                  <Wifi className="h-3 w-3" /> Adresse IP <span className="text-rose-500">*</span>
+                </Label>
+                <Input
+                  placeholder="ex: 192.168.1.45"
+                  value={newMachineForm.ip}
+                  onChange={e => setNewMachineForm({ ...newMachineForm, ip: e.target.value })}
+                  className="h-9 text-sm font-mono bg-slate-50 dark:bg-zinc-900 border-slate-200 dark:border-zinc-700 rounded-lg focus:ring-2 focus:ring-emerald-500/30"
+                />
+              </div>
+            </div>
+
+            {/* Propriétaire */}
+            <div className="space-y-1.5">
+              <Label className="text-[11px] font-extrabold text-slate-500 dark:text-zinc-400 uppercase tracking-widest flex items-center gap-1.5">
+                <User className="h-3 w-3" /> Propriétaire / Utilisateur <span className="text-rose-500">*</span>
+              </Label>
+              <Input
+                placeholder="ex: Mamadou Diallo"
+                value={newMachineForm.owner}
+                onChange={e => setNewMachineForm({ ...newMachineForm, owner: e.target.value })}
+                className="h-9 text-sm bg-slate-50 dark:bg-zinc-900 border-slate-200 dark:border-zinc-700 rounded-lg focus:ring-2 focus:ring-emerald-500/30"
+              />
+            </div>
+
+            {/* OS + MAC */}
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label className="text-[11px] font-extrabold text-slate-500 dark:text-zinc-400 uppercase tracking-widest flex items-center gap-1.5">
+                  <HardDrive className="h-3 w-3" /> Système d'exploitation
+                </Label>
+                <Select value={newMachineForm.os} onValueChange={v => setNewMachineForm({ ...newMachineForm, os: v as any })}>
+                  <SelectTrigger className="h-9 text-sm bg-slate-50 dark:bg-zinc-900 border-slate-200 dark:border-zinc-700 rounded-lg focus:ring-2 focus:ring-emerald-500/30">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white dark:bg-zinc-950 border-slate-200 dark:border-zinc-800 rounded-xl">
+                    <SelectItem value="windows" className="text-sm font-semibold">🪟 Windows</SelectItem>
+                    <SelectItem value="linux" className="text-sm font-semibold">🐧 Linux</SelectItem>
+                    <SelectItem value="macos" className="text-sm font-semibold">🍎 macOS</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[11px] font-extrabold text-slate-500 dark:text-zinc-400 uppercase tracking-widest flex items-center gap-1.5">
+                  <Network className="h-3 w-3" /> Adresse MAC
+                </Label>
+                <Input
+                  placeholder="ex: AA:BB:CC:DD:EE:FF"
+                  value={newMachineForm.mac}
+                  onChange={e => setNewMachineForm({ ...newMachineForm, mac: e.target.value })}
+                  className="h-9 text-sm font-mono bg-slate-50 dark:bg-zinc-900 border-slate-200 dark:border-zinc-700 rounded-lg focus:ring-2 focus:ring-emerald-500/30"
+                />
+              </div>
+            </div>
+
+            {/* Département */}
+            <div className="space-y-1.5">
+              <Label className="text-[11px] font-extrabold text-slate-500 dark:text-zinc-400 uppercase tracking-widest flex items-center gap-1.5">
+                <MapPin className="h-3 w-3" /> Département / Service
+              </Label>
+              <Input
+                placeholder="ex: Direction Informatique — Bâtiment A"
+                value={newMachineForm.department}
+                onChange={e => setNewMachineForm({ ...newMachineForm, department: e.target.value })}
+                className="h-9 text-sm bg-slate-50 dark:bg-zinc-900 border-slate-200 dark:border-zinc-700 rounded-lg focus:ring-2 focus:ring-emerald-500/30"
+              />
+            </div>
+
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-500/20">
+              <Shield className="h-4 w-4 text-emerald-500 shrink-0" />
+              <p className="text-[11px] text-slate-600 dark:text-zinc-400">
+                L'agent EDR Wazuh sera déployé automatiquement sur cette machine et rattaché au groupe <span className="font-bold text-emerald-600 dark:text-emerald-400">{(form.organization || "client").toLowerCase().replace(/[^a-z0-9]/g, "-")}</span>.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter className="px-6 py-4 bg-slate-50/80 dark:bg-zinc-900/60 border-t border-slate-100 dark:border-zinc-800 flex gap-2">
+            <Button variant="outline" onClick={() => setAddMachineOpen(false)} className="rounded-xl border-slate-200 dark:border-zinc-700">
+              Annuler
+            </Button>
+            <Button
+              onClick={handleAddMachine}
+              disabled={addingMachine}
+              className="rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold shadow-md shadow-emerald-500/20 border-none gap-2"
+            >
+              {addingMachine ? <><Loader2 className="h-4 w-4 animate-spin" /> Enregistrement...</> : <><Plus className="h-4 w-4" /> Enregistrer la machine</>}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }
