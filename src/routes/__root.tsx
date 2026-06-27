@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
@@ -128,8 +129,35 @@ import { SocShell } from "@/components/soc/SocShell";
 
 const SOC_PREFIXES = ["/dashboard", "/alertes", "/iocs", "/admin", "/threat-map", "/assistant", "/iris", "/outils", "/clients", "/facturation", "/settings", "/integrations", "/audit", "/account"];
 
+/** Purge one-shot : efface tous les caches client_ext_* sans marqueur _v:2
+ *  Cela supprime les PC auto-générés dans TOUS les navigateurs (admin + client)
+ *  sans toucher aux machines ajoutées manuellement par le client.
+ */
+function purgeLegacyClientCache() {
+  const flagKey = "__edr_cache_purged_v2";
+  if (localStorage.getItem(flagKey)) return; // Déjà purgé sur ce navigateur
+  const toDelete: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith("client_ext_")) {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(key) || "{}");
+        if ((parsed as any)._v !== 2) toDelete.push(key);
+      } catch {
+        toDelete.push(key!);
+      }
+    }
+  }
+  toDelete.forEach(k => localStorage.removeItem(k));
+  localStorage.setItem(flagKey, "1");
+}
+
 function AppFrame() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+
+  // Purge one-shot des anciens caches auto-générés au premier chargement
+  useEffect(() => { purgeLegacyClientCache(); }, []);
+
   const isSoc = SOC_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"));
   if (isSoc) {
     return (
