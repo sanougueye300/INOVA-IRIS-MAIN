@@ -49,6 +49,13 @@ export interface ClientExtendedData {
   }>;
 }
 
+export const OFFER_MAX_PCS: Record<string, number> = {
+  Bronze: 10,
+  Argent: 25,
+  Or:     50,
+  Platine: 100,
+};
+
 export function getClientExtendedData(clientId: string, orgName: string): ClientExtendedData {
   const localKey = `client_ext_${clientId}`;
   const stored = typeof window !== "undefined" ? localStorage.getItem(localKey) : null;
@@ -67,37 +74,13 @@ export function getClientExtendedData(clientId: string, orgName: string): Client
 
   const tiers: Array<"Bronze" | "Argent" | "Or" | "Platine"> = ["Bronze", "Argent", "Or", "Platine"];
   const contractTier = tiers[hash % tiers.length];
-  
+
   const values = { Bronze: 100000, Argent: 250000, Or: 500000, Platine: 750000 };
   const contractValue = values[contractTier];
-  
+
   const cyberScore = 70 + (hash % 26); // Score entre 70% et 96%
 
-  // Génération réaliste des machines pour la démo
-  const pcCount = 2 + (hash % 5); // Entre 2 et 6 PC connectés
-  const osList: Array<"windows" | "linux" | "macos"> = ["windows", "linux", "macos"];
-  const pcs = Array.from({ length: pcCount }).map((_, idx) => {
-    const pcHash = (hash + idx * 17) >>> 0;
-    const os = osList[pcHash % osList.length];
-    const namePrefix = os === "windows" ? "desktop" : os === "linux" ? "srv-prod" : "macbook";
-    const name = `${namePrefix}-${orgName ? orgName.toLowerCase().replace(/[^a-z0-9]/g, "-") : "client"}-${String(idx + 1).padStart(2, "0")}`;
-    const ip = `192.168.${1 + (pcHash % 50)}.${10 + (pcHash % 200)}`;
-    const statuses: Array<"active" | "disconnected" | "alert"> = ["active", "active", "disconnected", "alert"];
-    const status = idx === 0 ? "active" : statuses[pcHash % statuses.length];
-    
-    return {
-      id: `${clientId}-pc-${idx}`,
-      name,
-      os,
-      ip,
-      status: status as "active" | "disconnected" | "alert" | "isolated",
-      cpu: status === "active" ? 5 + (pcHash % 40) : 0,
-      ram: status === "active" ? 20 + (pcHash % 60) : 0,
-      lastSeen: status === "active" ? "À l'instant" : `${1 + (pcHash % 24)}h plus tôt`,
-      wazuhId: String(200 + idx).padStart(3, "0"),
-    };
-  });
-
+  // Nouveau client : parc vide — les machines apparaissent après installation de l'agent
   const data: ClientExtendedData = {
     clientId,
     cyberScore,
@@ -106,7 +89,7 @@ export function getClientExtendedData(clientId: string, orgName: string): Client
     contractStart: new Date(Date.now() - 120 * 86400000).toISOString().split("T")[0],
     contractEnd: new Date(Date.now() + 245 * 86400000).toISOString().split("T")[0],
     contractStatus: "Actif",
-    pcs,
+    pcs: [],
   };
 
   if (typeof window !== "undefined") {

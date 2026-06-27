@@ -107,6 +107,27 @@ export function ClientEndpointTopology() {
     );
   }
 
+  if (pcs.length === 0) {
+    return (
+      <div className="rounded-2xl border border-slate-200/90 bg-gradient-to-br from-slate-50 to-orange-50/40 p-12 text-center space-y-4 shadow-sm">
+        <div className="w-16 h-16 mx-auto rounded-2xl bg-orange-100 border border-orange-200 flex items-center justify-center">
+          <Network className="h-7 w-7 text-orange-500" />
+        </div>
+        <div>
+          <p className="text-base font-black text-slate-800">Aucune machine supervisée</p>
+          <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+            Votre parc EDR est vide. Rendez-vous dans <strong className="text-orange-500">Parc &amp; Inventaire EDR</strong> pour suivre le guide de déploiement Wazuh et enregistrer vos premiers postes.
+          </p>
+        </div>
+        <a href="/clients/inventory" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-black shadow-md shadow-amber-500/20 hover:from-amber-600 hover:to-orange-600 transition-all">
+          <ShieldCheck className="h-4 w-4" />
+          Déployer l'agent EDR →
+        </a>
+      </div>
+    );
+  }
+
+
   return (
     <div className="space-y-6">
     <div className="grid gap-6 lg:grid-cols-3">
