@@ -62,11 +62,10 @@ function LoginPage() {
       const { data: authData, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
 
-      const { data: profile, error: profileErr } = await supabase
-        .from("profiles")
-        .select("is_active, phone, email")
-        .eq("id", authData.user.id)
-        .single();
+      const [{ data: profile, error: profileErr }, { data: roleRow }] = await Promise.all([
+        supabase.from("profiles").select("is_active, phone, email").eq("id", authData.user.id).single(),
+        supabase.from("user_roles").select("role").eq("user_id", authData.user.id).maybeSingle(),
+      ]);
 
       if (profileErr || !profile) {
         await supabase.auth.signOut();
@@ -78,16 +77,24 @@ function LoginPage() {
         throw new Error("Votre compte est suspendu. Contactez l'administrateur SOC.");
       }
 
+      const isAdmin = roleRow?.role === "admin";
+
       toast.success("Connexion réussie", { description: "Bienvenue sur INOVA-IRIS SOC." });
 
-      setPending2FA(true);
-      try {
-        await sendLoginSmsOtp();
-        toast.success("Code de double authentification envoyé.");
-      } catch (otpErr) {
-        console.error("Erreur envoi OTP:", otpErr);
+      if (isAdmin) {
+        // Les administrateurs accèdent directement au dashboard sans 2FA
+        navigate({ to: "/dashboard", replace: true });
+      } else {
+        // Tous les autres rôles passent par la double authentification
+        setPending2FA(true);
+        try {
+          await sendLoginSmsOtp();
+          toast.success("Code de double authentification envoyé par e-mail.");
+        } catch (otpErr) {
+          console.error("Erreur envoi OTP:", otpErr);
+        }
+        navigate({ to: "/auth/2fa", replace: true });
       }
-      navigate({ to: "/auth/2fa", replace: true });
     } catch (err: unknown) {
       setLoginAttempts(prev => {
         const next = prev + 1;
