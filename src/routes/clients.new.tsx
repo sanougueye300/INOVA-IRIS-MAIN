@@ -19,20 +19,7 @@ export const Route = createFileRoute("/clients/new")({
   head: () => ({ meta: [{ title: "Nouveau Client — SOC Platform" }] }),
   component: () => <RequireAuth requireAdmin><NewClient /></RequireAuth>,
 });
-
-interface Offer {
-  id: string;
-  name: string;
-  value: number;
-  currency: string;
-  period: string;
-  maxPcs: number;
-  mttd: string;
-  mttr: string;
-  support: string;
-  features: string[];
-  isActive: boolean;
-}
+import { loadOffers, type Offer } from "@/lib/offers";
 
 function NewClient() {
   const navigate = useNavigate();
@@ -96,13 +83,8 @@ function NewClient() {
 
   // Load catalog offers on mount
   useEffect(() => {
-    const stored = localStorage.getItem("soc_catalog_offers") || localStorage.getItem("soc_catalogues_offres");
-    if (stored) {
-      try {
-        const list = JSON.parse(stored);
-        setOffers(list.filter((o: any) => o.isActive));
-      } catch (e) {}
-    }
+    const list = loadOffers();
+    setOffers(list.filter((o: any) => o.isActive));
   }, []);
 
   // Update form fields dynamically based on offer selection
@@ -699,7 +681,7 @@ function NewClient() {
                             </div>
                             <div className="pt-4 border-t border-slate-200/50 dark:border-zinc-800/50">
                               <div className="text-2xl font-black text-amber-600 dark:text-amber-500">
-                                {offer.value.toLocaleString("fr-FR")} <span className="text-sm">EUR</span>
+                                {offer.value.toLocaleString("fr-FR")} <span className="text-sm">{offer.currency}</span>
                                 <span className="text-xs text-slate-500 dark:text-zinc-500 font-semibold ml-1">/ {offer.period}</span>
                               </div>
                             </div>

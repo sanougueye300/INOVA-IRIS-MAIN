@@ -20,10 +20,10 @@ const OFFER_BY_TIER: Record<string, {
   name: string; color: string; maxPcs: number;
   mttd: string; mttr: string; support: string;
 }> = {
-  Bronze:  { name: "Inova Secure",          color: "#f97316", maxPcs: 10,  mttd: "< 30 min", mttr: "< 4 heures", support: "8h-18h L-V"      },
-  Argent:  { name: "Terranga Secure",        color: "#3b82f6", maxPcs: 25,  mttd: "< 15 min", mttr: "< 2 heures", support: "24h/7 L-V"        },
-  Or:      { name: "Gainde Secure",          color: "#f59e0b", maxPcs: 50,  mttd: "< 10 min", mttr: "< 1 heure",  support: "24h/7/365 Dédié"  },
-  Platine: { name: "Gainde Secure Premium",  color: "#8b5cf6", maxPcs: 100, mttd: "< 5 min",  mttr: "< 30 min",   support: "24h/7/365 Dédié+" },
+  Bronze:  { name: "Inova Secure",          color: "#f97316", maxPcs: 10,  mttd: "< 10 min", mttr: "< 30 min",  support: "8h-18h L-V"       },
+  Argent:  { name: "Terranga Secure",        color: "#3b82f6", maxPcs: 25,  mttd: "< 05 min", mttr: "< 15 min",  support: "24h/7 L-V"         },
+  Or:      { name: "Gainde Secure",          color: "#f59e0b", maxPcs: 50,  mttd: "< 03 min", mttr: "< 10 min",  support: "24h/7/365 Dédié"   },
+  Platine: { name: "Gainde Secure Premium",  color: "#8b5cf6", maxPcs: 100, mttd: "< 01 min",  mttr: "< 05 min",  support: "24h/7/365 Dédié+" },
 };
 
 export const Route = createFileRoute("/clients/$clientId")({

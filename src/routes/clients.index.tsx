@@ -123,10 +123,10 @@ const OFFER_NAMES: Record<string, string> = {
 };
 
 const OFFER_SLA: Record<string, { mttd: string; mttr: string; support: string }> = {
-  Bronze: { mttd: "< 30 min", mttr: "< 4 heures", support: "8h-18h L-V" },
-  Argent: { mttd: "< 15 min", mttr: "< 2 heures", support: "24h/7 L-V" },
-  Or:     { mttd: "< 10 min", mttr: "< 1 heure",  support: "24h/7/365 Dédié" },
-  Platine:{ mttd: "< 5 min",  mttr: "< 30 min",   support: "24h/7/365 Dédié+" },
+  Bronze: { mttd: "< 10 min", mttr: "< 30 min",  support: "8h-18h L-V"      },
+  Argent: { mttd: "< 05 min", mttr: "< 15 min",  support: "24h/7 L-V"       },
+  Or:     { mttd: "< 03 min", mttr: "< 10 min",  support: "24h/7/365 Dédié" },
+  Platine:{ mttd: "< 01 min", mttr: "< 05 min",  support: "24h/7/365 Dédié+"},
 };
 
 export function downloadContractFile(orgName: string, fullName: string, extData: ClientExtendedData) {
