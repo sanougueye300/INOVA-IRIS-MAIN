@@ -1,7 +1,7 @@
 # INOVA-IRIS - Diagnostic & Correctif Wazuh Agent
 # Usage (PowerShell Admin) : .\scripts\fix-wazuh-agent-endpoint.ps1
 
-$ENDPOINT   = "3a1uer3pl3hr.cloud.wazuh.com"
+$ENDPOINT   = "wucy2fi80s80.cloud.wazuh.com"
 $CONF_PATH  = "C:\Program Files (x86)\ossec-agent\ossec.conf"
 $LOG_PATH   = "C:\Program Files (x86)\ossec-agent\ossec.log"
 
@@ -109,5 +109,5 @@ Write-Host "  Correctif termine !" -ForegroundColor Green
 Write-Host "===================================================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Attendez 30 secondes puis actualisez la console Wazuh Cloud." -ForegroundColor White
-Write-Host "URL : https://3a1uer3pl3hr.cloud.wazuh.com/app/wz-home" -ForegroundColor Gray
+Write-Host "URL : https://wucy2fi80s80.cloud.wazuh.com/app/wz-home" -ForegroundColor Gray
 Write-Host ""

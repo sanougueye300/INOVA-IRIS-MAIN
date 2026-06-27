@@ -335,7 +335,7 @@ export function WazuhToolTab() {
                   label: "🪟 Windows — PowerShell (Administrateur)",
                   steps: [
                     { num: "1", title: "Télécharger le fichier .msi", cmd: `Invoke-WebRequest -Uri "https://packages.wazuh.com/4.x/windows/wazuh-agent-4.14.5-1.msi" -OutFile "$env:TEMP\\wazuh-agent.msi"` },
-                    { num: "2", title: "Installer l'agent", cmd: `msiexec.exe /i "$env:TEMP\\wazuh-agent.msi" WAZUH_MANAGER="3a1uer3pl3hr.cloud.wazuh.com" WAZUH_REGISTRATION_SERVER="3a1uer3pl3hr.cloud.wazuh.com" WAZUH_AGENT_GROUP="groupe-client" /q` },
+                    { num: "2", title: "Installer l'agent", cmd: `msiexec.exe /i "$env:TEMP\\wazuh-agent.msi" WAZUH_MANAGER="wucy2fi80s80.cloud.wazuh.com" WAZUH_REGISTRATION_SERVER="wucy2fi80s80.cloud.wazuh.com" WAZUH_AGENT_GROUP="groupe-client" /q` },
                     { num: "3", title: "Démarrer le service", cmd: `NET START WazuhSvc` },
                   ],
                 },
@@ -344,7 +344,7 @@ export function WazuhToolTab() {
                   label: "🐧 Linux Debian/Ubuntu — Terminal (root)",
                   steps: [
                     { num: "1", title: "Ajouter le dépôt Wazuh", cmd: `curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import\necho "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages.wazuh.com/4.x/apt/ stable main" | tee /etc/apt/sources.list.d/wazuh.list && apt-get update` },
-                    { num: "2", title: "Installer l'agent", cmd: `WAZUH_MANAGER="3a1uer3pl3hr.cloud.wazuh.com" WAZUH_AGENT_GROUP="groupe-client" apt-get install -y wazuh-agent` },
+                    { num: "2", title: "Installer l'agent", cmd: `WAZUH_MANAGER="wucy2fi80s80.cloud.wazuh.com" WAZUH_AGENT_GROUP="groupe-client" apt-get install -y wazuh-agent` },
                     { num: "3", title: "Activer et démarrer", cmd: `systemctl enable --now wazuh-agent` },
                   ],
                 },
@@ -353,7 +353,7 @@ export function WazuhToolTab() {
                   label: "🍎 macOS — Terminal (Admin)",
                   steps: [
                     { num: "1", title: "Télécharger le fichier .pkg", cmd: `curl -so /tmp/wazuh-agent.pkg https://packages.wazuh.com/4.x/macos/wazuh-agent-4.14.5-1.intel64.pkg` },
-                    { num: "2", title: "Installer l'agent", cmd: `WAZUH_MANAGER="3a1uer3pl3hr.cloud.wazuh.com" WAZUH_AGENT_GROUP="groupe-client" installer -pkg /tmp/wazuh-agent.pkg -target /` },
+                    { num: "2", title: "Installer l'agent", cmd: `WAZUH_MANAGER="wucy2fi80s80.cloud.wazuh.com" WAZUH_AGENT_GROUP="groupe-client" installer -pkg /tmp/wazuh-agent.pkg -target /` },
                     { num: "3", title: "Démarrer l'agent", cmd: `/Library/Ossec/bin/wazuh-control start` },
                   ],
                 },

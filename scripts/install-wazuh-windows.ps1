@@ -4,7 +4,7 @@
 #   .\scripts\install-wazuh-windows.ps1 -Group "nom-client" -Password "MOT_DE_PASSE"
 #
 # Ou trouver le mot de passe d'enrollment :
-#   https://3a1uer3pl3hr.cloud.wazuh.com
+#   https://wucy2fi80s80.cloud.wazuh.com
 #   -> Endpoints -> Deploy new agent -> Windows
 #   -> Copier la valeur WAZUH_REGISTRATION_PASSWORD dans la commande generee
 # ================================================================
@@ -14,7 +14,7 @@ param(
     [string]$Password = ""
 )
 
-$ENDPOINT  = "3a1uer3pl3hr.cloud.wazuh.com"
+$ENDPOINT  = "wucy2fi80s80.cloud.wazuh.com"
 $MSI_URL   = "https://packages.wazuh.com/4.x/windows/wazuh-agent-4.14.5-1.msi"
 $MSI_PATH  = "$env:TEMP\wazuh-agent.msi"
 $CONF_PATH = "C:\Program Files (x86)\ossec-agent\ossec.conf"

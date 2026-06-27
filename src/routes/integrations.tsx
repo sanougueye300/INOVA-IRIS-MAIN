@@ -505,7 +505,7 @@ function AdminIntegrations() {
             Guide de connexion rapide
           </h2>
           <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
-            <li><strong className="text-foreground">Wazuh Cloud</strong> : récupérez votre clé API sur <code className="font-mono bg-muted px-1 rounded">console.cloud.wazuh.com → API-WAZUH-INOVA-IRIS</code>, puis définissez-la : <code className="font-mono bg-muted px-1 rounded">npx supabase secrets set WAZUH_CLOUD_API_KEY=votre_clé</code>.</li>
+            <li><strong className="text-foreground">Wazuh Cloud</strong> : récupérez votre clé API sur <code className="font-mono bg-muted px-1 rounded">console.cloud.wazuh.com → API-INOVA</code>, puis définissez-la : <code className="font-mono bg-muted px-1 rounded">npx supabase secrets set WAZUH_CLOUD_API_KEY=votre_clé</code>.</li>
             <li><strong className="text-foreground">Wazuh auto-hébergé</strong> : installez Wazuh sur un VPS Linux et ouvrez le port <code className="font-mono bg-muted px-1 rounded">55000</code>. Configurez <code className="font-mono bg-muted px-1 rounded">WAZUH_URL</code>, <code className="font-mono bg-muted px-1 rounded">WAZUH_USER</code> et <code className="font-mono bg-muted px-1 rounded">WAZUH_PASSWORD</code>.</li>
             <li>Pour les autres outils, ouvrez les ports : <code className="font-mono bg-muted px-1 rounded">9000</code> (TheHive), <code className="font-mono bg-muted px-1 rounded">443</code> (MISP), <code className="font-mono bg-muted px-1 rounded">3001</code> (Shuffle).</li>
             <li>Déployez les Edge Functions : <code className="font-mono bg-muted px-1 rounded">npx supabase functions deploy --no-verify-jwt check-connector sync-wazuh-alerts get-wazuh-agents</code></li>

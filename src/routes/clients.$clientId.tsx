@@ -855,7 +855,7 @@ UDP   0.0.0.0:123            *:*
   };
 
   const getScripts = () => {
-    const cloudManager = "3a1uer3pl3hr.cloud.wazuh.com";
+    const cloudManager = "wucy2fi80s80.cloud.wazuh.com";
     const groupName = form.organization ? form.organization.toLowerCase().replace(/[^a-z0-9]/g, "-") : "client-default";
     return {
       windows: [
@@ -1044,7 +1044,7 @@ UDP   0.0.0.0:123            *:*
               const groupName = form.organization
                 ? form.organization.toLowerCase().replace(/[^a-z0-9]/g, "-")
                 : "client-default";
-              const cloudManager = "3a1uer3pl3hr.cloud.wazuh.com";
+              const cloudManager = "wucy2fi80s80.cloud.wazuh.com";
               const usedPcs = extData.pcs.length;
               const maxPcs = offerInfo.maxPcs;
               const quotaPct = Math.round((usedPcs / maxPcs) * 100);
