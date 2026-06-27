@@ -56,16 +56,33 @@ export const OFFER_MAX_PCS: Record<string, number> = {
   Platine: 100,
 };
 
+// Version du schéma — tout changement de numéro réinitialise le cache client
+const DATA_VERSION = 2;
+
 export function getClientExtendedData(clientId: string, orgName: string): ClientExtendedData {
   const localKey = `client_ext_${clientId}`;
   const stored = typeof window !== "undefined" ? localStorage.getItem(localKey) : null;
   if (stored) {
     try {
-      return JSON.parse(stored);
+      const parsed = JSON.parse(stored);
+      // Si la version est à jour ET que les pcs ont été ajoutés manuellement → on retourne le cache
+      if ((parsed as any)._v === DATA_VERSION) {
+        return parsed as ClientExtendedData;
+      }
+      // Ancienne version (pcs auto-générés) → on réinitialise le parc à vide
+      // mais on conserve le tier/contrat existant si disponible
+      const fresh: ClientExtendedData = {
+        ...parsed,
+        pcs: [],
+      };
+      delete (fresh as any)._v;
+      const withVersion = { ...fresh, _v: DATA_VERSION } as any;
+      localStorage.setItem(localKey, JSON.stringify(withVersion));
+      return fresh;
     } catch (e) {}
   }
 
-  // Seeding déterministe basé sur l'ID client pour un rendu hyper réaliste et cohérent
+  // Aucune donnée locale — création initiale avec parc vide
   let hash = 0;
   const seedString = clientId + (orgName || "Client");
   for (let i = 0; i < seedString.length; i++) {
@@ -74,29 +91,27 @@ export function getClientExtendedData(clientId: string, orgName: string): Client
 
   const tiers: Array<"Bronze" | "Argent" | "Or" | "Platine"> = ["Bronze", "Argent", "Or", "Platine"];
   const contractTier = tiers[hash % tiers.length];
-
   const values = { Bronze: 100000, Argent: 250000, Or: 500000, Platine: 750000 };
   const contractValue = values[contractTier];
+  const cyberScore = 70 + (hash % 26);
 
-  const cyberScore = 70 + (hash % 26); // Score entre 70% et 96%
-
-  // Nouveau client : parc vide — les machines apparaissent après installation de l'agent
   const data: ClientExtendedData = {
     clientId,
     cyberScore,
     contractTier,
     contractValue,
     contractStart: new Date(Date.now() - 120 * 86400000).toISOString().split("T")[0],
-    contractEnd: new Date(Date.now() + 245 * 86400000).toISOString().split("T")[0],
+    contractEnd:   new Date(Date.now() + 245 * 86400000).toISOString().split("T")[0],
     contractStatus: "Actif",
     pcs: [],
   };
 
   if (typeof window !== "undefined") {
-    localStorage.setItem(localKey, JSON.stringify(data));
+    localStorage.setItem(localKey, JSON.stringify({ ...data, _v: DATA_VERSION }));
   }
   return data;
 }
+
 
 const OFFER_NAMES: Record<string, string> = {
   Bronze: "Inova Secure",

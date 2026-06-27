@@ -95,7 +95,7 @@ const TIER_GRADIENT: Record<string, string> = {
 };
 
 function saveExt(data: ClientExtendedData) {
-  localStorage.setItem(`client_ext_${data.clientId}`, JSON.stringify(data));
+  localStorage.setItem(`client_ext_${data.clientId}`, JSON.stringify({ ...data, _v: 2 }));
 }
 
 function InventoryPage() {
