@@ -31,10 +31,9 @@ export function RequireAuth({ children, requireAdmin }: { children: ReactNode; r
   useEffect(() => {
     if (!loading && !user) {
       navigate({ to: "/auth/login", replace: true });
-    } else if (user && !isAdmin && isPending2FA() && pathname !== "/auth/2fa") {
-      navigate({ to: "/auth/2fa", replace: true });
     }
-  }, [user, loading, navigate, pathname, isAdmin]);
+    // 2FA temporairement désactivé
+  }, [user, loading, navigate]);
 
   if (loading) {
     return (
