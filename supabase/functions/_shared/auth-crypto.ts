@@ -25,3 +25,8 @@ export function maskPhone(phone: string): string {
   if (digits.length < 4) return "***";
   return `***${digits.slice(-4)}`;
 }
+
+export function generateDefaultPassword(): string {
+  const n = crypto.getRandomValues(new Uint32Array(1))[0] % 1_000_000;
+  return `Inova-${n.toString().padStart(6, "0")}!`;
+}

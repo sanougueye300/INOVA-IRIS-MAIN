@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { normalizePhone, provisionUserSecurity } from "../_shared/user-provisioning.ts";
+import { generateDefaultPassword } from "../_shared/auth-crypto.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -40,11 +41,12 @@ Deno.serve(async (req) => {
     }
 
     const normalizedPhone = normalizePhone(phone);
+    const finalPassword = password?.trim() ? password : generateDefaultPassword();
 
     const { data: created, error: cErr } = await admin.auth.admin.createUser({
       email: email.trim().toLowerCase(),
       email_confirm: true,
-      password: password || undefined,
+      password: finalPassword,
       user_metadata: { full_name: fullName ?? null },
     });
     if (cErr) throw cErr;
@@ -83,6 +85,7 @@ Deno.serve(async (req) => {
       phone: normalizedPhone,
       organization,
       loginUrl,
+      password: finalPassword,
       securityAnswers: securityAnswers ?? [],
     });
 

@@ -2,6 +2,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 import { Loader2, ShieldOff } from "lucide-react";
+import { isPending2FA } from "@/lib/auth-security";
 
 /** Pages that a 'client' role is allowed to access inside the admin area */
 const CLIENT_ALLOWED_PATHS = [
@@ -30,8 +31,10 @@ export function RequireAuth({ children, requireAdmin }: { children: ReactNode; r
   useEffect(() => {
     if (!loading && !user) {
       navigate({ to: "/auth/login", replace: true });
+    } else if (user && isPending2FA() && pathname !== "/auth/2fa") {
+      navigate({ to: "/auth/2fa", replace: true });
     }
-  }, [user, loading, navigate]);
+  }, [user, loading, navigate, pathname]);
 
   if (loading) {
     return (

@@ -142,6 +142,7 @@ export type ProvisionSecurityParams = {
   phone?: string | null;
   organization?: string | null;
   loginUrl: string;
+  password?: string;
   securityAnswers?: { questionId: string; answer: string }[];
 };
 
@@ -158,7 +159,7 @@ export async function provisionUserSecurity(
   admin: SupabaseClient,
   params: ProvisionSecurityParams,
 ): Promise<ProvisionSecurityResult> {
-  const { userId, email, fullName, phone, organization, loginUrl, securityAnswers } = params;
+  const { userId, email, fullName, phone, organization, loginUrl, password, securityAnswers } = params;
   const normalizedPhone = phone?.trim() ? normalizePhone(phone) : null;
 
   await saveSecurityAnswers(admin, userId, securityAnswers ?? []);
@@ -167,6 +168,7 @@ export async function provisionUserSecurity(
   const welcomeHtml = welcomeAccountEmailHtml({
     fullName,
     userEmail: email,
+    password,
     organization,
     maskedPhone: normalizedPhone ? maskPhone(normalizedPhone) : undefined,
     loginUrl,

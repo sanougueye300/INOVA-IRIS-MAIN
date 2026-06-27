@@ -107,11 +107,12 @@ function emailShell(title: string, bodyHtml: string): string {
 export function welcomeAccountEmailHtml(params: {
   fullName: string;
   userEmail: string;
+  password?: string;
   organization?: string | null;
   maskedPhone?: string;
   loginUrl: string;
 }): string {
-  const { fullName, userEmail, organization, maskedPhone, loginUrl } = params;
+  const { fullName, userEmail, password, organization, maskedPhone, loginUrl } = params;
   const body = `
           <tr>
             <td style="padding:32px;color:#e4e4e7;">
@@ -121,6 +122,7 @@ export function welcomeAccountEmailHtml(params: {
               </p>
               <p style="margin:0 0 12px;font-size:14px;line-height:1.65;color:#a1a1aa;">
                 <strong style="color:#fafafa;">Identifiant :</strong> ${userEmail}<br/>
+                ${password ? `<strong style="color:#fafafa;">Mot de passe temporaire :</strong> <code style="background:#27272a;padding:2px 6px;border-radius:4px;color:#fb923c;font-family:monospace;font-size:13px;">${password}</code><br/>` : ""}
                 ${maskedPhone ? `<strong style="color:#fafafa;">OTP SMS :</strong> envoyé au ${maskedPhone} à chaque connexion<br/>` : ""}
                 <strong style="color:#fafafa;">Authentification :</strong> mot de passe + double facteur (OTP)
               </p>

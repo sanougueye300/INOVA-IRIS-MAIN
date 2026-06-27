@@ -4,6 +4,7 @@ import { Mail, Lock, Eye, EyeOff, Fingerprint, Chrome } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { setPending2FA, sendLoginSmsOtp } from "@/lib/auth-security";
 
 
 export const Route = createFileRoute("/auth/login")({
@@ -79,7 +80,14 @@ function LoginPage() {
 
       toast.success("Connexion réussie", { description: "Bienvenue sur INOVA-IRIS SOC." });
 
-      navigate({ to: "/dashboard", replace: true });
+      setPending2FA(true);
+      try {
+        await sendLoginSmsOtp();
+        toast.success("Code de double authentification envoyé.");
+      } catch (otpErr) {
+        console.error("Erreur envoi OTP:", otpErr);
+      }
+      navigate({ to: "/auth/2fa", replace: true });
     } catch (err: unknown) {
       setLoginAttempts(prev => {
         const next = prev + 1;
