@@ -110,6 +110,128 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
   return brandedErrorResponse();
 }
 
+async function handlePaytechCheckoutRequest(request: Request): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: AI_API_CORS });
+  }
+
+  try {
+    const body = (await request.json()) as Record<string, any>;
+    const {
+      offerId,
+      offerName,
+      amount,
+      currency = "XOF",
+      email,
+      fullName,
+      phone,
+      companyName,
+      targetPayment,
+      originUrl,
+    } = body;
+
+    const apiKey = process.env.PAYTECH_API_KEY || process.env.VITE_PAYTECH_API_KEY || "93e4fd002cc03fd97b88fb11d696f5644bea04cab90f8f4180f3de8451b5400d";
+    const apiSecret = process.env.PAYTECH_SECRET_KEY || process.env.VITE_PAYTECH_SECRET_KEY || "b7ed28b0eb915faaf4a38df8a6aad4237554aed0c386c6f88d9baf145c72d741";
+    const paytechEnv = process.env.VITE_PAYTECH_ENV || "test";
+
+    const refCommand = `INV-SOC-${(offerId || "PLAN").toUpperCase()}-${Date.now()}`;
+    const origin = originUrl || request.headers.get("origin") || "https://inova-iris-main2.vercel.app";
+
+    const TARGET_PAYMENT_MAP: Record<string, string> = {
+      wave: "Wave",
+      om: "Orange Money",
+      card: "Carte Bancaire",
+      free: "Free Money",
+      wizall: "Wizall",
+      paytech_guichet: "PayTech",
+    };
+
+    const formattedTarget = TARGET_PAYMENT_MAP[targetPayment] || targetPayment || "";
+
+    const payload = {
+      item_name: `Abonnement SOC — ${offerName || offerId}`,
+      item_price: Number(amount) || 100000,
+      currency: (currency || "XOF").toUpperCase(),
+      ref_command: refCommand,
+      command_name: `Abonnement SOC INOVA-IRIS — ${companyName || email}`,
+      target_payment: formattedTarget,
+      custom_field: JSON.stringify({ offerId, offerName, email, fullName, companyName, phone }),
+      success_url: `${origin}/?payment_status=success&ref=${refCommand}&plan=${encodeURIComponent(offerId)}`,
+      cancel_url: `${origin}/?payment_status=cancel&ref=${refCommand}`,
+      ipn_url: `${origin}/api/paytech-ipn`,
+      env: paytechEnv === "prod" ? "prod" : "test",
+    };
+
+    console.log("Transmission requête à l'API PayTech SN:", payload);
+
+    const paytechRes = await fetch("https://paytech.sn/api/payment/request-payment", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "API_KEY": apiKey,
+        "API_SECRET": apiSecret,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const resData = (await paytechRes.json()) as Record<string, any>;
+    console.log("Réponse PayTech SN:", resData);
+
+    if (resData.success === 1 || resData.redirect_url || resData.token) {
+      const redirectUrl = resData.redirect_url || resData.redirectUrl || `https://paytech.sn/payment/checkout/${resData.token}`;
+      return Response.json(
+        {
+          success: true,
+          token: resData.token,
+          redirect_url: redirectUrl,
+          ref_command: refCommand,
+        },
+        { headers: AI_API_CORS }
+      );
+    }
+
+    // Si le compte en mode prod nécessite une activation, repli automatique sur le mode test avec clés API
+    if (resData.success === -1 && paytechEnv === "prod") {
+      console.warn("Mode prod PayTech en attente d'activation par le support, repli sur env test...");
+      payload.env = "test";
+      const testRes = await fetch("https://paytech.sn/api/payment/request-payment", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "API_KEY": apiKey,
+          "API_SECRET": apiSecret,
+        },
+        body: JSON.stringify(payload),
+      });
+      const testData = (await testRes.json()) as Record<string, any>;
+      if (testData.success === 1 || testData.redirect_url || testData.token) {
+        const redirectUrl = testData.redirect_url || testData.redirectUrl || `https://paytech.sn/payment/checkout/${testData.token}`;
+        return Response.json(
+          {
+            success: true,
+            token: testData.token,
+            redirect_url: redirectUrl,
+            ref_command: refCommand,
+            isTestMode: true,
+          },
+          { headers: AI_API_CORS }
+        );
+      }
+    }
+
+    return Response.json(
+      {
+        success: false,
+        error: resData.message || (Array.isArray(resData.error) ? resData.error.join(", ") : "Erreur PayTech"),
+      },
+      { status: 400, headers: AI_API_CORS }
+    );
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Erreur serveur";
+    return Response.json({ success: false, error: message }, { status: 500, headers: AI_API_CORS });
+  }
+}
+
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     const { pathname } = new URL(request.url);
@@ -118,6 +240,9 @@ export default {
     }
     if (pathname === "/api/auth-security") {
       return handleAuthSecurityApiRequest(request);
+    }
+    if (pathname === "/api/paytech-checkout") {
+      return handlePaytechCheckoutRequest(request);
     }
 
     try {

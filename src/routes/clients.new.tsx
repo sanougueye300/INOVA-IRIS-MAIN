@@ -723,6 +723,7 @@ function NewClient() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="bg-white dark:bg-zinc-950 border-slate-200 dark:border-zinc-800">
+                          <SelectItem value="paytech" className="text-xs font-bold text-[#FF7900]">PayTech Sénégal (Wave / OM / Carte)</SelectItem>
                           <SelectItem value="virement" className="text-xs">Virement bancaire SEPA</SelectItem>
                           <SelectItem value="prelevement" className="text-xs">Prélèvement automatique</SelectItem>
                           <SelectItem value="orange_money" className="text-xs">Orange Money Pro (Sénégal)</SelectItem>
