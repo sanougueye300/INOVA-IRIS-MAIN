@@ -5,7 +5,7 @@
 
 export const PAYTECH_API_KEY = import.meta.env.VITE_PAYTECH_API_KEY || "93e4fd002cc03fd97b88fb11d696f5644bea04cab90f8f4180f3de8451b5400d";
 export const PAYTECH_SECRET_KEY = import.meta.env.VITE_PAYTECH_SECRET_KEY || "b7ed28b0eb915faaf4a38df8a6aad4237554aed0c386c6f88d9baf145c72d741";
-export const PAYTECH_ENV = import.meta.env.VITE_PAYTECH_ENV || "prod";
+export const PAYTECH_ENV = import.meta.env.VITE_PAYTECH_ENV || "test";
 
 export const PAYTECH_API_URL = "https://paytech.sn/api/payment/request-payment";
 
@@ -129,19 +129,25 @@ export async function createPaytechCheckout(params: {
     phone: params.customer.phone,
   });
 
-  const payload: PaytechPaymentRequest = {
-    item_name: `Abonnement SOC — ${params.offerName}`,
-    item_price: params.amount,
-    currency: "XOF",
-    ref_command: refCommand,
-    command_name: `Souscription Formule SOC INOVA-IRIS (${params.customer.companyName})`,
-    target_payment: formattedTarget,
-    custom_field: customData,
-    success_url: `${origin}/?payment_status=success&ref=${refCommand}&plan=${encodeURIComponent(params.offerId)}`,
-    cancel_url: `${origin}/?payment_status=cancel&ref=${refCommand}`,
-    ipn_url: `${origin}/api/paytech-ipn`,
-    env: (PAYTECH_ENV === "prod" ? "prod" : "test") as "test" | "prod"
-  };
+    const httpsOrigin = origin.startsWith("https://")
+      ? origin
+      : "https://inova-iris-main2.vercel.app";
+
+    const localParam = !origin.startsWith("https://") ? `&local_origin=${encodeURIComponent(origin)}` : "";
+
+    const payload: PaytechPaymentRequest = {
+      item_name: `Abonnement SOC — ${params.offerName}`,
+      item_price: params.amount,
+      currency: "XOF",
+      ref_command: refCommand,
+      command_name: `Souscription Formule SOC INOVA-IRIS (${params.customer.companyName})`,
+      target_payment: formattedTarget,
+      custom_field: customData,
+      success_url: `${httpsOrigin}/?payment_status=success&ref=${refCommand}&plan=${encodeURIComponent(params.offerId)}${localParam}`,
+      cancel_url: `${httpsOrigin}/?payment_status=cancel&ref=${refCommand}${localParam}`,
+      ipn_url: `${httpsOrigin}/api/paytech-ipn`,
+      env: (PAYTECH_ENV === "prod" ? "prod" : "test") as "test" | "prod"
+    };
 
   try {
     const directRes = await fetch(PAYTECH_API_URL, {
@@ -171,11 +177,10 @@ export async function createPaytechCheckout(params: {
     console.warn("Appel direct PayTech :", directErr);
   }
 
-  // 3. Fallback de garantie avec redirection vers le guichet de secours PayTech
+  // 3. Fallback : la passerelle n'a pas répondu — retourner une erreur claire
   return {
-    success: true,
-    token: `TOK-${refCommand}`,
-    redirect_url: `https://paytech.sn/payment/checkout/405gzuqmthu4q57`,
+    success: false,
+    error: "Impossible de contacter la passerelle PayTech. Vérifiez votre connexion et réessayez.",
     ref_command: refCommand,
   };
 }

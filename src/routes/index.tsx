@@ -6,7 +6,7 @@ import {
   Search, FolderOpen, Zap, Fingerprint, Eye, EyeOff, HelpCircle,
   Building2, MapPin, Briefcase, Mail, Send, CheckSquare, Sparkles,
   Loader2, ArrowRightCircle, Clock, ChevronDown,
-  Laptop, ShieldAlert, HeartHandshake
+  Laptop, ShieldAlert, HeartHandshake, Layers
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -92,7 +92,6 @@ function LandingPage() {
   const [paymentMethod, setPaymentMethod] = useState<"paytech_guichet" | "wave" | "om" | "free" | "wizall" | "card">("paytech_guichet");
   const [isPaytechRedirecting, setIsPaytechRedirecting] = useState(false);
   const [paytechRedirectUrl, setPaytechRedirectUrl] = useState("");
-  const [paymentPhone, setPaymentPhone] = useState("");
   const [generatedPassword, setGeneratedPassword] = useState("");
 
   useEffect(() => {
@@ -213,37 +212,52 @@ function LandingPage() {
     }, 120);
   };
 
+  const [paytechErrorDetails, setPaytechErrorDetails] = useState<string | null>(null);
+
   const openCheckout = (plan: Offer) => {
+    // Réinitialiser tous les états du formulaire à chaque ouverture
     setCheckoutPlan(plan);
     setCheckoutStep("account");
+    setCompanyName("");
+    setFullName("");
+    setEmail("");
+    setPhone("");
+    setPhysicalAddress("");
+    setBusinessSector("Finance");
+    setPaymentMethod("paytech_guichet");
+    setIsPaytechRedirecting(false);
+    setPaytechRedirectUrl("");
+    setGeneratedPassword("");
+    setPaytechErrorDetails(null);
     setShowCheckoutModal(true);
-  };
-
-  const handleCreateAccount = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!companyName || !fullName || !email || !phone || !physicalAddress) {
-      toast.error("Veuillez renseigner toutes vos informations de compte.");
-      return;
-    }
-    setCheckoutStep("method");
-  };
-
-  const handleSelectMethod = () => {
-    setCheckoutStep("payment");
-  };
-
-  const sendSimulatedOtp = () => {
-    setOtpSent(true);
-    toast.success("Code OTP de vérification envoyé sur votre mobile !");
   };
 
   const handleInitiatePaytech = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!checkoutPlan) return;
 
-    setIsPaytechRedirecting(true);
+    if (!companyName.trim() || !fullName.trim() || !email.trim() || !phone.trim() || !physicalAddress.trim()) {
+      toast.error("Veuillez renseigner toutes les informations de votre entreprise.");
+      return;
+    }
 
-    const pass = generatedPassword || "INOVA-" + Math.random().toString(36).substring(2, 6).toUpperCase() + "-" + Math.random().toString(36).substring(2, 6).toUpperCase();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      toast.error("Adresse e-mail invalide. Vérifiez le format (ex: contact@societe.sn).");
+      return;
+    }
+
+    const phoneDigits = phone.replace(/[\s\-().+]/g, "");
+    if (phoneDigits.length < 8) {
+      toast.error("Numéro de téléphone invalide. Saisissez un numéro valide (ex: 77 000 00 00).");
+      return;
+    }
+
+    setIsPaytechRedirecting(true);
+    setPaytechErrorDetails(null);
+
+    // Générer le mot de passe maintenant
+    const pass = "INOVA-" + Math.random().toString(36).substring(2, 6).toUpperCase() + "-" + Math.random().toString(36).substring(2, 6).toUpperCase();
     setGeneratedPassword(pass);
 
     const registeredUser = {
@@ -256,7 +270,7 @@ function LandingPage() {
       sector: businessSector,
       planId: checkoutPlan.id,
       planName: checkoutPlan.name,
-      paymentMethod: paymentMethod.toUpperCase()
+      paymentMethod: "PAYTECH"
     };
     localStorage.setItem("inova_registered_user", JSON.stringify(registeredUser));
 
@@ -265,7 +279,7 @@ function LandingPage() {
         offerId: checkoutPlan.id,
         offerName: checkoutPlan.name,
         amount: checkoutPlan.value,
-        targetPayment: paymentMethod === "paytech_guichet" ? "" : paymentMethod,
+        targetPayment: "PayTech",
         customer: {
           email,
           fullName,
@@ -276,21 +290,28 @@ function LandingPage() {
         }
       });
 
-      if (paytechRes.success && paytechRes.redirect_url) {
-        setPaytechRedirectUrl(paytechRes.redirect_url);
-        toast.success(`Redirection instantanée vers Wave / PayTech SN...`, {
-          description: `Référence : ${paytechRes.ref_command}`
+      if (paytechRes.success && (paytechRes.redirect_url || paytechRes.token)) {
+        const destUrl = paytechRes.redirect_url || `https://paytech.sn/payment/checkout/${paytechRes.token}`;
+        setPaytechRedirectUrl(destUrl);
+        toast.success(`Passerelle PayTech initialisée avec succès !`, {
+          description: `Redirection en cours... Référence : ${paytechRes.ref_command}`
         });
 
-        // Navigation immédiate vers la page officielle PayTech Wave
-        window.location.href = paytechRes.redirect_url;
+        // Navigation vers la page officielle PayTech
+        setTimeout(() => {
+          window.location.href = destUrl;
+        }, 1200);
       } else {
-        throw new Error(paytechRes.error || "Erreur PayTech");
+        throw new Error(paytechRes.error || "La passerelle PayTech n'a pas pu initialiser la transaction");
       }
     } catch (err) {
-      console.warn("Traitement PayTech :", err);
+      const errMsg = err instanceof Error ? err.message : "Erreur de connexion";
+      console.warn("Traitement PayTech :", errMsg);
       setIsPaytechRedirecting(false);
-      toast.error("Erreur lors de l'ouverture de PayTech. Cliquez sur le bouton direct ci-dessous.");
+      setPaytechErrorDetails(errMsg);
+      toast.error("Impossible de contacter la passerelle PayTech en direct.", {
+        description: "Vous pouvez retenter ou valider immédiatement votre accès en mode direct."
+      });
     }
   };
 
@@ -316,7 +337,7 @@ function LandingPage() {
   };
 
   const handleAccessDashboard = () => {
-    // Log the user in locally by writing to inova_mock_user
+    // Enregistrer la session mock pour accès au dashboard
     const mockSession = {
       id: "mock-uid-123",
       email: email,
@@ -325,7 +346,11 @@ function LandingPage() {
     };
     localStorage.setItem("inova_mock_user", JSON.stringify(mockSession));
     
-    // Close modal and navigate to dashboard
+    // Nettoyer les paramètres d'URL de retour PayTech
+    const cleanUrl = window.location.pathname;
+    window.history.replaceState({}, document.title, cleanUrl);
+
+    // Fermer la modal et naviguer vers le dashboard
     setShowCheckoutModal(false);
     navigate({ to: "/dashboard", replace: true });
   };
@@ -873,647 +898,394 @@ function LandingPage() {
       {/* ========================================== */}
       {/* CHECKOUT WIZARD MODAL (PAYMENT PROCESSOR)  */}
       {/* ========================================== */}
+      {/* ======================================================== */}
+      {/* NOUVEAU FORMULAIRE DE SOUSCRIPTION MODERNE & PAYTECH UNIQUE */}
+      {/* ======================================================== */}
       {showCheckoutModal && checkoutPlan && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-md animate-fade-in">
-          <div className="w-full max-w-xl bg-white rounded-3xl border border-slate-200 shadow-2xl overflow-hidden flex flex-col animate-scale-up">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/80 backdrop-blur-md animate-fade-in overflow-y-auto">
+          <div className="w-full max-w-2xl bg-white rounded-3xl border border-slate-200/90 shadow-2xl overflow-hidden flex flex-col my-auto transition-all animate-scale-up">
             
-            {/* Modal Executive Header */}
-            <div className="flex items-center justify-between px-6 py-4.5 bg-gradient-to-r from-slate-950 via-slate-900 to-orange-950 text-white border-b border-orange-500/20">
-              <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-2xl bg-[#FF7900] text-white flex items-center justify-center font-bold shadow-lg shadow-orange-500/30">
-                  <Shield className="h-5 w-5" />
+            {/* Header Moderne & Épuré */}
+            <div className="relative px-6 py-5 bg-gradient-to-r from-slate-950 via-slate-900 to-zinc-900 text-white border-b border-orange-500/20 flex items-center justify-between">
+              <div className="flex items-center gap-3.5">
+                <div className="h-10 w-10 rounded-2xl bg-[#FF7900] text-white flex items-center justify-center shadow-lg shadow-orange-500/30">
+                  <ShieldCheck className="h-5 w-5 stroke-[2.5]" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-xs font-black uppercase tracking-wider text-white">Souscription Tenant SOC</h3>
-                    <span className="text-[9px] font-bold uppercase tracking-widest bg-orange-500/20 text-[#FF7900] border border-orange-500/30 px-2 py-0.5 rounded-full">
+                    <h3 className="text-sm font-extrabold tracking-wide uppercase text-white">Souscription CyberSOC</h3>
+                    <Badge className="bg-[#FF7900]/20 text-[#FF7900] border border-[#FF7900]/40 text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full">
                       PayTech SN
-                    </span>
-                  </div>
-                  <span className="text-[10.5px] text-slate-300 font-medium block mt-0.5">Formule {checkoutPlan.name} — Cybersécurité Sonatel</span>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <Badge className="bg-[#FF7900] text-white font-black text-xs px-3 py-1 rounded-full border-none shadow-sm">
-                  {checkoutPlan.value.toLocaleString()} FCFA / mois
-                </Badge>
-                <button 
-                  onClick={() => setShowCheckoutModal(false)}
-                  className="h-8 w-8 rounded-full bg-white/10 text-slate-300 hover:text-white hover:bg-white/20 transition-all flex items-center justify-center cursor-pointer"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-
-            {/* Modal Content */}
-            <div className="p-6 flex-1 overflow-y-auto max-h-[500px]">
-              
-              {/* Visual Step-by-Step Stepper */}
-              <div className="flex items-center justify-between mb-8 px-2 relative">
-                {/* Line connecting the steps */}
-                <div className="absolute top-[18px] left-[10%] right-[10%] h-[2px] bg-slate-100 -z-10" />
-                <div 
-                  className="absolute top-[18px] left-[10%] h-[2px] bg-orange-500 transition-all duration-300 -z-10" 
-                  style={{ 
-                    width: 
-                      checkoutStep === "account" ? "0%" :
-                      checkoutStep === "method" ? "33%" :
-                      checkoutStep === "payment" || checkoutStep === "processing" ? "66%" : "100%"
-                  }} 
-                />
-
-                {[
-                  { key: "account", label: "Client", num: 1 },
-                  { key: "method", label: "Paiement", num: 2 },
-                  { key: "payment", label: "Validation", num: 3 },
-                  { key: "success", label: "Accès", num: 4 }
-                ].map((s, idx) => {
-                  const isCurrent = s.key === checkoutStep || (checkoutStep === "processing" && s.key === "payment");
-                  
-                  let isCompleted = false;
-                  if (checkoutStep === "method" && idx < 1) isCompleted = true;
-                  if (checkoutStep === "payment" && idx < 2) isCompleted = true;
-                  if (checkoutStep === "processing" && idx < 3) isCompleted = true;
-                  if (checkoutStep === "success") isCompleted = true;
-
-                  return (
-                    <div key={s.key} className="flex flex-col items-center gap-1.5 flex-1 relative z-10 select-none">
-                      <div 
-                        className={`h-9 w-9 rounded-full flex items-center justify-center text-xs font-bold transition-all border ${
-                          isCompleted && checkoutStep !== "success"
-                            ? "bg-emerald-500 border-emerald-500 text-white shadow-sm" 
-                            : isCurrent 
-                              ? "bg-[#FF7900] border-[#FF7900] text-white shadow-[0_0_12px_rgba(255,121,0,0.3)] scale-110" 
-                              : "bg-white border-slate-200 text-slate-400"
-                        }`}
-                      >
-                        {isCompleted && checkoutStep !== "success" ? (
-                          <Check className="h-4 w-4 stroke-[3]" />
-                        ) : (
-                          s.num
-                        )}
-                      </div>
-                      <span 
-                        className={`text-[9px] font-bold uppercase tracking-wider transition-colors duration-200 ${
-                          isCurrent ? "text-slate-900" : isCompleted && checkoutStep !== "success" ? "text-emerald-600" : "text-slate-400"
-                        }`}
-                      >
-                        {s.label}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* STEP 1: ACCOUNT DETAILS FORM */}
-              {checkoutStep === "account" && (
-                <form onSubmit={handleCreateAccount} className="space-y-4">
-                  <div className="text-center mb-5 bg-slate-50 p-3 rounded-2xl border border-slate-100">
-                    <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-900">Coordonnées de Facturation & Provisionnement</h4>
-                    <p className="text-[10px] text-slate-500 mt-0.5">Remplissez les informations requises pour créer et configurer votre tenant SOC.</p>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-slate-600 flex items-center gap-1.5" htmlFor="company">
-                        <Building2 className="h-3.5 w-3.5 text-[#FF7900]" /> Nom de l'entreprise *
-                      </label>
-                      <input 
-                        id="company" 
-                        type="text" 
-                        required 
-                        value={companyName}
-                        onChange={(e) => setCompanyName(e.target.value)}
-                        placeholder="Ex: SONATEL SA, INOVA IRIS..."
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-xs text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-orange-500/25 focus:border-[#FF7900] focus:bg-white transition-all"
-                      />
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-slate-600 flex items-center gap-1.5" htmlFor="businessSector">
-                        <Layers className="h-3.5 w-3.5 text-[#FF7900]" /> Secteur d'activité
-                      </label>
-                      <select
-                        id="businessSector"
-                        value={businessSector}
-                        onChange={(e) => setBusinessSector(e.target.value)}
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-xs text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-orange-500/25 focus:border-[#FF7900] focus:bg-white transition-all"
-                      >
-                        <option value="Finance">Banque & Services Financiers</option>
-                        <option value="Telecom">Télécommunications & Tech</option>
-                        <option value="Health">Santé & Pharma</option>
-                        <option value="Gov">Administrations Publiques</option>
-                        <option value="Commerce">Commerce & Distribution</option>
-                        <option value="Autre">Autre secteur d'activité</option>
-                      </select>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-slate-600 flex items-center gap-1.5" htmlFor="adminName">
-                        <Briefcase className="h-3.5 w-3.5 text-[#FF7900]" /> Nom complet du gérant / contact *
-                      </label>
-                      <input 
-                        id="adminName" 
-                        type="text" 
-                        required 
-                        value={fullName}
-                        onChange={(e) => setFullName(e.target.value)}
-                        placeholder="Ex: Sanou Gueye"
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-xs text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-orange-500/25 focus:border-[#FF7900] focus:bg-white transition-all"
-                      />
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-slate-600 flex items-center gap-1.5" htmlFor="adminPhone">
-                        <Phone className="h-3.5 w-3.5 text-[#FF7900]" /> Numéro de téléphone mobile *
-                      </label>
-                      <input 
-                        id="adminPhone" 
-                        type="tel" 
-                        required 
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                        placeholder="Ex: 77 599 49 42"
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-xs text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-orange-500/25 focus:border-[#FF7900] focus:bg-white transition-all"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-slate-600 flex items-center gap-1.5" htmlFor="adminEmail">
-                      <Mail className="h-3.5 w-3.5 text-[#FF7900]" /> Adresse e-mail professionnelle *
-                    </label>
-                    <input 
-                      id="adminEmail" 
-                      type="email" 
-                      required 
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="Ex: contact@inova.sn"
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-xs text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-orange-500/25 focus:border-[#FF7900] focus:bg-white transition-all"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-slate-600 flex items-center gap-1.5" htmlFor="adminAddress">
-                      <MapPin className="h-3.5 w-3.5 text-[#FF7900]" /> Adresse physique de l'entreprise *
-                    </label>
-                    <input 
-                      id="adminAddress" 
-                      type="text" 
-                      required 
-                      value={physicalAddress}
-                      onChange={(e) => setPhysicalAddress(e.target.value)}
-                      placeholder="Ex: VDN, Immeuble Sonatel, Dakar"
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-xs text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-orange-500/25 focus:border-[#FF7900] focus:bg-white transition-all"
-                    />
-                  </div>
-
-                  <Button type="submit" className="w-full bg-[#FF7900] hover:bg-[#e06b00] text-white font-extrabold text-xs h-11 rounded-full mt-4 cursor-pointer shadow-lg shadow-orange-500/20 hover:scale-[1.01] transition-all flex items-center justify-center gap-2">
-                    <span>Continuer vers la sélection du moyen de paiement</span>
-                    <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </form>
-              )}
-
-              {/* STEP 2: METHOD SELECTION */}
-              {checkoutStep === "method" && (
-                <div className="space-y-6 animate-fade-in">
-                  <div className="text-center">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800">Passerelle de Règlement PayTech SN</h4>
-                    <p className="text-[10px] text-slate-400 mt-1">Sélectionnez votre canal de paiement sécurisé pour finaliser votre abonnement SOC.</p>
-                  </div>
-
-                  <div className="flex items-center justify-between p-3 rounded-2xl bg-gradient-to-r from-orange-500/10 via-amber-500/10 to-orange-500/5 border border-orange-500/30 text-xs shadow-sm">
-                    <div className="flex items-center gap-2.5">
-                      <div className="h-7 w-7 rounded-lg bg-[#FF7900] text-white flex items-center justify-center font-bold shadow-sm">
-                        <Shield className="h-4 w-4" />
-                      </div>
-                      <div>
-                        <span className="font-extrabold text-slate-900 text-[11px] block">PayTech Sénégal — Certifié BCEAO</span>
-                        <span className="text-[9px] text-slate-500 font-light block">Encaissement Mobile Money & Cartes Bancaires</span>
-                      </div>
-                    </div>
-                    <Badge variant="outline" className="text-[9px] bg-emerald-50 text-emerald-700 border-emerald-300 font-bold px-2 py-0.5">
-                      API Active
                     </Badge>
                   </div>
-
-                  <div className="space-y-2.5">
-                    {[
-                      { 
-                        id: "paytech_guichet", 
-                        label: "Guichet PayTech SN (Multi-Opérateurs)", 
-                        desc: "Multi-moyens : Wave, Orange Money, Free, Wizall & Cartes Bancaires", 
-                        recommended: true,
-                        colorClass: "border-orange-200 hover:border-orange-400 bg-gradient-to-r from-orange-50/50 via-amber-50/20 to-white",
-                        activeColorClass: "border-[#FF7900] bg-orange-50/90 ring-2 ring-[#FF7900]/30 shadow-md",
-                        logo: (
-                          <div className="h-10 w-16 bg-gradient-to-br from-[#FF7900] via-orange-600 to-amber-600 rounded-xl flex flex-col items-center justify-center text-white shadow-md border border-orange-400/30 shrink-0">
-                            <span className="font-black text-[10px] tracking-tight">PAYTECH</span>
-                            <span className="text-[5px] font-extrabold uppercase tracking-widest bg-white/20 px-1 rounded mt-0.5">GUICHET</span>
-                          </div>
-                        )
-                      },
-                      { 
-                        id: "wave", 
-                        label: "Wave Sénégal", 
-                        desc: "Paiement direct Wave par QR Code ou notification push mobile", 
-                        colorClass: "border-sky-100 hover:border-sky-300 bg-sky-50/20",
-                        activeColorClass: "border-sky-500 bg-sky-50/80 ring-2 ring-sky-500/30 shadow-sm",
-                        logo: (
-                          <div className="h-10 w-16 bg-gradient-to-br from-sky-400 to-blue-600 rounded-xl flex flex-col items-center justify-center text-white shadow-md border border-sky-300/30 shrink-0">
-                            <span className="font-black text-[11px] tracking-tight">WAVE</span>
-                            <span className="text-[5.5px] uppercase font-bold tracking-widest opacity-90">SÉNÉGAL</span>
-                          </div>
-                        )
-                      },
-                      { 
-                        id: "om", 
-                        label: "Orange Money Sénégal", 
-                        desc: "Paiement direct Orange Money via Code USSD #144# ou Max it", 
-                        colorClass: "border-amber-100 hover:border-amber-300 bg-amber-50/20",
-                        activeColorClass: "border-orange-500 bg-amber-50/80 ring-2 ring-orange-500/30 shadow-sm",
-                        logo: (
-                          <div className="h-10 w-16 bg-gradient-to-br from-[#FF7900] to-amber-500 rounded-xl flex flex-col items-center justify-center text-white shadow-md border border-amber-400/30 shrink-0">
-                            <span className="font-black text-[11px]">OM</span>
-                            <span className="text-[5.5px] uppercase font-extrabold tracking-widest opacity-90">SÉNÉGAL</span>
-                          </div>
-                        )
-                      },
-                      { 
-                        id: "free", 
-                        label: "Free Money Sénégal", 
-                        desc: "Règlement sécurisé Free Money via la passerelle PayTech", 
-                        colorClass: "border-emerald-100 hover:border-emerald-300 bg-emerald-50/20",
-                        activeColorClass: "border-emerald-500 bg-emerald-50/80 ring-2 ring-emerald-500/30 shadow-sm",
-                        logo: (
-                          <div className="h-10 w-16 bg-gradient-to-br from-emerald-500 to-teal-700 rounded-xl flex flex-col items-center justify-center text-white shadow-md border border-emerald-400/30 shrink-0">
-                            <span className="font-black text-[10px] tracking-tight">FREE</span>
-                            <span className="text-[5.5px] uppercase font-bold tracking-widest opacity-90">MONEY</span>
-                          </div>
-                        )
-                      },
-                      { 
-                        id: "wizall", 
-                        label: "Wizall Money", 
-                        desc: "Transfert sécurisé via votre compte Wizall Money", 
-                        colorClass: "border-purple-100 hover:border-purple-300 bg-purple-50/20",
-                        activeColorClass: "border-purple-500 bg-purple-50/80 ring-2 ring-purple-500/30 shadow-sm",
-                        logo: (
-                          <div className="h-10 w-16 bg-gradient-to-br from-purple-600 to-indigo-800 rounded-xl flex flex-col items-center justify-center text-white shadow-md border border-purple-400/30 shrink-0">
-                            <span className="font-black text-[10px] tracking-tight">WIZALL</span>
-                            <span className="text-[5.5px] uppercase font-bold tracking-widest opacity-90">MONEY</span>
-                          </div>
-                        )
-                      },
-                      { 
-                        id: "card", 
-                        label: "Carte Bancaire (VISA / Mastercard / GIM-UEMOA)", 
-                        desc: "Cartes bancaires internationales et régionales certifiées 3D-Secure", 
-                        colorClass: "border-slate-200 hover:border-slate-400 bg-slate-50/40",
-                        activeColorClass: "border-slate-900 bg-slate-900/10 ring-2 ring-slate-900/30 shadow-sm",
-                        logo: (
-                          <div className="h-10 w-16 bg-gradient-to-br from-slate-800 to-slate-950 rounded-xl flex flex-col items-center justify-center text-white shadow-md border border-slate-700 shrink-0">
-                            <span className="font-black text-[10px] tracking-widest">VISA</span>
-                            <span className="text-[5px] font-mono tracking-tighter opacity-80">CARD / GIM</span>
-                          </div>
-                        )
-                      }
-                    ].map((method) => {
-                      const active = paymentMethod === method.id;
-                      return (
-                        <button
-                          key={method.id}
-                          onClick={() => setPaymentMethod(method.id as any)}
-                          className={`w-full text-left p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
-                            active ? method.activeColorClass : method.colorClass + " border-slate-200/80 hover:bg-slate-50/80"
-                          }`}
-                        >
-                          <div className="flex items-center gap-3">
-                            {method.logo}
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs font-extrabold block text-slate-900">{method.label}</span>
-                                {method.recommended && (
-                                  <span className="text-[8px] font-black uppercase tracking-wider bg-[#FF7900] text-white px-1.5 py-0.2 rounded-full shadow-sm">
-                                    Recommandé
-                                  </span>
-                                )}
-                              </div>
-                              <span className="text-[9.5px] text-slate-500 font-light mt-0.5 block">{method.desc}</span>
-                            </div>
-                          </div>
-                          
-                          <div className={`h-5 w-5 rounded-full border flex items-center justify-center transition-all ${
-                            active 
-                              ? "border-[#FF7900] bg-[#FF7900]"
-                              : "border-slate-300 bg-white"
-                          }`}>
-                            {active && <Check className="h-3.5 w-3.5 text-white stroke-[3]" />}
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  <div className="flex gap-3 mt-6">
-                    <Button variant="outline" onClick={() => setCheckoutStep("account")} className="flex-1 rounded-full border-slate-200 h-10 text-xs cursor-pointer">
-                      Retour
-                    </Button>
-                    <Button onClick={handleSelectMethod} className="flex-1 bg-[#FF7900] hover:bg-[#e06b00] text-white font-bold text-xs h-10 rounded-full cursor-pointer shadow-md shadow-orange-500/15">
-                      Valider et Continuer
-                    </Button>
-                  </div>
+                  <p className="text-[11px] text-slate-300 font-light mt-0.5">
+                    Déploiement instantané pour votre organisation • Sonatel Cyberdéfense
+                  </p>
                 </div>
-              )}
+              </div>
 
-              {/* STEP 3: TRANSACTION VALIDATION & PAYTECH LAUNCH */}
-              {checkoutStep === "payment" && checkoutPlan && (
-                <div className="space-y-5 animate-fade-in">
-                  {/* Summary Card */}
-                  <div className="bg-gradient-to-br from-slate-900 via-slate-950 to-orange-950 text-white rounded-2xl p-5 shadow-xl border border-orange-500/30 relative overflow-hidden">
-                    <div className="absolute right-[-20px] top-[-20px] w-36 h-36 bg-orange-500/15 rounded-full blur-2xl pointer-events-none" />
+              <button 
+                onClick={() => {
+                  setShowCheckoutModal(false);
+                  if (window.location.search) {
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                  }
+                }}
+                className="h-8 w-8 rounded-full bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition-all flex items-center justify-center cursor-pointer"
+                title="Fermer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Contenu de la Modal */}
+            <div className="p-6 sm:p-8 max-h-[85vh] overflow-y-auto space-y-6">
+              
+              {checkoutStep !== "success" ? (
+                <>
+                  {/* Carte Récapitulative de la Formule Sélectionnée */}
+                  <div className="rounded-2xl p-4 sm:p-5 bg-gradient-to-br from-orange-50/60 via-amber-50/30 to-white border border-orange-200/80 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-black uppercase tracking-wider bg-[#FF7900] text-white px-2.5 py-0.5 rounded-full">
+                          Formule Sélectionnée
+                        </span>
+                        <span className="text-xs font-semibold text-slate-500">Sans engagement</span>
+                      </div>
+                      <h4 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">
+                        {checkoutPlan.name}
+                      </h4>
+                      <p className="text-xs text-slate-600 font-light">
+                        Supervision SOC 24/7 • {checkoutPlan.maxPcs} agents EDR inclus • Détection & réponse
+                      </p>
+                    </div>
+
+                    <div className="sm:text-right bg-white sm:bg-transparent p-3 sm:p-0 rounded-xl border sm:border-0 border-orange-100 w-full sm:w-auto">
+                      <span className="text-xs text-slate-500 font-medium block">Montant à régler</span>
+                      <div className="text-2xl font-black text-slate-950 text-[#FF7900]">
+                        {checkoutPlan.value.toLocaleString("fr-FR")} <span className="text-sm font-bold text-slate-600">FCFA/mois</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Formulaire de Coordonnées */}
+                  <form onSubmit={handleInitiatePaytech} className="space-y-5">
                     
-                    <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-3">
-                      <div className="flex items-center gap-2.5">
-                        <div className="h-8 w-8 rounded-lg bg-[#FF7900] flex items-center justify-center text-white font-bold shadow-sm">
-                          <Shield className="h-4.5 w-4.5" />
+                    <div>
+                      <h4 className="text-xs font-black uppercase tracking-wider text-slate-800 flex items-center gap-2 mb-3">
+                        <Building2 className="h-4 w-4 text-[#FF7900]" />
+                        1. Informations sur votre organisation
+                      </h4>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                        {/* Entreprise */}
+                        <div className="space-y-1.5">
+                          <label htmlFor="compName" className="text-[11px] font-bold uppercase tracking-wider text-slate-700 block">
+                            Nom de l'entreprise / Structure *
+                          </label>
+                          <input 
+                            id="compName"
+                            type="text" 
+                            required 
+                            value={companyName}
+                            onChange={(e) => setCompanyName(e.target.value)}
+                            placeholder="Ex: SONATEL SA, INOVA, SARL..."
+                            className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-[#FF7900] focus:bg-white transition-all shadow-inner"
+                          />
                         </div>
-                        <div>
-                          <span className="text-xs font-extrabold block text-white">{checkoutPlan.name}</span>
-                          <span className="text-[9px] text-slate-400">Plateforme SOC INOVA-IRIS</span>
+
+                        {/* Secteur */}
+                        <div className="space-y-1.5">
+                          <label htmlFor="secAct" className="text-[11px] font-bold uppercase tracking-wider text-slate-700 block">
+                            Secteur d'activité
+                          </label>
+                          <select
+                            id="secAct"
+                            value={businessSector}
+                            onChange={(e) => setBusinessSector(e.target.value)}
+                            className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-[#FF7900] focus:bg-white transition-all"
+                          >
+                            <option value="Finance">Banque & Services Financiers</option>
+                            <option value="Telecom">Télécommunications & Tech</option>
+                            <option value="Health">Santé & Pharma</option>
+                            <option value="Gov">Administrations Publiques</option>
+                            <option value="Commerce">Commerce & Distribution</option>
+                            <option value="Autre">Autre secteur d'activité</option>
+                          </select>
+                        </div>
+
+                        {/* Nom du Responsable */}
+                        <div className="space-y-1.5">
+                          <label htmlFor="mgrName" className="text-[11px] font-bold uppercase tracking-wider text-slate-700 block">
+                            Nom complet du responsable *
+                          </label>
+                          <input 
+                            id="mgrName"
+                            type="text" 
+                            required 
+                            value={fullName}
+                            onChange={(e) => setFullName(e.target.value)}
+                            placeholder="Ex: Sanou Gueye"
+                            className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-[#FF7900] focus:bg-white transition-all shadow-inner"
+                          />
+                        </div>
+
+                        {/* Téléphone */}
+                        <div className="space-y-1.5">
+                          <label htmlFor="mgrPhone" className="text-[11px] font-bold uppercase tracking-wider text-slate-700 block">
+                            Téléphone mobile (Wave / OM) *
+                          </label>
+                          <input 
+                            id="mgrPhone"
+                            type="tel" 
+                            required 
+                            value={phone}
+                            onChange={(e) => setPhone(e.target.value)}
+                            placeholder="Ex: 77 123 45 67"
+                            className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-[#FF7900] focus:bg-white transition-all shadow-inner"
+                          />
                         </div>
                       </div>
-                      <Badge className="bg-[#FF7900] text-white border-none text-[11px] font-black px-3 py-1 shadow-sm">
-                        {checkoutPlan.value.toLocaleString()} FCFA / mois
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 mt-3.5">
+                        {/* Email */}
+                        <div className="space-y-1.5">
+                          <label htmlFor="mgrEmail" className="text-[11px] font-bold uppercase tracking-wider text-slate-700 block">
+                            E-mail professionnel (Identifiant SOC) *
+                          </label>
+                          <input 
+                            id="mgrEmail"
+                            type="email" 
+                            required 
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            placeholder="contact@entreprise.sn"
+                            className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-[#FF7900] focus:bg-white transition-all shadow-inner"
+                          />
+                        </div>
+
+                        {/* Adresse */}
+                        <div className="space-y-1.5">
+                          <label htmlFor="mgrAddr" className="text-[11px] font-bold uppercase tracking-wider text-slate-700 block">
+                            Adresse / Ville *
+                          </label>
+                          <input 
+                            id="mgrAddr"
+                            type="text" 
+                            required 
+                            value={physicalAddress}
+                            onChange={(e) => setPhysicalAddress(e.target.value)}
+                            placeholder="Ex: VDN, Dakar, Sénégal"
+                            className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-[#FF7900] focus:bg-white transition-all shadow-inner"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Section Mode de Paiement : EXCLUSIVEMENT PAYTECH */}
+                    <div className="pt-2">
+                      <h4 className="text-xs font-black uppercase tracking-wider text-slate-800 flex items-center gap-2 mb-3">
+                        <CreditCard className="h-4 w-4 text-[#FF7900]" />
+                        2. Mode de Règlement Sécurisé
+                      </h4>
+
+                      <div className="relative rounded-2xl p-4 sm:p-5 bg-gradient-to-r from-orange-500/10 via-amber-500/5 to-white border-2 border-orange-400/50 shadow-md">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                          <div className="flex items-center gap-3.5">
+                            {/* Logo PayTech stylisé */}
+                            <div className="h-12 w-20 bg-gradient-to-br from-[#FF7900] via-orange-600 to-amber-600 rounded-xl flex flex-col items-center justify-center text-white shadow-md border border-orange-400/30 shrink-0">
+                              <span className="font-black text-xs tracking-tight">PAYTECH</span>
+                              <span className="text-[6px] font-extrabold uppercase tracking-widest bg-white/20 px-1.5 rounded mt-0.5">SÉNÉGAL</span>
+                            </div>
+
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-extrabold text-slate-900">
+                                  Passerelle Officielle PayTech
+                                </span>
+                                <Badge className="bg-emerald-500/15 text-emerald-700 border-emerald-300 text-[9px] font-bold px-2 py-0.5">
+                                  Agréé BCEAO
+                                </Badge>
+                              </div>
+                              <p className="text-[11px] text-slate-600 font-light mt-0.5">
+                                Guichet unique sécurisé : Wave, Orange Money, Free Money, Wizall & Cartes Bancaires.
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="h-6 w-6 rounded-full bg-[#FF7900] text-white flex items-center justify-center shadow-sm shrink-0">
+                            <Check className="h-3.5 w-3.5 stroke-[3]" />
+                          </div>
+                        </div>
+
+                        {/* Badges des opérateurs intégrés */}
+                        <div className="mt-3.5 pt-3 border-t border-orange-200/50 flex flex-wrap items-center gap-2 text-[10px] text-slate-600 font-medium">
+                          <span className="text-slate-400 font-semibold">Moyens inclus au guichet :</span>
+                          <span className="px-2 py-0.5 rounded-full bg-sky-100 text-sky-800 font-bold">Wave</span>
+                          <span className="px-2 py-0.5 rounded-full bg-orange-100 text-orange-800 font-bold">Orange Money</span>
+                          <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold">Free Money</span>
+                          <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 font-bold">Wizall</span>
+                          <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-800 font-bold">VISA / Mastercard</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Message d'erreur éventuel ou lien direct */}
+                    {paytechErrorDetails && (
+                      <div className="p-3.5 rounded-xl border border-amber-200 bg-amber-50/80 text-amber-900 text-xs flex items-start gap-2.5">
+                        <HelpCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                        <div className="space-y-1">
+                          <p className="font-bold text-amber-800">Note de connexion PayTech :</p>
+                          <p className="text-[11px] text-amber-700 leading-relaxed font-light">
+                            {paytechErrorDetails}
+                          </p>
+                          <p className="text-[10px] text-amber-600 font-medium">
+                            Vous pouvez réessayer la passerelle ou utiliser l'option d'activation immédiate ci-dessous pour continuer vos tests sans attendre.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Boutons d'Action */}
+                    <div className="pt-2 space-y-2.5">
+                      <Button 
+                        type="submit"
+                        disabled={isPaytechRedirecting}
+                        className="w-full bg-gradient-to-r from-[#FF7900] via-orange-600 to-amber-600 hover:from-orange-600 hover:to-orange-700 text-white font-extrabold text-sm h-12 rounded-2xl shadow-xl shadow-orange-500/25 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2.5 cursor-pointer"
+                      >
+                        {isPaytechRedirecting ? (
+                          <>
+                            <Loader2 className="h-5 w-5 animate-spin text-white" />
+                            <span>Ouverture du guichet PayTech SN en cours...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Lock className="h-4 w-4" />
+                            <span>Payer {checkoutPlan.value.toLocaleString("fr-FR")} FCFA via PayTech</span>
+                            <ArrowRight className="h-4 w-4" />
+                          </>
+                        )}
+                      </Button>
+
+                      {/* Lien de secours si redirection automatique différée */}
+                      {paytechRedirectUrl && (
+                        <a 
+                          href={paytechRedirectUrl}
+                          className="w-full text-center block text-xs font-bold text-[#FF7900] hover:underline p-1"
+                        >
+                          Cliquez ici si la redirection ne démarre pas automatiquement →
+                        </a>
+                      )}
+
+                      {/* Option d'activation instantanée pour environnement de test */}
+                      <div className="flex items-center justify-between pt-1">
+                        <button 
+                          type="button"
+                          onClick={() => setShowCheckoutModal(false)}
+                          className="text-xs text-slate-500 hover:text-slate-800 font-medium cursor-pointer"
+                        >
+                          Annuler
+                        </button>
+
+                        <button 
+                          type="button"
+                          onClick={() => {
+                            if (!companyName.trim() || !email.trim()) {
+                              toast.error("Veuillez saisir au minimum le nom de votre entreprise et votre email.");
+                              return;
+                            }
+                            if (!generatedPassword) {
+                              const pass = "INOVA-" + Math.random().toString(36).substring(2, 6).toUpperCase() + "-" + Math.random().toString(36).substring(2, 6).toUpperCase();
+                              setGeneratedPassword(pass);
+                            }
+                            const registeredUser = {
+                              email,
+                              password: generatedPassword || "INOVA-DEMO-2026",
+                              fullName: fullName || "Responsable SOC",
+                              companyName: companyName || "Entreprise Démo",
+                              phone: phone || "77 000 00 00",
+                              address: physicalAddress || "Dakar",
+                              sector: businessSector,
+                              planId: checkoutPlan.id,
+                              planName: checkoutPlan.name,
+                              paymentMethod: "PAYTECH"
+                            };
+                            localStorage.setItem("inova_registered_user", JSON.stringify(registeredUser));
+                            setCheckoutStep("success");
+                            toast.success("Abonnement activé avec succès en environnement test !");
+                          }}
+                          className="text-[11px] text-slate-400 hover:text-[#FF7900] font-semibold underline cursor-pointer transition-colors"
+                        >
+                          Valider directement l'accès (Accès Immédiat Test)
+                        </button>
+                      </div>
+                    </div>
+
+                  </form>
+                </>
+              ) : (
+                /* ===================================== */
+                /* ÉCRAN DE SUCCÈS & IDENTIFIANTS SOC    */
+                /* ===================================== */
+                <div className="space-y-6 text-center py-4 animate-scale-up">
+                  <div className="mx-auto h-14 w-14 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 flex items-center justify-center shadow-inner">
+                    <ShieldCheck className="h-8 w-8" />
+                  </div>
+
+                  <div>
+                    <h3 className="text-xl font-extrabold text-slate-900 tracking-tight">
+                      Abonnement Activé avec Succès !
+                    </h3>
+                    <p className="text-xs text-emerald-700 font-semibold mt-1">
+                      Votre instance SOC pour la formule {checkoutPlan.name} est opérationnelle.
+                    </p>
+                  </div>
+
+                  {/* Fiche des Identifiants Créés */}
+                  <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-5 text-left space-y-3.5 max-w-md mx-auto shadow-sm">
+                    <div className="flex justify-between items-center border-b border-slate-200 pb-2.5 text-[11px] text-slate-500">
+                      <span className="flex items-center gap-1.5 font-bold text-slate-700">
+                        <Send className="h-3.5 w-3.5 text-[#FF7900]" /> Identifiants de connexion SOC
+                      </span>
+                      <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300 text-[9px] font-bold">
+                        Actif
                       </Badge>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3 text-[10px]">
-                      <div className="bg-white/5 p-2.5 rounded-xl border border-white/10">
-                        <span className="text-slate-400 block text-[9px] uppercase tracking-wider font-semibold">Client</span>
-                        <strong className="text-white font-bold block truncate mt-0.5">{fullName || email}</strong>
-                      </div>
-                      <div className="bg-white/5 p-2.5 rounded-xl border border-white/10">
-                        <span className="text-slate-400 block text-[9px] uppercase tracking-wider font-semibold">Entreprise</span>
-                        <strong className="text-white font-bold block truncate mt-0.5">{companyName || "Non spécifiée"}</strong>
-                      </div>
-                      <div className="bg-white/5 p-2.5 rounded-xl border border-white/10">
-                        <span className="text-slate-400 block text-[9px] uppercase tracking-wider font-semibold">Téléphone</span>
-                        <strong className="text-white font-bold block mt-0.5">{phone || "—"}</strong>
-                      </div>
-                      <div className="bg-white/5 p-2.5 rounded-xl border border-white/10">
-                        <span className="text-slate-400 block text-[9px] uppercase tracking-wider font-semibold">Canal de Paiement</span>
-                        <strong className="text-[#FF7900] font-bold block uppercase mt-0.5">
-                          {paymentMethod === "paytech_guichet" ? "Guichet PayTech SN" :
-                           paymentMethod === "wave" ? "Wave Sénégal" :
-                           paymentMethod === "om" ? "Orange Money" :
-                           paymentMethod === "free" ? "Free Money" :
-                           paymentMethod === "wizall" ? "Wizall Money" : "Carte Bancaire (3D-Secure)"}
-                        </strong>
-                      </div>
+                    <div className="space-y-1.5 text-xs text-slate-600">
+                      <div><strong className="font-semibold text-slate-700">Organisation :</strong> {companyName || "Non spécifié"}</div>
+                      <div><strong className="font-semibold text-slate-700">Responsable :</strong> {fullName || "Contact"}</div>
                     </div>
-                  </div>
 
-                  {/* Security notice & Operator Guide */}
-                  <div className="space-y-2">
-                    {paymentMethod === "om" && (
-                      <div className="p-3 rounded-xl border border-orange-200 bg-orange-50/80 text-slate-800 flex items-start gap-2.5 text-xs">
-                        <span className="text-lg leading-none">🟠</span>
-                        <div>
-                          <strong className="font-extrabold text-[#FF7900] block text-[11px]">Guide Orange Money Sénégal :</strong>
-                          <p className="text-[10px] text-slate-600 mt-0.5">
-                            Validez votre paiement soit via le code USSD <strong>#144#399#</strong>, soit directement depuis l'application Max it en cliquant sur le bouton ci-dessous.
-                          </p>
-                        </div>
+                    <div className="bg-white border border-slate-200/90 rounded-xl p-3.5 flex justify-between items-center font-mono text-xs text-slate-800 shadow-inner">
+                      <div className="space-y-1">
+                        <div><strong className="font-semibold text-slate-500">Identifiant :</strong> {email}</div>
+                        <div><strong className="font-semibold text-slate-500">Mot de passe :</strong> <span className="text-emerald-600 font-bold">{generatedPassword || "INOVA-SECURE-2026"}</span></div>
                       </div>
-                    )}
-
-                    {paymentMethod === "wave" && (
-                      <div className="p-3 rounded-xl border border-sky-200 bg-sky-50/80 text-slate-800 flex items-start gap-2.5 text-xs">
-                        <span className="text-lg leading-none">🌊</span>
-                        <div>
-                          <strong className="font-extrabold text-sky-700 block text-[11px]">Guide Wave Sénégal :</strong>
-                          <p className="text-[10px] text-slate-600 mt-0.5">
-                            Sur mobile, l'application Wave s'ouvrira automatiquement. Sur ordinateur, scannez le QR Code affiché sur l'écran PayTech.
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    {paymentMethod === "free" && (
-                      <div className="p-3 rounded-xl border border-emerald-200 bg-emerald-50/80 text-slate-800 flex items-start gap-2.5 text-xs">
-                        <span className="text-lg leading-none">🟢</span>
-                        <div>
-                          <strong className="font-extrabold text-emerald-700 block text-[11px]">Guide Free Money Sénégal :</strong>
-                          <p className="text-[10px] text-slate-600 mt-0.5">
-                            Vous serez réacheminé sur le portail sécurisé Free Money PayTech pour saisir votre numéro et valider votre code PIN secret.
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    {paymentMethod === "wizall" && (
-                      <div className="p-3 rounded-xl border border-purple-200 bg-purple-50/80 text-slate-800 flex items-start gap-2.5 text-xs">
-                        <span className="text-lg leading-none">💜</span>
-                        <div>
-                          <strong className="font-extrabold text-purple-700 block text-[11px]">Guide Wizall Money :</strong>
-                          <p className="text-[10px] text-slate-600 mt-0.5">
-                            Connectez-vous à votre compte Wizall Money sur l'interface sécurisée PayTech pour autoriser le transfert instantané.
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    {paymentMethod === "card" && (
-                      <div className="p-3 rounded-xl border border-slate-300 bg-slate-100 text-slate-800 flex items-start gap-2.5 text-xs">
-                        <span className="text-lg leading-none">💳</span>
-                        <div>
-                          <strong className="font-extrabold text-slate-900 block text-[11px]">Paiement 3D-Secure Carte Bancaire :</strong>
-                          <p className="text-[10px] text-slate-600 mt-0.5">
-                            Cartes Visa, Mastercard & GIM-UEMOA. Vous saisirez votre numéro de carte puis confirmerez le code SMS OTP de votre banque.
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex items-center gap-2.5">
-                      <Lock className="h-4 w-4 text-[#FF7900] shrink-0" />
-                      <span className="text-[10px] font-medium text-slate-600">
-                        Transaction 100% sécurisée par chiffrement SSL & Certifié BCEAO.
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="space-y-3 pt-1">
-                    <Button 
-                      type="button"
-                      onClick={handleInitiatePaytech}
-                      disabled={isPaytechRedirecting}
-                      className={`w-full font-black text-xs h-12 rounded-full shadow-lg hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                        paymentMethod === "wave" ? "bg-gradient-to-r from-sky-500 to-blue-600 text-white shadow-sky-500/25" :
-                        paymentMethod === "om" ? "bg-gradient-to-r from-[#FF7900] to-amber-600 text-white shadow-orange-500/25" :
-                        paymentMethod === "free" ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-emerald-500/25" :
-                        paymentMethod === "wizall" ? "bg-gradient-to-r from-purple-600 to-indigo-700 text-white shadow-purple-500/25" :
-                        paymentMethod === "card" ? "bg-gradient-to-r from-slate-800 to-slate-950 text-white border border-slate-700 shadow-slate-900/25" :
-                        "bg-[#FF7900] hover:bg-[#e06b00] text-white shadow-orange-500/25"
-                      }`}
-                    >
-                      {isPaytechRedirecting ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin text-white" />
-                          <span>Ouverture de la passerelle PayTech SN...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Zap className="h-4 w-4 fill-white" />
-                          <span>Payer {checkoutPlan.value.toLocaleString()} FCFA avec {
-                            paymentMethod === "wave" ? "Wave" :
-                            paymentMethod === "om" ? "Orange Money" :
-                            paymentMethod === "free" ? "Free Money" :
-                            paymentMethod === "wizall" ? "Wizall" :
-                            paymentMethod === "card" ? "Carte Bancaire" : "PayTech"
-                          }</span>
-                          <ArrowRight className="h-4 w-4" />
-                        </>
-                      )}
-                    </Button>
-
-                    {paytechRedirectUrl && (
-                      <a 
-                        href={paytechRedirectUrl} 
-                        target="_self"
-                        className={`w-full font-extrabold text-xs h-11 rounded-full flex items-center justify-center gap-2 shadow-md animate-pulse cursor-pointer ${
-                          paymentMethod === "wave" ? "bg-sky-500 hover:bg-sky-600 text-white" :
-                          paymentMethod === "om" ? "bg-orange-500 hover:bg-orange-600 text-white" :
-                          paymentMethod === "free" ? "bg-emerald-600 hover:bg-emerald-700 text-white" :
-                          paymentMethod === "wizall" ? "bg-purple-600 hover:bg-purple-700 text-white" :
-                          paymentMethod === "card" ? "bg-slate-900 hover:bg-black text-white" :
-                          "bg-orange-500 hover:bg-orange-600 text-white"
-                        }`}
-                      >
-                        <Smartphone className="h-4 w-4" />
-                        <span>
-                          {paymentMethod === "wave" ? "Lancer l'application Wave (Mobile) →" :
-                           paymentMethod === "om" ? "Ouvrir l'interface Orange Money →" :
-                           paymentMethod === "free" ? "Ouvrir le portail Free Money →" :
-                           paymentMethod === "wizall" ? "Ouvrir le guichet Wizall Money →" :
-                           paymentMethod === "card" ? "Accéder à l'interface 3D-Secure Carte Bancaire →" :
-                           "Ouvrir le guichet multi-moyens PayTech →"}
-                        </span>
-                      </a>
-                    )}
-
-                    <div className="flex gap-2">
                       <Button 
-                        type="button" 
-                        variant="outline" 
-                        onClick={() => setCheckoutStep("method")} 
-                        className="flex-1 rounded-full border-slate-200 h-9 text-xs cursor-pointer"
-                      >
-                        Retour
-                      </Button>
-                      <Button 
-                        type="button" 
                         variant="ghost" 
+                        size="icon" 
                         onClick={() => {
-                          setCheckoutStep("success");
-                          toast.success("Paiement simulé avec succès !");
+                          navigator.clipboard.writeText(generatedPassword || "INOVA-SECURE-2026");
+                          toast.success("Mot de passe copié dans le presse-papiers !");
                         }} 
-                        className="text-[10px] text-slate-400 hover:text-slate-600 underline"
+                        className="h-8 w-8 text-slate-500 hover:text-slate-900 rounded-lg cursor-pointer hover:bg-slate-100 shrink-0"
+                        title="Copier le mot de passe"
                       >
-                        Simuler la validation instantanée (Dev Test)
+                        <CheckSquare className="h-4 w-4" />
                       </Button>
                     </div>
-                  </div>
-                </div>
-              )}
-
-              {/* STEP 4: PROCESSING TRANSACTION */}
-              {checkoutStep === "processing" && (
-                <div className="py-16 flex flex-col items-center justify-center text-center space-y-4 animate-pulse-soft">
-                  <div className="relative h-14 w-14 flex items-center justify-center">
-                    <div className="absolute inset-0 rounded-full border-4 border-orange-500/10 border-t-orange-500 animate-spin" />
-                    <Shield className="h-6 w-6 text-[#FF7900]" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">Traitement de votre règlement...</h4>
-                    <p className="text-[10px] text-slate-400 mt-2 leading-relaxed max-w-xs mx-auto">
-                      Veuillez patienter pendant la validation de la transaction avec votre opérateur. Ne fermez pas cette fenêtre.
+                    
+                    <p className="text-[10px] text-slate-400 font-light leading-relaxed">
+                      Vos accès ont également été envoyés à l'adresse <strong>{email}</strong>.
                     </p>
                   </div>
-                </div>
-              )}
-
-              {/* STEP 5: SUCCESS & ACCÈS GATEWAY */}
-              {checkoutStep === "success" && (
-                <div className="space-y-6 text-center py-2 animate-scale-up">
-                  <div className="mx-auto h-12 w-12 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 flex items-center justify-center shadow-inner">
-                    <ShieldCheck className="h-6 w-6 animate-pulse" />
-                  </div>
-
-                  <div>
-                    <h3 className="text-sm font-extrabold text-slate-900">Abonnement Activé avec Succès !</h3>
-                    <p className="text-[10px] text-emerald-600 font-semibold mt-1">Transaction validée par {paymentMethod.toUpperCase()}</p>
-                  </div>
-
-                  {/* Simulated Mail Container */}
-                  <div className="bg-[#f8fafc] border border-slate-200/80 rounded-2xl p-4 text-left space-y-3 max-w-sm mx-auto shadow-sm text-xs font-sans">
-                    <div className="flex justify-between items-center border-b border-slate-200/60 pb-2 text-[9px] text-slate-400">
-                      <span className="flex items-center gap-1 font-semibold text-slate-500">
-                        <Send className="h-3 w-3 text-[#FF7900]" /> E-mail de bienvenue envoyé
-                      </span>
-                      <span>À l'instant</span>
-                    </div>
-
-                    <div className="space-y-0.5 text-[10px] text-slate-500">
-                      <div><strong className="font-semibold text-slate-600">De :</strong> Direction Cybersécurité Sonatel &lt;soc@sonatel.sn&gt;</div>
-                      <div><strong className="font-semibold text-slate-600">À :</strong> {email}</div>
-                      <div><strong className="font-semibold text-slate-600">Objet :</strong> Vos accès de connexion à la plateforme INOVA IRIS</div>
-                    </div>
-
-                    <div className="h-px bg-slate-200/40 my-1" />
-
-                    <div className="text-[10px] text-slate-600 space-y-2 leading-relaxed">
-                      <p>Bonjour {fullName},</p>
-                      <p>Nous vous confirmons l'activation de votre abonnement <strong>{checkoutPlan.name}</strong> pour l'entreprise <strong>{companyName}</strong>.</p>
-                      
-                      <div className="bg-white border border-slate-200 rounded-xl p-3 flex justify-between items-center font-mono text-[9px] text-slate-800 shadow-sm">
-                        <div className="space-y-1">
-                          <div><strong className="font-semibold">Lien SOC :</strong> <span className="text-[#FF7900] underline">https://inova.sonatel.sn/login</span></div>
-                          <div><strong className="font-semibold">Identifiant :</strong> {email}</div>
-                          <div><strong className="font-semibold">Mot de passe :</strong> <span className="text-emerald-600 font-bold">{generatedPassword}</span></div>
-                        </div>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => {
-                            navigator.clipboard.writeText(generatedPassword);
-                            toast.success("Mot de passe copié dans le presse-papiers !");
-                          }} 
-                          className="h-7 w-7 text-slate-400 hover:text-slate-900 rounded-full cursor-pointer hover:bg-slate-50 shrink-0"
-                          title="Copier le mot de passe"
-                        >
-                          <CheckSquare className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                      
-                      <p className="text-[8px] text-slate-400">Ce message automatique contient des clés réseau confidentielles. Veuillez modifier votre mot de passe dès votre première connexion.</p>
-                    </div>
-                  </div>
-
-                  <p className="text-[9px] text-slate-400 max-w-xs mx-auto font-light leading-relaxed">
-                    Copiez le mot de passe ci-dessus, puis cliquez sur le bouton ci-dessous pour accéder directement à votre interface client.
-                  </p>
 
                   <Button 
                     onClick={handleAccessDashboard}
-                    className="w-full bg-slate-950 hover:bg-slate-900 text-white font-bold text-xs h-11 rounded-full cursor-pointer shadow-md hover:scale-[1.01] transition-all"
+                    className="w-full max-w-md mx-auto bg-slate-950 hover:bg-slate-900 text-white font-bold text-xs h-11 rounded-2xl cursor-pointer shadow-lg hover:scale-[1.01] transition-all"
                   >
-                    Accéder à mon Espace Client
+                    Accéder à mon Espace Client CyberSOC →
                   </Button>
                 </div>
               )}

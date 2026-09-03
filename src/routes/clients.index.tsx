@@ -20,9 +20,9 @@ const CLIENTS_PER_PAGE = 6;
 
 export const Route = createFileRoute("/clients/")({
   head: () => ({ meta: [{ title: "Liste des Clients — SOC Platform" }] }),
-  validateSearch: (search: Record<string, unknown>) => {
+  validateSearch: (search: Record<string, unknown>): { refresh?: string } => {
     return {
-      refresh: (search.refresh as string) || undefined,
+      refresh: typeof search.refresh === "string" ? search.refresh : undefined,
     };
   },
   component: () => <RequireAuth requireAdmin><ClientsList /></RequireAuth>,

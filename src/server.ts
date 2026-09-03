@@ -132,21 +132,18 @@ async function handlePaytechCheckoutRequest(request: Request): Promise<Response>
 
     const apiKey = process.env.PAYTECH_API_KEY || process.env.VITE_PAYTECH_API_KEY || "93e4fd002cc03fd97b88fb11d696f5644bea04cab90f8f4180f3de8451b5400d";
     const apiSecret = process.env.PAYTECH_SECRET_KEY || process.env.VITE_PAYTECH_SECRET_KEY || "b7ed28b0eb915faaf4a38df8a6aad4237554aed0c386c6f88d9baf145c72d741";
-    const paytechEnv = process.env.VITE_PAYTECH_ENV || "test";
+    const configuredEnv = process.env.VITE_PAYTECH_ENV || process.env.PAYTECH_ENV || "test";
 
-    const refCommand = `INV-SOC-${(offerId || "PLAN").toUpperCase()}-${Date.now()}`;
+    const refCommand = `INV-SOC-${(offerId || "PLAN").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10)}-${Date.now()}`;
     const origin = originUrl || request.headers.get("origin") || "https://inova-iris-main2.vercel.app";
 
-    const TARGET_PAYMENT_MAP: Record<string, string> = {
-      wave: "Wave",
-      om: "Orange Money",
-      card: "Carte Bancaire",
-      free: "Free Money",
-      wizall: "Wizall",
-      paytech_guichet: "PayTech",
-    };
+    // PayTech EXIGE impérativement que ipn_url, success_url et cancel_url commencent par https://
+    const httpsOrigin = origin.startsWith("https://")
+      ? origin
+      : "https://inova-iris-main2.vercel.app";
 
-    const formattedTarget = TARGET_PAYMENT_MAP[targetPayment] || targetPayment || "";
+    const ipnUrl = `${httpsOrigin}/api/paytech-ipn`;
+    const localParam = !origin.startsWith("https://") ? `&local_origin=${encodeURIComponent(origin)}` : "";
 
     const payload = {
       item_name: `Abonnement SOC — ${offerName || offerId}`,
@@ -154,28 +151,32 @@ async function handlePaytechCheckoutRequest(request: Request): Promise<Response>
       currency: (currency || "XOF").toUpperCase(),
       ref_command: refCommand,
       command_name: `Abonnement SOC INOVA-IRIS — ${companyName || email}`,
-      target_payment: formattedTarget,
       custom_field: JSON.stringify({ offerId, offerName, email, fullName, companyName, phone }),
-      success_url: `${origin}/?payment_status=success&ref=${refCommand}&plan=${encodeURIComponent(offerId)}`,
-      cancel_url: `${origin}/?payment_status=cancel&ref=${refCommand}`,
-      ipn_url: `${origin}/api/paytech-ipn`,
-      env: paytechEnv === "prod" ? "prod" : "test",
+      success_url: `${httpsOrigin}/?payment_status=success&ref=${refCommand}&plan=${encodeURIComponent(offerId)}${localParam}`,
+      cancel_url: `${httpsOrigin}/?payment_status=cancel&ref=${refCommand}${localParam}`,
+      ipn_url: ipnUrl,
+      env: configuredEnv === "prod" ? "prod" : "test",
     };
 
     console.log("Transmission requête à l'API PayTech SN:", payload);
 
-    const paytechRes = await fetch("https://paytech.sn/api/payment/request-payment", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "API_KEY": apiKey,
-        "API_SECRET": apiSecret,
-      },
-      body: JSON.stringify(payload),
-    });
-
-    const resData = (await paytechRes.json()) as Record<string, any>;
-    console.log("Réponse PayTech SN:", resData);
+    let resData: Record<string, any> = {};
+    try {
+      const paytechRes = await fetch("https://paytech.sn/api/payment/request-payment", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "API_KEY": apiKey,
+          "API_SECRET": apiSecret,
+        },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(15000),
+      });
+      resData = (await paytechRes.json()) as Record<string, any>;
+      console.log("Réponse PayTech SN:", resData);
+    } catch (netErr) {
+      console.warn("Lenteur ou erreur réseau PayTech direct, tentative de repli:", netErr);
+    }
 
     if (resData.success === 1 || resData.redirect_url || resData.token) {
       const redirectUrl = resData.redirect_url || resData.redirectUrl || `https://paytech.sn/payment/checkout/${resData.token}`;
@@ -190,32 +191,37 @@ async function handlePaytechCheckoutRequest(request: Request): Promise<Response>
       );
     }
 
-    // Si le compte en mode prod nécessite une activation, repli automatique sur le mode test avec clés API
-    if (resData.success === -1 && paytechEnv === "prod") {
-      console.warn("Mode prod PayTech en attente d'activation par le support, repli sur env test...");
+    // Si le compte en mode prod n'est pas activé, bascule automatique transparente sur env test
+    if (resData.success === -1 || !resData.token) {
+      console.warn("Tentative avec environnement test PayTech...");
       payload.env = "test";
-      const testRes = await fetch("https://paytech.sn/api/payment/request-payment", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "API_KEY": apiKey,
-          "API_SECRET": apiSecret,
-        },
-        body: JSON.stringify(payload),
-      });
-      const testData = (await testRes.json()) as Record<string, any>;
-      if (testData.success === 1 || testData.redirect_url || testData.token) {
-        const redirectUrl = testData.redirect_url || testData.redirectUrl || `https://paytech.sn/payment/checkout/${testData.token}`;
-        return Response.json(
-          {
-            success: true,
-            token: testData.token,
-            redirect_url: redirectUrl,
-            ref_command: refCommand,
-            isTestMode: true,
+      try {
+        const testRes = await fetch("https://paytech.sn/api/payment/request-payment", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "API_KEY": apiKey,
+            "API_SECRET": apiSecret,
           },
-          { headers: AI_API_CORS }
-        );
+          body: JSON.stringify(payload),
+          signal: AbortSignal.timeout(15000),
+        });
+        const testData = (await testRes.json()) as Record<string, any>;
+        if (testData.success === 1 || testData.redirect_url || testData.token) {
+          const redirectUrl = testData.redirect_url || testData.redirectUrl || `https://paytech.sn/payment/checkout/${testData.token}`;
+          return Response.json(
+            {
+              success: true,
+              token: testData.token,
+              redirect_url: redirectUrl,
+              ref_command: refCommand,
+              isTestMode: true,
+            },
+            { headers: AI_API_CORS }
+          );
+        }
+      } catch (e) {
+        console.warn("Erreur fallback test PayTech:", e);
       }
     }
 
