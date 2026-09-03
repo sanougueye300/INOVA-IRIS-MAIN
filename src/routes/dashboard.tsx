@@ -1,16 +1,16 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   AlertTriangle, Database, Shield, Bug, Workflow,
-  Fingerprint, Sliders, Plug, FileText, UserCog,
-  ArrowUpRight, Activity, Cpu, Timer, ShieldCheck,
+  Fingerprint, Sliders, FileText, UserCog,
+  Activity, Cpu, Timer, ShieldCheck,
   Zap, Eye, CheckCircle2, XCircle,
-  AlertCircle, ChevronRight, Network, Lock,
-  RefreshCw, Flame, Target, Layers, Globe2,
-  GitBranch, Terminal, ExternalLink, TrendingUp, TrendingDown,
+  ChevronRight, Network, Lock,
+  RefreshCw, Flame, Target, Globe2,
+  GitBranch, Terminal, TrendingUp,
+  Sparkles, Server, Radio, ArrowUpRight,
 } from "lucide-react";
 import { useSocPreferences } from "@/lib/soc-preferences";
-import { useState, useEffect } from "react";
-import { SocThreatIntelBoard } from "@/components/soc/SocThreatIntelBoard";
+import { useState, useEffect, useRef } from "react";
 import { RequireAuth } from "@/components/RequireAuth";
 import {
   mockConnectors, mockIncidentTimeline, mockMitreTactics,
@@ -19,11 +19,12 @@ import {
 } from "@/lib/soc-mock";
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip,
-  ResponsiveContainer, BarChart, Bar, CartesianGrid,
+  ResponsiveContainer,
 } from "recharts";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/dashboard")({
-  head: () => ({ meta: [{ title: "Tableau de Bord — INOVA-IRIS" }] }),
+  head: () => ({ meta: [{ title: "Centre de Commandement SOC — INOVA-IRIS" }] }),
   component: () => (
     <RequireAuth>
       <Dashboard />
@@ -31,681 +32,631 @@ export const Route = createFileRoute("/dashboard")({
   ),
 });
 
-/* ─── Alert trend data ─── */
 const ALERT_TREND = [
-  { h: "00h", critical: 0, high: 2, medium: 5 },
-  { h: "03h", critical: 1, high: 3, medium: 7 },
-  { h: "06h", critical: 2, high: 4, medium: 8 },
-  { h: "09h", critical: 3, high: 6, medium: 12 },
-  { h: "12h", critical: 4, high: 7, medium: 11 },
-  { h: "15h", critical: 2, high: 5, medium: 13 },
-  { h: "18h", critical: 5, high: 8, medium: 10 },
-  { h: "21h", critical: 1, high: 4, medium: 7 },
+  { h: "00h", blocked: 42, threats: 2 },
+  { h: "03h", blocked: 58, threats: 4 },
+  { h: "06h", blocked: 74, threats: 1 },
+  { h: "09h", blocked: 112, threats: 8 },
+  { h: "12h", blocked: 135, threats: 6 },
+  { h: "15h", blocked: 98, threats: 3 },
+  { h: "18h", blocked: 145, threats: 9 },
+  { h: "21h", blocked: 82, threats: 1 },
 ];
 
-const SEV_BADGE: Record<string, string> = {
-  critical: "bg-red-500/15 border border-red-500/30 text-red-500",
-  high:     "bg-orange-500/15 border border-orange-500/30 text-orange-500",
-  medium:   "bg-amber-500/15 border border-amber-500/30 text-amber-500",
-  low:      "bg-emerald-500/15 border border-emerald-500/30 text-emerald-500",
-};
-
-/* ─── Live clock ─── */
+/* ─── Horloge Live ─── */
 function LiveClock() {
   const [now, setNow] = useState(new Date());
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
-  return <span className="font-mono text-xs text-muted-foreground">{now.toLocaleTimeString("fr-FR")} UTC+0</span>;
+  return (
+    <span className="font-mono text-sm font-bold text-white tabular-nums">
+      {now.toLocaleTimeString("fr-FR")}
+    </span>
+  );
 }
 
-/* ─── Connector dot ─── */
-function ConnectorDot({ status }: { status: string }) {
-  if (status === "up")       return <span className="h-2 w-2 rounded-full bg-emerald-500" />;
-  if (status === "degraded") return <span className="h-2 w-2 animate-pulse rounded-full bg-amber-400" />;
-  return <span className="h-2 w-2 rounded-full bg-red-500" />;
+/* ─── Indicateur de pulse animé ─── */
+function PulseDot({ color = "bg-emerald-400" }: { color?: string }) {
+  return (
+    <span className="relative flex h-2.5 w-2.5 shrink-0">
+      <span className={`absolute inline-flex h-full w-full animate-ping rounded-full ${color} opacity-70`} />
+      <span className={`relative inline-flex h-2.5 w-2.5 rounded-full ${color}`} />
+    </span>
+  );
 }
 
-/* ═══════════════════════════════════════════════════════
-   DASHBOARD
-═══════════════════════════════════════════════════════ */
+/* ─── Globe SVG Cyber animé (visuel central) ─── */
+function CyberGlobe() {
+  return (
+    <div className="relative flex items-center justify-center w-full h-full">
+      {/* Cercles orbitaux */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="absolute w-80 h-80 rounded-full border border-[#FF7900]/20 animate-spin" style={{ animationDuration: "30s" }} />
+        <div className="absolute w-64 h-64 rounded-full border border-orange-500/15 animate-spin" style={{ animationDuration: "20s", animationDirection: "reverse" }} />
+        <div className="absolute w-48 h-48 rounded-full border border-amber-400/25 animate-spin" style={{ animationDuration: "15s" }} />
+      </div>
+
+      {/* Globe central */}
+      <div className="relative z-10 w-52 h-52 rounded-full bg-gradient-to-br from-slate-800 via-slate-900 to-zinc-950 border border-[#FF7900]/40 shadow-[0_0_80px_rgba(255,121,0,0.25),0_0_40px_rgba(255,121,0,0.12),inset_0_0_60px_rgba(255,121,0,0.08)] flex items-center justify-center">
+        {/* Grille de latitude / longitude */}
+        <svg className="absolute inset-0 w-full h-full opacity-20" viewBox="0 0 208 208" fill="none">
+          <circle cx="104" cy="104" r="100" stroke="#FF7900" strokeWidth="0.5" />
+          <ellipse cx="104" cy="104" rx="60" ry="100" stroke="#FF7900" strokeWidth="0.5" />
+          <ellipse cx="104" cy="104" rx="100" ry="30" stroke="#FF7900" strokeWidth="0.5" />
+          <ellipse cx="104" cy="104" rx="100" ry="60" stroke="#FF7900" strokeWidth="0.5" />
+          <line x1="4" y1="104" x2="204" y2="104" stroke="#FF7900" strokeWidth="0.5" />
+          <line x1="104" y1="4" x2="104" y2="204" stroke="#FF7900" strokeWidth="0.5" />
+        </svg>
+
+        {/* Points de menace animés */}
+        <div className="absolute top-8 left-12 w-2 h-2 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_#ef4444]" />
+        <div className="absolute top-16 right-8 w-1.5 h-1.5 rounded-full bg-[#FF7900] animate-pulse shadow-[0_0_6px_#FF7900]" style={{ animationDelay: "0.5s" }} />
+        <div className="absolute bottom-14 left-8 w-2 h-2 rounded-full bg-amber-400 animate-pulse shadow-[0_0_8px_#fbbf24]" style={{ animationDelay: "1s" }} />
+        <div className="absolute bottom-10 right-14 w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_6px_#34d399]" style={{ animationDelay: "1.5s" }} />
+        <div className="absolute top-1/2 left-6 w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_6px_#22d3ee]" style={{ animationDelay: "0.8s" }} />
+
+        {/* Logo central */}
+        <div className="relative z-10 flex flex-col items-center gap-1">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#FF7900] via-orange-600 to-amber-700 flex items-center justify-center shadow-xl">
+            <ShieldCheck className="w-8 h-8 text-white stroke-[2.5]" />
+          </div>
+          <span className="text-[10px] font-black uppercase tracking-widest text-[#FF7900] font-mono mt-1">IRIS XDR</span>
+        </div>
+      </div>
+
+      {/* Étiquettes flottantes autour du globe */}
+      <div className="absolute top-6 left-1/2 -translate-x-1/2 bg-white/5 backdrop-blur-md border border-[#FF7900]/30 rounded-2xl px-3 py-1.5 text-center">
+        <span className="text-[10px] font-black uppercase tracking-widest text-[#FF7900] block font-mono">Score Cyber</span>
+        <span className="text-xl font-black text-white font-mono">98.5%</span>
+      </div>
+
+      <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-white/5 backdrop-blur-md border border-emerald-500/30 rounded-2xl px-3 py-1.5">
+        <PulseDot color="bg-emerald-400" />
+        <span className="text-xs font-bold text-emerald-400">DEFCON 4 — Système Nominal</span>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════
+   DASHBOARD PRINCIPAL — FORMAT IMMERSIF DERNIÈRE GÉNÉRATION
+══════════════════════════════════════════════════════════ */
 export function Dashboard() {
   const { t } = useSocPreferences();
-  const health = computeSocHealth(18, 87, mockConnectors);
+  const health = computeSocHealth(18, 98, mockConnectors);
   const maxMitre = Math.max(...mockMitreTactics.map((m) => m.count));
+  const [timeRange, setTimeRange] = useState<"1h" | "24h" | "7d">("24h");
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const KPIS = [
-    { label: "Agents actifs",    value: "142",  delta: "+3 aujourd'hui",     positive: true,  icon: Cpu,          accent: "text-blue-500",    iconBg: "bg-blue-500/10",    border: "border-blue-500/20"    },
-    { label: "Alertes critiques",value: "0",    delta: "Système stable",     positive: true,  icon: AlertTriangle,accent: "text-emerald-500", iconBg: "bg-emerald-500/10", border: "border-emerald-500/20" },
-    { label: "IOC indexés",      value: "2 450",delta: "+42 synchronisés",   positive: true,  icon: Database,     accent: "text-violet-500",  iconBg: "bg-violet-500/10",  border: "border-violet-500/20"  },
-    { label: "Playbooks SOAR",   value: "14",   delta: "100% opérationnels", positive: true,  icon: Workflow,     accent: "text-amber-500",   iconBg: "bg-amber-500/10",   border: "border-amber-500/20"   },
-    { label: "Score SOC",        value: "87%",  delta: "+3 pts cette semaine",positive: true, icon: Activity,     accent: "text-cyan-500",    iconBg: "bg-cyan-500/10",    border: "border-cyan-500/20"    },
-    { label: "MTTD moyen",       value: "8.4m", delta: "Obj. < 15 min",      positive: true,  icon: Timer,        accent: "text-indigo-500",  iconBg: "bg-indigo-500/10",  border: "border-indigo-500/20"  },
-  ];
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    setTimeout(() => {
+      setIsRefreshing(false);
+      toast.success("Données SOC synchronisées en temps réel.");
+    }, 800);
+  };
 
   return (
-    <div className="min-h-full bg-background text-foreground">
+    <div className="min-h-screen bg-zinc-950 text-slate-100 selection:bg-[#FF7900]/30 overflow-x-hidden">
 
-      {/* ══════ TOPBAR ══════ */}
-      <div className="sticky top-0 z-30 border-b border-border/60 bg-background/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-screen-2xl items-center justify-between px-6 py-3 md:px-10">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-violet-600 shadow-lg shadow-blue-500/20">
-                <Shield className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">INOVA-IRIS SOC</p>
-                <h1 className="text-sm font-black text-foreground leading-none">Centre de Commandement</h1>
-              </div>
+      {/* ══════ TOPBAR COMMAND CENTER ══════ */}
+      <div className="sticky top-0 z-50 border-b border-white/5 bg-zinc-950/90 backdrop-blur-2xl">
+        <div className="max-w-screen-2xl mx-auto px-5 sm:px-8 py-3 flex items-center justify-between gap-4">
+
+          {/* Logo + Identité */}
+          <div className="flex items-center gap-3">
+            <div className="relative h-10 w-10 rounded-2xl bg-gradient-to-br from-[#FF7900] to-amber-700 flex items-center justify-center shadow-lg shadow-orange-500/25 border border-orange-400/30">
+              <ShieldCheck className="h-5.5 w-5.5 text-white stroke-[2.5]" />
+              <PulseDot color="bg-emerald-400" />
             </div>
-            <div className="hidden h-5 w-px bg-border md:block" />
-            <div className="hidden items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-1 md:flex">
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-              </span>
-              <span className="text-[10px] font-bold text-emerald-500">Tous systèmes opérationnels</span>
+            <div>
+              <h1 className="text-[13px] font-black uppercase tracking-widest font-mono text-white leading-none">
+                INOVA-IRIS <span className="text-[#FF7900]">SOC</span>
+              </h1>
+              <p className="text-[10px] text-slate-400 font-light">Centre de Commandement Cybersécurité • Sonatel</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <LiveClock />
-            <button id="btn-refresh-dashboard"
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
-              <RefreshCw className="h-3.5 w-3.5" />
+
+          {/* Métriques inline */}
+          <div className="hidden lg:flex items-center gap-6 text-xs font-mono">
+            <div className="text-center">
+              <span className="text-slate-400 block text-[10px] uppercase">Menaces/24h</span>
+              <span className="text-red-400 font-black text-base">328</span>
+            </div>
+            <div className="w-px h-8 bg-white/10" />
+            <div className="text-center">
+              <span className="text-slate-400 block text-[10px] uppercase">MTTD</span>
+              <span className="text-cyan-400 font-black text-base">4.2m</span>
+            </div>
+            <div className="w-px h-8 bg-white/10" />
+            <div className="text-center">
+              <span className="text-slate-400 block text-[10px] uppercase">Agents EDR</span>
+              <span className="text-[#FF7900] font-black text-base">142</span>
+            </div>
+            <div className="w-px h-8 bg-white/10" />
+            <div className="text-center">
+              <span className="text-slate-400 block text-[10px] uppercase">Blocage</span>
+              <span className="text-emerald-400 font-black text-base">99.8%</span>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center gap-2.5">
+            {/* Période */}
+            <div className="hidden sm:flex items-center bg-white/5 border border-white/10 rounded-xl p-1 text-[11px] font-bold gap-0.5">
+              {(["1h", "24h", "7d"] as const).map((r) => (
+                <button key={r} onClick={() => setTimeRange(r)}
+                  className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${timeRange === r ? "bg-[#FF7900] text-white shadow" : "text-slate-400 hover:text-white"}`}>
+                  {r}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10">
+              <PulseDot color="bg-emerald-400" />
+              <LiveClock />
+              <span className="text-[10px] text-slate-400 font-mono">GMT</span>
+            </div>
+
+            <button onClick={handleRefresh}
+              className="h-9 w-9 rounded-xl border border-white/10 bg-white/5 flex items-center justify-center text-slate-300 hover:text-[#FF7900] hover:border-[#FF7900]/40 transition-all cursor-pointer">
+              <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin text-[#FF7900]" : ""}`} />
             </button>
+
+            <Link to="/audit"
+              className="hidden sm:flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#FF7900] to-amber-600 text-white font-bold text-xs shadow-lg shadow-orange-500/20 hover:opacity-90 transition-all">
+              <FileText className="h-3.5 w-3.5" />
+              Rapport
+            </Link>
           </div>
         </div>
       </div>
 
-      <div className="mx-auto max-w-screen-2xl px-6 py-8 md:px-10">
+      {/* ══════ SECTION HÉRO : FORMAT IMMERSIF CENTRAL ══════ */}
+      <div className="relative max-w-screen-2xl mx-auto px-5 sm:px-8 pt-6 pb-8">
 
-        {/* ── Page header ── */}
+        {/* Titre de section */}
         <div className="mb-6 flex items-end justify-between">
           <div>
-            <h2 className="text-2xl font-black text-foreground">Vue d'Ensemble SOC</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Supervision opérationnelle temps réel · Sonatel Group ·{" "}
-              <span className="font-semibold text-foreground">
+            <p className="text-[11px] font-black uppercase tracking-[0.2em] text-[#FF7900] font-mono mb-1">
+              Surveillance Opérationnelle • Sonatel Group
+            </p>
+            <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+              Vue d'Ensemble SOC —{" "}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#FF7900] to-amber-400">
                 {new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
               </span>
-            </p>
+            </h2>
           </div>
-          <div className="hidden items-center gap-2 sm:flex">
-            <Link to="/alertes" id="link-top-alertes"
-              className="flex items-center gap-1.5 rounded-lg border border-red-500/25 bg-red-500/10 px-3 py-1.5 text-xs font-bold text-red-500 transition-colors hover:bg-red-500/15">
-              <AlertTriangle className="h-3.5 w-3.5" /> Alertes live
+          <div className="hidden sm:flex items-center gap-2">
+            <Link to="/alertes"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-500/30 bg-red-500/10 text-red-400 text-xs font-bold hover:bg-red-500/20 transition-all">
+              <AlertTriangle className="h-3.5 w-3.5" /> Alertes Live
             </Link>
-            <Link to="/assistant" id="link-top-ai"
-              className="flex items-center gap-1.5 rounded-lg border border-violet-500/25 bg-violet-500/10 px-3 py-1.5 text-xs font-bold text-violet-500 transition-colors hover:bg-violet-500/15">
-              <GitBranch className="h-3.5 w-3.5" /> Djib'son IA
+            <Link to="/assistant"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-violet-500/30 bg-violet-500/10 text-violet-400 text-xs font-bold hover:bg-violet-500/20 transition-all">
+              <Sparkles className="h-3.5 w-3.5" /> Djib'son IA
             </Link>
           </div>
         </div>
 
-        {/* ══════ KPI CARDS ══════ */}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
-          {KPIS.map((k, i) => {
-            const Icon = k.icon;
-            return (
-              <div key={k.label}
-                style={{ animationDelay: `${i * 60}ms` }}
-                className={`group relative overflow-hidden rounded-2xl border ${k.border} bg-card p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md animate-in fade-in slide-in-from-bottom-2`}
-              >
-                {/* Top accent line */}
-                <div className={`absolute inset-x-0 top-0 h-px opacity-60 ${k.iconBg.replace("bg-", "bg-gradient-to-r from-transparent via-").replace("/10", "/40 to-transparent")}`} />
-                <div className="relative">
-                  <div className={`mb-3 flex h-9 w-9 items-center justify-center rounded-xl ${k.iconBg}`}>
-                    <Icon className={`h-4.5 w-4.5 ${k.accent}`} />
-                  </div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{k.label}</p>
-                  <p className={`mt-1 text-2xl font-black tabular-nums ${k.accent}`}>{k.value}</p>
-                  <div className="mt-1.5 flex items-center gap-1">
-                    {k.positive
-                      ? <TrendingUp className="h-3 w-3 text-emerald-500" />
-                      : <TrendingDown className="h-3 w-3 text-red-500" />}
-                    <p className="text-[10px] text-muted-foreground">{k.delta}</p>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        {/* ══ LAYOUT PRINCIPAL : GAUCHE + CENTRE GLOBE + DROITE ══ */}
+        <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr_300px] gap-5">
 
-        {/* ══════ ROW 2 — THREAT INTEL BOARD + CHART + HEALTH ══════ */}
-        <div className="mt-5 grid gap-5 xl:grid-cols-3">
-          <div className="xl:col-span-2">
-            <SocThreatIntelBoard />
-          </div>
-
+          {/* ─── COLONNE GAUCHE : Cartes métriques flottantes ─── */}
           <div className="flex flex-col gap-4">
-            {/* 24h Alert trend */}
-            <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-              <div className="mb-4 flex items-center justify-between">
+
+            {/* Carte : Surveillance Wazuh */}
+            <div className="rounded-3xl bg-zinc-900/80 border border-white/8 backdrop-blur-xl p-5 shadow-xl">
+              <div className="flex items-center justify-between mb-4">
                 <div>
-                  <p className="text-sm font-black text-foreground">Alertes 24h</p>
-                  <p className="text-[10px] text-muted-foreground">Par sévérité · Wazuh</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Surveillance SIEM</p>
+                  <p className="text-base font-black text-white">Wazuh · Suricata</p>
                 </div>
-                <div className="flex items-center gap-2.5 text-[9px] font-semibold text-muted-foreground">
-                  <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-red-500" />Crit.</span>
-                  <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-orange-500" />High</span>
-                  <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-amber-500" />Med</span>
+                <div className="flex gap-1.5">
+                  {(["1h", "24h", "7j", "30j"] as const).slice(0, 2).map((r) => (
+                    <button key={r}
+                      className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${r === "24h" ? "bg-[#FF7900] text-white" : "bg-white/5 text-slate-400 hover:text-white"}`}>
+                      {r}
+                    </button>
+                  ))}
                 </div>
               </div>
-              <div className="h-36">
+
+              {/* Métriques alertes */}
+              <div className="mb-3">
+                <div className="flex items-baseline gap-2 mb-1">
+                  <span className="text-4xl font-black text-white font-mono">328</span>
+                  <span className="text-emerald-400 text-sm font-bold">+14.2%</span>
+                </div>
+                <p className="text-xs text-slate-400">Menaces neutralisées aujourd'hui</p>
+              </div>
+
+              {/* Barre colorée de sévérité */}
+              <div className="flex h-2.5 w-full rounded-full overflow-hidden gap-0.5 mb-2">
+                <div className="bg-red-500 rounded-l-full" style={{ width: "8%" }} title="Critiques" />
+                <div className="bg-[#FF7900]" style={{ width: "22%" }} title="Hautes" />
+                <div className="bg-amber-400" style={{ width: "35%" }} title="Moyennes" />
+                <div className="bg-emerald-500 rounded-r-full" style={{ width: "35%" }} title="Faibles" />
+              </div>
+              <div className="flex justify-between text-[10px] text-slate-400 font-medium mb-4">
+                <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-red-500 inline-block" />Crit. 8%</span>
+                <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-[#FF7900] inline-block" />High 22%</span>
+                <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500 inline-block" />Bloqué 35%</span>
+              </div>
+
+              {/* Mini graphique */}
+              <div className="h-20">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={ALERT_TREND} margin={{ left: -20, right: 4, top: 2, bottom: 0 }}>
+                  <AreaChart data={ALERT_TREND} margin={{ left: -20, right: 5, top: 5, bottom: 0 }}>
                     <defs>
-                      <linearGradient id="gcrit" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#f87171" stopOpacity={0.3} />
-                        <stop offset="100%" stopColor="#f87171" stopOpacity={0} />
-                      </linearGradient>
-                      <linearGradient id="ghigh" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#fb923c" stopOpacity={0.25} />
-                        <stop offset="100%" stopColor="#fb923c" stopOpacity={0} />
-                      </linearGradient>
-                      <linearGradient id="gmed" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#fbbf24" stopOpacity={0.2} />
-                        <stop offset="100%" stopColor="#fbbf24" stopOpacity={0} />
+                      <linearGradient id="gBlocked" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#FF7900" stopOpacity={0.5} />
+                        <stop offset="100%" stopColor="#FF7900" stopOpacity={0} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                    <XAxis dataKey="h" fontSize={9} stroke="var(--border)" tick={{ fill: "var(--muted-foreground)" }} />
-                    <YAxis fontSize={9} stroke="var(--border)" tick={{ fill: "var(--muted-foreground)" }} />
-                    <Tooltip
-                      contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 10, fontSize: 11 }}
-                      labelStyle={{ color: "var(--foreground)" }}
-                    />
-                    <Area type="monotone" dataKey="medium" stroke="#fbbf24" strokeWidth={1.5} fill="url(#gmed)" />
-                    <Area type="monotone" dataKey="high"   stroke="#fb923c" strokeWidth={1.5} fill="url(#ghigh)" />
-                    <Area type="monotone" dataKey="critical" stroke="#f87171" strokeWidth={2} fill="url(#gcrit)" />
+                    <XAxis dataKey="h" fontSize={8} stroke="#475569" tickLine={false} />
+                    <Tooltip contentStyle={{ background: "#09090b", border: "1px solid #27272a", borderRadius: 10, fontSize: 10 }} />
+                    <Area type="monotone" dataKey="blocked" stroke="#FF7900" strokeWidth={2} fill="url(#gBlocked)" />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
             </div>
 
-            {/* SOC Health */}
-            <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-              <div className="mb-3 flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-black text-foreground">Score de Santé SOC</p>
-                  <p className="text-[10px] text-muted-foreground">Métriques temps réel</p>
+            {/* Carte : Agents EDR */}
+            <div className="rounded-3xl bg-zinc-900/80 border border-white/8 backdrop-blur-xl p-5 shadow-xl">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center">
+                    <Cpu className="h-4 w-4 text-cyan-400" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-slate-400 uppercase font-bold">Agents EDR</p>
+                    <p className="text-sm font-black text-white">Hôtes Actifs</p>
+                  </div>
                 </div>
-                <span className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-black text-emerald-500">
-                  {health.score}%
-                </span>
+                <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-full">100%</span>
               </div>
-              <div className="relative mb-3 h-2 overflow-hidden rounded-full bg-muted">
-                <div className="h-full rounded-full bg-gradient-to-r from-emerald-500 via-blue-500 to-violet-500 transition-all duration-1000"
-                  style={{ width: `${health.score}%` }} />
+
+              <div className="text-3xl font-black text-cyan-400 font-mono mb-1">142</div>
+              <p className="text-xs text-slate-400 mb-3">sur 142 enrôlés · +4 déployés ce matin</p>
+
+              <div className="h-2 w-full bg-zinc-800 rounded-full overflow-hidden">
+                <div className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full w-full shadow-[0_0_10px_#06b6d4]" />
               </div>
-              <div className="grid grid-cols-3 gap-2 text-center">
+
+              <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
                 {[
-                  { label: "Traitmt.", value: `${health.avgAlertHandlingMin}m`, ok: health.avgAlertHandlingMin < 20 },
-                  { label: "IOC frais", value: `${health.iocFreshnessPct}%`, ok: health.iocFreshnessPct > 80 },
-                  { label: "Conn. OK", value: `${health.connectorsOk}/${health.connectorsTotal}`, ok: health.connectorsOk >= health.connectorsTotal - 1 },
+                  { label: "Servers", value: "48", color: "text-violet-400" },
+                  { label: "Laptops", value: "74", color: "text-cyan-400" },
+                  { label: "IoT/OT", value: "20", color: "text-amber-400" },
+                ].map((s) => (
+                  <div key={s.label} className="bg-white/3 rounded-xl p-2 border border-white/5">
+                    <span className={`font-black text-base ${s.color}`}>{s.value}</span>
+                    <p className="text-[9px] text-slate-400 mt-0.5">{s.label}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Carte : Score SOC */}
+            <div className="rounded-3xl bg-gradient-to-br from-[#FF7900]/10 via-amber-900/5 to-zinc-900 border border-[#FF7900]/25 backdrop-blur-xl p-5 shadow-xl">
+              <p className="text-[10px] font-black uppercase tracking-widest text-[#FF7900] mb-1">Indice de Résilience</p>
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-3xl font-black text-white font-mono">98.5<span className="text-xl text-[#FF7900]">%</span></span>
+                <TrendingUp className="h-6 w-6 text-emerald-400" />
+              </div>
+              <div className="space-y-2">
+                {[
+                  { label: "Couverture EDR", pct: 100, color: "from-[#FF7900] to-amber-400" },
+                  { label: "MITRE ATT&CK", pct: 94, color: "from-violet-500 to-blue-500" },
+                  { label: "Threat Intel", pct: 100, color: "from-emerald-500 to-cyan-400" },
                 ].map((m) => (
-                  <div key={m.label} className="rounded-xl border border-border bg-muted/30 p-2.5">
-                    <p className={`text-sm font-black ${m.ok ? "text-emerald-500" : "text-amber-500"}`}>{m.value}</p>
-                    <p className="text-[9px] text-muted-foreground">{m.label}</p>
+                  <div key={m.label}>
+                    <div className="flex justify-between text-[10px] mb-1">
+                      <span className="text-slate-300 font-medium">{m.label}</span>
+                      <span className="text-white font-bold">{m.pct}%</span>
+                    </div>
+                    <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                      <div className={`h-full bg-gradient-to-r ${m.color} rounded-full`} style={{ width: `${m.pct}%` }} />
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
           </div>
-        </div>
 
-        {/* ══════ ROW 3 — INCIDENTS + CONNECTORS + MTTD+SOAR ══════ */}
-        <div className="mt-5 grid gap-5 lg:grid-cols-3">
+          {/* ─── COLONNE CENTRALE : Visualisation Globe + Métriques Hero ─── */}
+          <div className="flex flex-col gap-5">
 
-          {/* Incidents */}
-          <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-            <div className="border-b border-border px-5 py-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-red-500/10">
-                    <Flame className="h-4 w-4 text-red-500" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-black text-foreground">Incidents Récents</p>
-                    <p className="text-[10px] text-muted-foreground">TheHive · IRIS</p>
-                  </div>
+            {/* Zone Globe Cyber */}
+            <div className="relative rounded-3xl bg-gradient-to-b from-zinc-900 to-zinc-950 border border-white/8 overflow-hidden shadow-2xl" style={{ minHeight: 420 }}>
+              {/* Fond glow ambiant */}
+              <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_60%_at_50%_50%,rgba(255,121,0,0.12),transparent)] pointer-events-none" />
+
+              {/* Globe interactif */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <CyberGlobe />
+              </div>
+
+              {/* Étiquettes contextuelles flottantes */}
+              <div className="absolute top-5 left-5">
+                <div className="bg-black/50 backdrop-blur-md border border-white/10 rounded-2xl px-3.5 py-2.5 shadow-xl">
+                  <p className="text-[9px] text-slate-400 uppercase font-bold mb-1 flex items-center gap-1.5">
+                    <Radio className="h-3 w-3 text-[#FF7900]" /> Flux Threat Intel Live
+                  </p>
+                  <p className="text-sm font-black text-white font-mono">MISP <span className="text-[#FF7900]">4 820</span> IOCs</p>
+                  <p className="text-[10px] text-emerald-400 font-medium">↑ +185 flux CTI Sonatel</p>
                 </div>
-                <Link to="/alertes" className="flex items-center gap-1 text-[10px] font-bold text-primary hover:text-primary/80">
-                  Voir tout <ChevronRight className="h-3 w-3" />
-                </Link>
+              </div>
+
+              <div className="absolute top-5 right-5">
+                <div className="bg-black/50 backdrop-blur-md border border-white/10 rounded-2xl px-3.5 py-2.5 shadow-xl">
+                  <p className="text-[9px] text-slate-400 uppercase font-bold mb-1">⚡ SOAR Automatisé</p>
+                  <p className="text-sm font-black text-white font-mono">Shuffle <span className="text-cyan-400">14</span> Runs</p>
+                  <p className="text-[10px] text-emerald-400 font-medium">100% exécution réussie</p>
+                </div>
+              </div>
+
+              <div className="absolute bottom-5 left-5">
+                <div className="bg-black/50 backdrop-blur-md border border-white/10 rounded-2xl px-3.5 py-2.5 shadow-xl">
+                  <p className="text-[9px] text-slate-400 uppercase font-bold mb-1">🛡 Incidents IRIS</p>
+                  <p className="text-sm font-black text-white font-mono">TheHive <span className="text-amber-400">3</span> Actifs</p>
+                  <p className="text-[10px] text-amber-400 font-medium">Investigation en cours</p>
+                </div>
+              </div>
+
+              <div className="absolute bottom-5 right-5">
+                <div className="bg-black/50 backdrop-blur-md border border-white/10 rounded-2xl px-3.5 py-2.5 shadow-xl">
+                  <p className="text-[9px] text-slate-400 uppercase font-bold mb-1">🌍 Trafic Suspect</p>
+                  <p className="text-sm font-black text-white font-mono">Top: <span className="text-red-400">CN/RU/NG</span></p>
+                  <p className="text-[10px] text-slate-400 font-medium">7 jours · 12 origines</p>
+                </div>
               </div>
             </div>
-            <div className="divide-y divide-border px-5">
-              {mockIncidentTimeline.map((inc) => (
-                <div key={inc.id} className="flex items-start gap-3 py-3.5">
-                  <span className={`mt-0.5 shrink-0 rounded-lg px-1.5 py-0.5 text-[9px] font-black uppercase ${SEV_BADGE[inc.severity]}`}>
-                    {inc.severity}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[11px] font-semibold text-foreground">{inc.title}</p>
-                    <div className="mt-0.5 flex items-center gap-2">
-                      <span className="font-mono text-[9px] text-muted-foreground">{inc.caseRef}</span>
-                      <span className="text-[9px] text-muted-foreground">
-                        {new Date(inc.at).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}
-                      </span>
-                    </div>
+
+            {/* ─── KPIs en grille 3 colonnes sous le globe ─── */}
+            <div className="grid grid-cols-3 gap-4">
+              {[
+                { label: "MTTD Détection", value: "4.2m", sub: "Obj. < 10m ✓", color: "text-cyan-400", border: "border-cyan-500/20", bg: "bg-cyan-500/5", icon: Timer },
+                { label: "MTTR Réponse", value: "18m", sub: "Obj. < 4h ✓", color: "text-violet-400", border: "border-violet-500/20", bg: "bg-violet-500/5", icon: Zap },
+                { label: "IOC Bloqués", value: "4 820", sub: "+185 aujourd'hui", color: "text-[#FF7900]", border: "border-orange-500/20", bg: "bg-orange-500/5", icon: Database },
+              ].map((k) => {
+                const Icon = k.icon;
+                return (
+                  <div key={k.label} className={`rounded-2xl border ${k.border} ${k.bg} p-4 shadow-lg text-center backdrop-blur-xl`}>
+                    <Icon className={`h-5 w-5 mx-auto mb-2 ${k.color}`} />
+                    <div className={`text-2xl font-black font-mono ${k.color}`}>{k.value}</div>
+                    <p className="text-[10px] font-bold text-slate-400 mt-0.5 uppercase leading-tight">{k.label}</p>
+                    <p className="text-[10px] text-emerald-400 font-medium mt-1">{k.sub}</p>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
-            <div className="border-t border-border p-4">
-              <Link to="/alertes" id="link-all-incidents"
-                className="flex items-center justify-center gap-2 rounded-xl bg-muted/40 py-2.5 text-[11px] font-bold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
-                <Eye className="h-3.5 w-3.5" /> Tous les incidents
+
+            {/* ─── Terminal Cyber Live ─── */}
+            <div className="rounded-3xl bg-zinc-950 border border-white/8 p-5 shadow-xl font-mono">
+              <div className="flex items-center justify-between mb-3 pb-3 border-b border-white/5">
+                <div className="flex items-center gap-2">
+                  <Terminal className="h-4 w-4 text-emerald-400" />
+                  <span className="text-xs font-black uppercase tracking-wider text-white">Console SOC — Wazuh Live</span>
+                </div>
+                <PulseDot color="bg-emerald-400" />
+              </div>
+              <div className="space-y-2.5 text-[11px] max-h-40 overflow-y-auto pr-1">
+                {[
+                  { t: "02:42:18", msg: "SSH brute-force intercepté · IP 196.253.24.12 · bloqué via SOAR", c: "text-red-400" },
+                  { t: "02:41:02", msg: "Playbook Quarantaine exécuté · Hôte SRV-PROD-02 · succès", c: "text-[#FF7900]" },
+                  { t: "02:39:55", msg: "MISP Sync · 42 IOCs SHA256 importés · feed Sonatel CTI", c: "text-cyan-400" },
+                  { t: "02:35:11", msg: "Suricata NIDS · scan furtif détecté · ASN 37105 · RU", c: "text-amber-400" },
+                  { t: "02:30:44", msg: "Wazuh agent check-in · 142/142 actifs · latence moy. 14ms", c: "text-emerald-400" },
+                ].map((log, i) => (
+                  <div key={i} className="flex gap-2.5 items-start p-2 rounded-xl bg-white/3 border border-white/5">
+                    <span className="text-slate-500 shrink-0">{log.t}</span>
+                    <span className={`${log.c} leading-relaxed`}>{log.msg}</span>
+                  </div>
+                ))}
+              </div>
+              <Link to="/alertes" className="mt-3 flex items-center justify-center gap-2 py-2 rounded-xl bg-white/3 border border-white/8 text-xs font-bold text-slate-300 hover:text-white hover:bg-white/8 transition-all">
+                <Eye className="h-3.5 w-3.5" /> Ouvrir la console SIEM complète →
               </Link>
             </div>
           </div>
 
-          {/* Stack Connectors */}
-          <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-            <div className="border-b border-border px-5 py-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-500/10">
-                    <Network className="h-4 w-4 text-blue-500" />
+          {/* ─── COLONNE DROITE : Cartes contextuelles ─── */}
+          <div className="flex flex-col gap-4">
+
+            {/* Carte : Stack SOC Connecteurs */}
+            <div className="rounded-3xl bg-zinc-900/80 border border-white/8 backdrop-blur-xl p-5 shadow-xl">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-xl bg-blue-500/10 border border-blue-500/30 flex items-center justify-center">
+                    <Network className="h-4 w-4 text-blue-400" />
                   </div>
                   <div>
-                    <p className="text-sm font-black text-foreground">Stack SOC</p>
-                    <p className="text-[10px] text-muted-foreground">Connecteurs · Latence</p>
+                    <p className="text-[10px] text-slate-400 uppercase font-bold">Stack SOC</p>
+                    <p className="text-sm font-black text-white">Connecteurs & API</p>
                   </div>
                 </div>
-                <Link to="/integrations" className="flex items-center gap-1 text-[10px] font-bold text-primary hover:text-primary/80">
+                <Link to="/integrations" className="text-[10px] text-[#FF7900] hover:underline font-bold flex items-center gap-0.5">
                   Gérer <ChevronRight className="h-3 w-3" />
                 </Link>
               </div>
-            </div>
-            <div className="divide-y divide-border px-5">
-              {mockConnectors.map((conn) => (
-                <div key={conn.id} className="flex items-center gap-3 py-3">
-                  <ConnectorDot status={conn.status} />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <p className="text-[11px] font-semibold text-foreground">{conn.label}</p>
-                      <span className={`text-[9px] font-bold ${
-                        conn.status === "up" ? "text-emerald-500" : conn.status === "degraded" ? "text-amber-500" : "text-red-500"
-                      }`}>
-                        {conn.status === "up" ? "UP" : conn.status === "degraded" ? "DÉGRADÉ" : "DOWN"}
+              <div className="space-y-2.5">
+                {mockConnectors.map((conn) => (
+                  <div key={conn.id} className="flex items-center justify-between p-2.5 rounded-2xl bg-zinc-800/50 border border-white/5">
+                    <div className="flex items-center gap-2.5">
+                      <span className={`h-2.5 w-2.5 rounded-full shrink-0 shadow-sm ${conn.status === "up" ? "bg-emerald-400 shadow-emerald-500/50" : conn.status === "degraded" ? "bg-amber-400 shadow-amber-500/50 animate-pulse" : "bg-red-500 shadow-red-500/50"}`} />
+                      <span className="text-xs font-semibold text-slate-200">{conn.label}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-mono text-slate-400">{conn.latencyMs}ms</span>
+                      <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${conn.status === "up" ? "bg-emerald-500/10 text-emerald-400" : conn.status === "degraded" ? "bg-amber-500/10 text-amber-400" : "bg-red-500/10 text-red-400"}`}>
+                        {conn.status === "up" ? "UP" : conn.status === "degraded" ? "DEG" : "DOWN"}
                       </span>
                     </div>
-                    <div className="mt-1.5 flex items-center gap-2">
-                      <div className="flex-1 h-1 overflow-hidden rounded-full bg-muted">
-                        <div className={`h-full rounded-full ${
-                          conn.latencyMs < 200 ? "bg-emerald-500" : conn.latencyMs < 500 ? "bg-amber-500" : "bg-red-500"
-                        }`} style={{ width: `${Math.min(100, (conn.latencyMs / 1000) * 100)}%` }} />
-                      </div>
-                      <span className="text-[9px] font-mono text-muted-foreground">{conn.latencyMs}ms</span>
-                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Carte : Incidents Récents */}
+            <div className="rounded-3xl bg-zinc-900/80 border border-white/8 backdrop-blur-xl p-5 shadow-xl">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-xl bg-red-500/10 border border-red-500/30 flex items-center justify-center">
+                    <Flame className="h-4 w-4 text-red-400" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-slate-400 uppercase font-bold">TheHive · IRIS</p>
+                    <p className="text-sm font-black text-white">Incidents Actifs</p>
                   </div>
                 </div>
-              ))}
-            </div>
-            <div className="border-t border-border p-4">
-              <Link to="/integrations" id="link-integrations"
-                className="flex items-center justify-center gap-2 rounded-xl bg-muted/40 py-2.5 text-[11px] font-bold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
-                <Plug className="h-3.5 w-3.5" /> Connecteurs & API
-              </Link>
-            </div>
-          </div>
-
-          {/* MTTD + SOAR */}
-          <div className="flex flex-col gap-4">
-            <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-              <div className="mb-4 flex items-center gap-2.5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-500/10">
-                  <Timer className="h-4 w-4 text-indigo-500" />
-                </div>
-                <div>
-                  <p className="text-sm font-black text-foreground">MTTD / MTTR</p>
-                  <p className="text-[10px] text-muted-foreground">Métriques SOC clés</p>
-                </div>
+                <Link to="/alertes" className="text-[10px] text-[#FF7900] hover:underline font-bold flex items-center gap-0.5">
+                  Tous <ChevronRight className="h-3 w-3" />
+                </Link>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  { label: "MTTD", value: mockMttdMttr.mttdMin, target: 15,  color: "bg-blue-500",   text: "text-blue-500" },
-                  { label: "MTTR", value: mockMttdMttr.mttrMin, target: 240, color: "bg-violet-500", text: "text-violet-500" },
-                ].map((m) => {
-                  const pct = Math.min(100, (m.value / m.target) * 100);
-                  const ok  = m.value < m.target * 0.7;
+              <div className="space-y-2">
+                {mockIncidentTimeline.slice(0, 4).map((inc) => {
+                  const sevColor = inc.severity === "critical" ? "text-red-400 bg-red-500/10 border-red-500/30"
+                    : inc.severity === "high" ? "text-[#FF7900] bg-orange-500/10 border-orange-500/30"
+                    : inc.severity === "medium" ? "text-amber-400 bg-amber-500/10 border-amber-500/30"
+                    : "text-emerald-400 bg-emerald-500/10 border-emerald-500/30";
                   return (
-                    <div key={m.label} className="rounded-xl border border-border bg-muted/20 p-3">
-                      <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">{m.label}</p>
-                      <p className={`mt-1 text-xl font-black ${ok ? m.text : "text-amber-500"}`}>
-                        {m.value < 60 ? `${m.value}m` : `${(m.value / 60).toFixed(1)}h`}
-                      </p>
-                      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-                        <div className={`h-full rounded-full ${m.color}`} style={{ width: `${pct}%` }} />
+                    <div key={inc.id} className="flex items-start gap-2.5 p-2.5 rounded-2xl bg-zinc-800/50 border border-white/5">
+                      <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-lg border shrink-0 uppercase ${sevColor}`}>
+                        {inc.severity.slice(0, 4)}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-semibold text-slate-200 truncate">{inc.title}</p>
+                        <p className="text-[9px] text-slate-400 font-mono">{inc.caseRef}</p>
                       </div>
-                      <p className="mt-1 text-[9px] text-muted-foreground">Obj. &lt; {m.target < 60 ? `${m.target}m` : `${m.target / 60}h`}</p>
                     </div>
                   );
                 })}
               </div>
             </div>
 
-            <div className="flex-1 rounded-2xl border border-border bg-card p-5 shadow-sm">
-              <div className="mb-4 flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-500/10">
-                    <Zap className="h-4 w-4 text-amber-500" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-black text-foreground">Playbooks SOAR</p>
-                    <p className="text-[10px] text-muted-foreground">Shuffle · 24h</p>
-                  </div>
+            {/* Carte : Copilote IA Djib'son */}
+            <div className="rounded-3xl bg-gradient-to-br from-violet-950/40 via-zinc-900 to-zinc-950 border border-violet-500/25 backdrop-blur-xl p-5 shadow-xl">
+              <div className="flex items-center gap-2.5 mb-3">
+                <div className="h-9 w-9 rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-500/30">
+                  <Sparkles className="h-5 w-5 text-white" />
                 </div>
-                <Link to="/workflow" className="flex items-center gap-1 text-[10px] font-bold text-primary hover:text-primary/80">
-                  Détails <ChevronRight className="h-3 w-3" />
-                </Link>
+                <div>
+                  <p className="text-sm font-black text-white">Djib'son IA</p>
+                  <p className="text-[10px] text-violet-300">Copilote SOC · Analyse prédictive</p>
+                </div>
               </div>
-              <div className="space-y-2">
-                {mockShuffleRuns24h.map((run) => (
-                  <div key={run.id} className="flex items-center gap-2.5 rounded-xl border border-border bg-muted/20 px-3 py-2.5">
-                    {run.status === "success" ? <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
-                      : run.status === "failed" ? <XCircle className="h-4 w-4 shrink-0 text-red-500" />
-                      : <span className="relative flex h-4 w-4 shrink-0">
-                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-400 opacity-50" />
-                          <span className="relative inline-flex h-4 w-4 items-center justify-center rounded-full bg-blue-500/20">
-                            <span className="h-2 w-2 rounded-full bg-blue-500" />
-                          </span>
-                        </span>}
-                    <p className="flex-1 truncate text-[11px] font-medium text-foreground">{run.workflow}</p>
-                    <span className={`shrink-0 text-[9px] font-black ${
-                      run.status === "success" ? "text-emerald-500" : run.status === "failed" ? "text-red-500" : "text-blue-500"
-                    }`}>
-                      {run.status === "success" ? `${run.durationSec}s` : run.status === "failed" ? "ÉCHEC" : "EN COURS"}
-                    </span>
+              <p className="text-xs text-slate-300 leading-relaxed font-light mb-3 italic">
+                "Aucune brèche active détectée. Recommandation : rotation des tokens API SOAR prévue dans 48h."
+              </p>
+              <div className="space-y-1.5">
+                {[
+                  { label: "3 anomalies comportementales", color: "text-amber-400" },
+                  { label: "2 recommandations playbooks", color: "text-blue-400" },
+                  { label: "18 IOC enrichis par IA", color: "text-violet-400" },
+                ].map((r) => (
+                  <div key={r.label} className="flex items-center gap-2 text-xs">
+                    <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${r.color.replace("text-", "bg-")}`} />
+                    <span className={`${r.color} font-medium`}>{r.label}</span>
                   </div>
                 ))}
               </div>
-            </div>
-          </div>
-        </div>
-
-        {/* ══════ ROW 4 — MITRE + COUNTRIES + ALERTS ══════ */}
-        <div className="mt-5 grid gap-5 lg:grid-cols-5">
-
-          {/* MITRE ATT&CK */}
-          <div className="lg:col-span-2 overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-            <div className="border-b border-border px-5 py-4">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-500/10">
-                  <Target className="h-4 w-4 text-violet-500" />
-                </div>
-                <div>
-                  <p className="text-sm font-black text-foreground">MITRE ATT&CK</p>
-                  <p className="text-[10px] text-muted-foreground">Tactiques · Alertes correlées</p>
-                </div>
-              </div>
-            </div>
-            <div className="space-y-2.5 p-5">
-              {mockMitreTactics.slice(0, 8).map((m) => {
-                const pct    = (m.count / maxMitre) * 100;
-                const isHigh = m.count > maxMitre * 0.6;
-                return (
-                  <div key={m.tacticId}>
-                    <div className="mb-1 flex items-center justify-between">
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-mono text-[9px] text-muted-foreground">{m.tacticId}</span>
-                        <span className="text-[10px] font-medium text-foreground">{m.tactic}</span>
-                      </div>
-                      <span className={`text-[10px] font-black ${isHigh ? "text-red-500" : "text-foreground"}`}>{m.count}</span>
-                    </div>
-                    <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-                      <div className={`h-full rounded-full ${isHigh ? "bg-gradient-to-r from-red-500 to-orange-500" : "bg-gradient-to-r from-violet-500 to-blue-500"}`}
-                        style={{ width: `${pct}%` }} />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Country Heat */}
-          <div className="lg:col-span-2 overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-            <div className="border-b border-border px-5 py-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-orange-500/10">
-                    <Globe2 className="h-4 w-4 text-orange-500" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-black text-foreground">Trafic Suspect</p>
-                    <p className="text-[10px] text-muted-foreground">Origines · 7 jours</p>
-                  </div>
-                </div>
-                <Link to="/threat-map" className="flex items-center gap-1 text-[10px] font-bold text-primary hover:text-primary/80">
-                  Carte live <ChevronRight className="h-3 w-3" />
-                </Link>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-2 p-4 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
-              {mockCountryTraffic.map((c) => {
-                const maxI  = Math.max(...mockCountryTraffic.map((x) => x.intensity));
-                const ratio = c.intensity / maxI;
-                const isHigh = ratio > 0.75;
-                return (
-                  <div key={c.code}
-                    className={`rounded-xl border p-3 text-center transition-all hover:-translate-y-0.5 ${
-                      isHigh ? "border-red-500/30 bg-red-500/8" : "border-border bg-muted/20"
-                    }`}
-                  >
-                    <p className={`text-base font-black ${isHigh ? "text-red-500" : "text-foreground"}`}>{c.code}</p>
-                    <p className="truncate text-[8px] text-muted-foreground">{c.country}</p>
-                    <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-muted">
-                      <div className={`h-full rounded-full ${isHigh ? "bg-red-500" : "bg-primary"}`}
-                        style={{ width: `${ratio * 100}%` }} />
-                    </div>
-                    <p className={`mt-1 text-[9px] font-bold ${isHigh ? "text-red-500" : "text-muted-foreground"}`}>
-                      {Math.round(c.intensity * 100)}%
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Active Alerts */}
-          <div className="lg:col-span-1 overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-            <div className="border-b border-border px-4 py-4">
-              <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-cyan-500/10">
-                  <Layers className="h-4 w-4 text-cyan-500" />
-                </div>
-                <div>
-                  <p className="text-sm font-black text-foreground">Alertes Actives</p>
-                  <p className="text-[10px] text-muted-foreground">Corrélation IP</p>
-                </div>
-              </div>
-            </div>
-            <div className="divide-y divide-border px-4">
-              {mockAlertGraphNodes.map((node) => {
-                const sev = node.severity >= 12 ? "critical" : node.severity >= 10 ? "high" : node.severity >= 8 ? "medium" : "low";
-                return (
-                  <div key={node.id} className="flex items-start gap-2.5 py-3">
-                    <span className={`mt-0.5 shrink-0 rounded border px-1 py-px text-[8px] font-black uppercase ${SEV_BADGE[sev]}`}>
-                      {node.severity}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-[10px] font-semibold text-foreground">{node.title}</p>
-                      <p className="text-[9px] font-mono text-muted-foreground">{node.sourceIp}</p>
-                      <span className="inline-block rounded bg-violet-500/10 px-1 py-px text-[8px] font-bold text-violet-500 mt-0.5">
-                        {node.mitreTactic}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* ══════ ROW 5 — AI + QUICK ACCESS + AUDIT ══════ */}
-        <div className="mt-5 grid gap-5 lg:grid-cols-3">
-
-          {/* Djib'son IA */}
-          <div className="overflow-hidden rounded-2xl border border-violet-500/20 bg-gradient-to-br from-violet-500/5 to-indigo-500/5 shadow-sm">
-            <div className="border-b border-violet-500/15 px-5 py-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 shadow-md shadow-violet-500/20">
-                    <GitBranch className="h-5 w-5 text-white" />
-                    <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-card bg-emerald-500" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-black text-foreground">Djib'son IA</p>
-                    <p className="text-[10px] text-violet-500">Copilote SOC · En ligne</p>
-                  </div>
-                </div>
-                <Link to="/assistant" className="flex items-center gap-1 text-[10px] font-bold text-violet-500 hover:text-violet-400">
-                  Ouvrir <ExternalLink className="h-3 w-3" />
-                </Link>
-              </div>
-            </div>
-            <div className="space-y-2 p-5">
-              {[
-                { label: "Anomalies détectées",   value: "3 nouvelles",  icon: AlertCircle, color: "text-amber-500",   bg: "bg-amber-500/10"  },
-                { label: "Recommandations SOAR",  value: "2 playbooks",  icon: Zap,         color: "text-blue-500",    bg: "bg-blue-500/10"   },
-                { label: "IOC enrichis par IA",   value: "18 ce jour",   icon: Database,    color: "text-violet-500",  bg: "bg-violet-500/10" },
-                { label: "Rapports Threat Intel", value: "5 rapports",   icon: FileText,    color: "text-emerald-500", bg: "bg-emerald-500/10"},
-              ].map((item) => {
-                const Icon = item.icon;
-                return (
-                  <div key={item.label}
-                    className="flex items-center gap-3 rounded-xl border border-border bg-card/70 px-3 py-2.5 transition-colors hover:bg-card cursor-pointer">
-                    <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${item.bg}`}>
-                      <Icon className={`h-3.5 w-3.5 ${item.color}`} />
-                    </div>
-                    <p className="flex-1 text-[11px] font-medium text-foreground">{item.label}</p>
-                    <span className={`text-[10px] font-black ${item.color}`}>{item.value}</span>
-                  </div>
-                );
-              })}
-              <Link to="/assistant" id="link-open-ai"
-                className="mt-1 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 py-2.5 text-[11px] font-bold text-white shadow-md shadow-violet-500/20 transition-opacity hover:opacity-90">
+              <Link to="/assistant"
+                className="mt-4 flex items-center justify-center gap-2 py-2.5 rounded-2xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-bold text-xs shadow-lg shadow-violet-500/20 hover:opacity-90 transition-all">
                 <GitBranch className="h-3.5 w-3.5" /> Interroger Djib'son IA
               </Link>
             </div>
           </div>
 
-          {/* Quick Access */}
-          <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-            <div className="border-b border-border px-5 py-4">
+        </div>
+
+        {/* ══════ SECTION INFÉRIEURE : MITRE ATT&CK + ACCÈS RAPIDE ══════ */}
+        <div className="mt-6 grid grid-cols-1 lg:grid-cols-5 gap-5">
+
+          {/* MITRE ATT&CK */}
+          <div className="lg:col-span-3 rounded-3xl bg-zinc-900/80 border border-white/8 backdrop-blur-xl p-6 shadow-xl">
+            <div className="flex items-center justify-between mb-5 pb-4 border-b border-white/5">
               <div className="flex items-center gap-2.5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-muted">
-                  <Terminal className="h-4 w-4 text-muted-foreground" />
+                <div className="h-8 w-8 rounded-xl bg-violet-500/10 border border-violet-500/30 flex items-center justify-center">
+                  <Target className="h-4 w-4 text-violet-400" />
                 </div>
                 <div>
-                  <p className="text-sm font-black text-foreground">Accès Rapide</p>
-                  <p className="text-[10px] text-muted-foreground">Modules opérationnels</p>
+                  <p className="text-sm font-black text-white">Matrice MITRE ATT&CK</p>
+                  <p className="text-[10px] text-slate-400">Tactiques adverses observées · v14.1</p>
                 </div>
               </div>
+              <span className="text-[10px] font-bold text-slate-400 bg-white/5 border border-white/8 px-2.5 py-1 rounded-lg font-mono">Enterprise</span>
             </div>
-            <div className="grid grid-cols-4 gap-2 p-4">
+            <div className="grid grid-cols-2 gap-3">
+              {mockMitreTactics.slice(0, 8).map((tactic) => {
+                const pct = Math.min(100, Math.round((tactic.count / maxMitre) * 100));
+                const isCrit = pct > 60;
+                return (
+                  <div key={tactic.tacticId} className="p-3 rounded-2xl bg-zinc-950/70 border border-white/5 space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="font-mono text-[9px] text-[#FF7900] font-bold shrink-0">{tactic.tacticId}</span>
+                        <span className="font-semibold text-slate-200 truncate">{tactic.tactic}</span>
+                      </div>
+                      <span className={`font-black shrink-0 ml-2 ${isCrit ? "text-red-400" : "text-slate-300"}`}>{tactic.count}</span>
+                    </div>
+                    <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${isCrit ? "bg-gradient-to-r from-[#FF7900] to-red-500" : "bg-gradient-to-r from-violet-500 to-blue-500"}`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Accès Rapide aux modules */}
+          <div className="lg:col-span-2 rounded-3xl bg-zinc-900/80 border border-white/8 backdrop-blur-xl p-6 shadow-xl">
+            <div className="mb-5 pb-4 border-b border-white/5">
+              <p className="text-sm font-black text-white">Console Opérationnelle</p>
+              <p className="text-[10px] text-slate-400">Accès direct aux sous-systèmes</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
               {[
-                { name: "Alertes",   icon: AlertTriangle, to: "/alertes",    color: "text-red-500",    bg: "bg-red-500/10",    border: "border-red-500/20"    },
-                { name: "IOCs",      icon: Database,      to: "/iocs",       color: "text-violet-500", bg: "bg-violet-500/10", border: "border-violet-500/20" },
-                { name: "Threat Map",icon: Globe2,        to: "/threat-map", color: "text-orange-500", bg: "bg-orange-500/10", border: "border-orange-500/20" },
-                { name: "DFIR-IRIS", icon: Fingerprint,   to: "/iris",       color: "text-rose-500",   bg: "bg-rose-500/10",   border: "border-rose-500/20"   },
-                { name: "Audit",     icon: FileText,      to: "/audit",      color: "text-cyan-500",   bg: "bg-cyan-500/10",   border: "border-cyan-500/20"   },
-                { name: "Admin",     icon: UserCog,       to: "/admin",      color: "text-indigo-500", bg: "bg-indigo-500/10", border: "border-indigo-500/20" },
-                { name: "Workflow",  icon: Workflow,      to: "/workflow",   color: "text-amber-500",  bg: "bg-amber-500/10",  border: "border-amber-500/20"  },
-                { name: "Paramètres",icon: Sliders,       to: "/settings",   color: "text-muted-foreground", bg: "bg-muted", border: "border-border" },
+                { label: "Alertes Live", to: "/alertes", icon: AlertTriangle, color: "text-red-400", bg: "bg-red-500/8", border: "border-red-500/20" },
+                { label: "Base IOC", to: "/iocs", icon: Database, color: "text-violet-400", bg: "bg-violet-500/8", border: "border-violet-500/20" },
+                { label: "Threat Map", to: "/threat-map", icon: Globe2, color: "text-[#FF7900]", bg: "bg-orange-500/8", border: "border-orange-500/20" },
+                { label: "DFIR-IRIS", to: "/iris", icon: Fingerprint, color: "text-rose-400", bg: "bg-rose-500/8", border: "border-rose-500/20" },
+                { label: "Playbooks", to: "/workflow", icon: Workflow, color: "text-cyan-400", bg: "bg-cyan-500/8", border: "border-cyan-500/20" },
+                { label: "Clients", to: "/clients", icon: UserCog, color: "text-indigo-400", bg: "bg-indigo-500/8", border: "border-indigo-500/20" },
+                { label: "Audit", to: "/audit", icon: FileText, color: "text-emerald-400", bg: "bg-emerald-500/8", border: "border-emerald-500/20" },
+                { label: "Paramètres", to: "/settings", icon: Sliders, color: "text-slate-300", bg: "bg-white/3", border: "border-white/8" },
               ].map((mod) => {
                 const Icon = mod.icon;
                 return (
-                  <Link key={mod.name} to={mod.to} id={`quicklink-${mod.name.toLowerCase().replace(/\s+/g, "-")}`}
-                    className={`group flex flex-col items-center gap-2 rounded-xl border ${mod.border} ${mod.bg} p-3 transition-all hover:-translate-y-0.5 hover:shadow-sm`}
-                  >
-                    <div className={`flex h-9 w-9 items-center justify-center rounded-xl bg-card shadow-sm ${mod.color} transition-transform group-hover:scale-110`}>
-                      <Icon className="h-4 w-4" />
+                  <Link key={mod.label} to={mod.to}
+                    className={`flex flex-col items-center gap-2 p-3.5 rounded-2xl border ${mod.border} ${mod.bg} hover:scale-[1.04] transition-all group cursor-pointer text-center`}>
+                    <div className="h-9 w-9 rounded-xl bg-zinc-950/80 flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <Icon className={`h-4.5 w-4.5 ${mod.color}`} />
                     </div>
-                    <p className="text-center text-[9px] font-bold text-muted-foreground group-hover:text-foreground transition-colors">{mod.name}</p>
+                    <span className="text-[11px] font-bold text-slate-300 group-hover:text-white transition-colors">{mod.label}</span>
                   </Link>
                 );
               })}
             </div>
-            <div className="border-t border-border px-5 pb-4 pt-3">
-              <p className="mb-2 text-[10px] font-bold text-muted-foreground">Activité SOC — 7 jours</p>
-              <div className="h-14">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={[
-                    {j:"Lun",v:24},{j:"Mar",v:18},{j:"Mer",v:32},
-                    {j:"Jeu",v:27},{j:"Ven",v:41},{j:"Sam",v:9},{j:"Dim",v:7},
-                  ]} margin={{ left: -24, right: 4, top: 2, bottom: 0 }}>
-                    <XAxis dataKey="j" fontSize={9} tick={{ fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
-                    <Bar dataKey="v" fill="var(--primary)" radius={[4,4,0,0]} opacity={0.7} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
           </div>
 
-          {/* Audit Log */}
-          <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-            <div className="border-b border-border px-5 py-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-muted">
-                    <Lock className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-black text-foreground">Journal d'Audit</p>
-                    <p className="text-[10px] text-muted-foreground">Traçabilité analystes</p>
-                  </div>
-                </div>
-                <Link to="/audit" className="flex items-center gap-1 text-[10px] font-bold text-primary hover:text-primary/80">
-                  Voir tout <ChevronRight className="h-3 w-3" />
-                </Link>
-              </div>
-            </div>
-            <div className="divide-y divide-border px-4">
-              {[
-                { action: "Cas TH-4821 ouvert",     user: "analyst.diop",  time: "il y a 20m", icon: Bug,      color: "text-orange-500", bg: "bg-orange-500/10" },
-                { action: "IOC exporté MISP",        user: "analyst.ba",    time: "il y a 1h",  icon: Database, color: "text-violet-500", bg: "bg-violet-500/10" },
-                { action: "Playbook déclenché",      user: "soar.auto",     time: "il y a 2h",  icon: Zap,      color: "text-amber-500",  bg: "bg-amber-500/10"  },
-                { action: "Connexion SOC",           user: "admin.ndiaye",  time: "il y a 3h",  icon: Lock,     color: "text-blue-500",   bg: "bg-blue-500/10"   },
-                { action: "Rapport exporté",         user: "analyst.diop",  time: "il y a 5h",  icon: FileText, color: "text-cyan-500",   bg: "bg-cyan-500/10"   },
-                { action: "Règle Wazuh modifiée",    user: "admin.ndiaye",  time: "il y a 8h",  icon: Shield,   color: "text-emerald-500",bg: "bg-emerald-500/10"},
-              ].map((entry, i) => {
-                const Icon = entry.icon;
-                return (
-                  <div key={i} className="flex items-center gap-3 py-2.5">
-                    <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${entry.bg}`}>
-                      <Icon className={`h-3.5 w-3.5 ${entry.color}`} />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-[11px] font-semibold text-foreground">{entry.action}</p>
-                      <p className="font-mono text-[9px] text-muted-foreground">{entry.user}</p>
-                    </div>
-                    <span className="shrink-0 text-[9px] text-muted-foreground">{entry.time}</span>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="border-t border-border p-4">
-              <Link to="/audit" id="link-full-audit"
-                className="flex items-center justify-center gap-2 rounded-xl bg-muted/40 py-2.5 text-[11px] font-bold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
-                <FileText className="h-3.5 w-3.5" /> Journal complet
-              </Link>
-            </div>
-          </div>
         </div>
 
         {/* ══════ FOOTER ══════ */}
-        <div className="mt-8 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-6 text-[10px] font-mono text-muted-foreground">
-          <span>INOVA-IRIS SOC Platform · Sonatel Group · {new Date().getFullYear()}</span>
+        <div className="mt-8 pt-5 border-t border-white/5 flex flex-wrap items-center justify-between gap-3 text-[10px] font-mono text-slate-500">
+          <span>INOVA-IRIS SOC Platform · Direction Cybersécurité Sonatel · {new Date().getFullYear()}</span>
           <div className="flex items-center gap-1.5">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-            <span>Tous systèmes opérationnels</span>
+            <PulseDot color="bg-emerald-400" />
+            <span className="text-emerald-400 font-bold">Tous systèmes opérationnels · DEFCON 4</span>
           </div>
-          <span>v2.6.0 · {new Date().toISOString().slice(0, 10)}</span>
+          <span>v3.0.0 · {new Date().toISOString().slice(0, 10)} · ISO 27001 Conforme</span>
         </div>
 
       </div>
