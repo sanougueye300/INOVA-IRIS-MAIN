@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { User, Building, Mail, Phone, Globe, Shield, ArrowLeft, Loader2, Save, Power, PowerOff, KeyRound, Laptop, Download, UploadCloud, Copy, Check, Activity, FileText, Sparkles, Cpu, AlertTriangle, ShieldAlert, Terminal, Network, Zap, Sliders, Settings, RefreshCw, AlertCircle, CircleDot, Play, Lock, Trash2, FolderSync, MapPin, Hash, Wifi, HardDrive, Plus, Monitor, Edit3, ChevronRight, ChevronDown, TrendingUp, Clock, Server, ExternalLink, CreditCard, CalendarDays, CheckCircle2, XCircle, AlertCircle as AlertCircleIcon, Receipt } from "lucide-react";
@@ -14,6 +15,9 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { getClientExtendedData, downloadContractFile, generateContractPDF, ClientExtendedData, DEMO_CLIENTS } from "./clients.index";
+import { registerClientPc, saveClientPcToCloud, syncClientPcsWithCloud, deleteClientPcFromCloud } from "@/lib/pcs-sync";
+import { getClientPcSyncErrorMessage } from "@/lib/registered-client-auth";
+import { recordAuditEvent } from "@/lib/audit-log";
 
 /* ── Mapping offres réelles (aligné sur src/lib/offers.ts) ── */
 const OFFER_BY_TIER: Record<string, {
@@ -56,6 +60,8 @@ function ClientProfile() {
 
   // Nouveaux états de simulation temps réel EDR / Wazuh
   const [selectedPcId, setSelectedPcId] = useState<string | null>(null);
+  const [deletingPcId, setDeletingPcId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string; ip: string } | null>(null);
   const [pcTelemetry, setPcTelemetry] = useState<Record<string, {
     cpu: number;
     ram: number;
@@ -70,7 +76,7 @@ function ClientProfile() {
     id: string;
     time: string;
     pcName: string;
-    source: "Wazuh" | "VirusTotal" | "MISP" | "SOAR" | "DFIR-IRIS" | "TheHive";
+    source: "Wazuh" | "VirusTotal" | "MISP" | "SOAR" | "Audit" | "TheHive";
     type: "info" | "warning" | "alert";
     message: string;
   }>>([]);
@@ -217,7 +223,7 @@ function ClientProfile() {
         const activePcs = extData.pcs.filter(pc => pc.status === "active" || pc.status === "alert");
         if (activePcs.length > 0) {
           const randomPc = activePcs[Math.floor(Math.random() * activePcs.length)];
-          const sources: Array<"Wazuh" | "VirusTotal" | "MISP" | "SOAR" | "DFIR-IRIS" | "TheHive"> = ["Wazuh", "VirusTotal", "MISP", "SOAR"];
+          const sources: Array<"Wazuh" | "VirusTotal" | "MISP" | "SOAR" | "Audit" | "TheHive"> = ["Wazuh", "VirusTotal", "MISP", "SOAR"];
           const source = sources[Math.floor(Math.random() * sources.length)];
           
           let message = "";
@@ -266,6 +272,11 @@ function ClientProfile() {
   const triggerSoarPlaybook = (type: string, pc: any) => {
     if (activePlaybook) return;
 
+    void recordAuditEvent("EDR_PLAYBOOK_TRIGGER", pc.name, {
+      endpoint_id: pc.id,
+      playbook: type,
+    }, profile?.organization);
+
     setActivePlaybook(type);
     setPlaybookStep(1);
     setPlaybookLogs([]);
@@ -302,12 +313,17 @@ function ClientProfile() {
           });
           const updatedExt = { ...extData, pcs: updatedPcs };
           setExtData(updatedExt);
-          localStorage.setItem(`client_ext_${clientId}`, JSON.stringify(updatedExt));
+          localStorage.setItem(`client_ext_${clientId}`, JSON.stringify({ ...updatedExt, _v: 2 }));
         }
 
         toast.warning("PC isolé via SOAR", {
           description: `Le terminal ${pc.name} a été confiné par mesure de protection active.`
         });
+        void recordAuditEvent("EDR_PC_ISOLATE", pc.name, {
+          endpoint_id: pc.id,
+          trigger: "SOAR",
+          playbook: type,
+        }, profile?.organization);
         addGlobalLog(pc.name, "SOAR", "warning", "Ransomware détecté. Le terminal a été placé en isolation active.");
       }, 1500);
 
@@ -320,11 +336,11 @@ function ClientProfile() {
 
       setTimeout(() => {
         setPlaybookStep(4);
-        addPlaybookLog("Étape 4 : Synchronisation forensique avec DFIR-IRIS.");
-        addPlaybookLog("Exportation des journaux Sysmon de l'incident IRIS-CASE-1042.");
+        addPlaybookLog("Étape 4 : Synchronisation des artefacts de sécurité.");
+        addPlaybookLog("Exportation des journaux Sysmon de l'incident CASE-1042.");
         addPlaybookLog("[✓] Playbook SOAR d'isolation terminé. Menace neutralisée avec succès.");
         setPlaybookStep(5);
-        addGlobalLog(pc.name, "DFIR-IRIS", "info", "Incident IRIS-CASE-1042 initialisé pour analyse forensique complète.");
+        addGlobalLog(pc.name, "TheHive", "info", "Incident CASE-1042 initialisé pour analyse complète.");
 
         setTimeout(() => {
           setActivePlaybook(null);
@@ -372,7 +388,7 @@ function ClientProfile() {
 
       setTimeout(() => {
         setPlaybookStep(4);
-        addPlaybookLog("Étape 4 : Exportation des politiques appliquées vers DFIR-IRIS.");
+        addPlaybookLog("Étape 4 : Exportation des politiques appliquées vers le registre EDR.");
         addPlaybookLog("[✓] Playbook de fermeture des ports terminé.");
         setPlaybookStep(5);
         toast.success("Ports verrouillés avec succès", {
@@ -421,7 +437,7 @@ function ClientProfile() {
           { type: "output" as const, text: "  vt-scan --running  - Recherche de menaces : analyse des hashs des processus en mémoire sur VirusTotal" },
           { type: "output" as const, text: "  misp-check --net   - Analyse des ports et sockets réseau ouverts contre la base d'IOC MISP" },
           { type: "output" as const, text: "  soar --remediate   - Exécute le playbook Shuffle d'isolation active ransomware" },
-          { type: "output" as const, text: "  dfir --dump-ram    - Lance une extraction légale (forensique) de la mémoire RAM" },
+          { type: "output" as const, text: "  edr --dump-ram    - Lance une extraction légale (forensique) de la mémoire RAM" },
           { type: "output" as const, text: "  clear              - Efface la console" }
         ]);
         return;
@@ -494,18 +510,18 @@ function ClientProfile() {
         return;
       }
 
-      if (primary === "dfir" && arg === "--dump-ram") {
+      if (primary === "edr" && arg === "--dump-ram") {
         setTerminalHistory(prev => [
           ...prev,
-          { type: "output" as const, text: `[+] Lancement de l'outil d'acquisition mémoire forensics à distance (DFIR)...` },
+          { type: "output" as const, text: `[+] Lancement de l'outil d'acquisition mémoire forensics à distance (EDR)...` },
           { type: "output" as const, text: `[+] Établissement du buffer mémoire local (Fichier cible: C:\\Temp\\Forensics\\RAM.raw)...` },
           { type: "output" as const, text: `[+] Capture de la mémoire RAM en cours... [|||||||||||||||||||||||||] 100%` },
           { type: "output" as const, text: `[+] Compression de l'image et calcul de la somme de contrôle SHA256...` },
           { type: "output" as const, text: `[+] Hash SHA256 : 7f83b2a0c8d1e4e2a7b8e918239ac82d17482810a7b4819e917d23a7b8b2e10a` },
-          { type: "output" as const, text: `[+] Transfert sécurisé de l'image vers le dépôt DFIR-IRIS Case Manager...` },
-          { type: "output" as const, text: `[+] Rapport d'extraction forensique sauvegardé sous l'identifiant IRIS-CASE-${activePc.wazuhId}.` }
+          { type: "output" as const, text: `[+] Transfert sécurisé de l'image vers le coffre-fort d'investigation EDR...` },
+          { type: "output" as const, text: `[+] Rapport d'extraction forensique sauvegardé sous l'identifiant EDR-CASE-${activePc.wazuhId}.` }
         ]);
-        addGlobalLog(activePc.name, "DFIR-IRIS", "info", "Acquisition de la mémoire RAM effectuée avec succès - Exportée vers IRIS.");
+        addGlobalLog(activePc.name, "Wazuh", "info", "Acquisition de la mémoire RAM effectuée avec succès - Chiffrée et archivée.");
         return;
       }
 
@@ -550,7 +566,19 @@ function ClientProfile() {
       setProfile(data);
       
       // Récupérer ou générer les données EDR / Contrat depuis notre localStorage
-      const extended = getClientExtendedData(clientId, data.organization || "Client");
+      let extended = getClientExtendedData(clientId, data.organization || "Client");
+      try {
+        const syncedPcs = await syncClientPcsWithCloud(clientId, data.organization || "Client", extended.pcs);
+        extended = {
+          ...extended,
+          pcs: syncedPcs.map(({ id, name, os, ip, status, cpu, ram, lastSeen, wazuhId }) => ({
+            id, name, os, ip, status, cpu, ram, lastSeen, wazuhId: wazuhId ?? "",
+          })),
+        };
+        localStorage.setItem(`client_ext_${clientId}`, JSON.stringify({ ...extended, _v: 2 }));
+      } catch (syncError) {
+        console.error("Erreur de synchronisation des postes du client:", syncError);
+      }
       setExtData(extended);
       
       setForm({
@@ -597,9 +625,13 @@ function ClientProfile() {
       // Si l'organisation a changé, mettre à jour le contrat généré
       if (extData && form.organization !== extData.clientId) {
         const updatedExt = { ...extData };
-        localStorage.setItem(`client_ext_${clientId}`, JSON.stringify(updatedExt));
+        localStorage.setItem(`client_ext_${clientId}`, JSON.stringify({ ...updatedExt, _v: 2 }));
       }
 
+      void recordAuditEvent("CLIENT_UPDATE", form.organization || form.fullName || clientId, {
+        client_id: clientId,
+        updated_fields: ["full_name", "organization", "phone", "website"],
+      }, form.organization, "staff");
       toast.success("Profil mis à jour", { description: "Les modifications ont été enregistrées avec succès." });
       setEditMode(false);
       await loadProfile();
@@ -625,6 +657,10 @@ function ClientProfile() {
           
         if (error) throw error;
       }
+      void recordAuditEvent("CLIENT_STATUS_UPDATE", profile.organization || profile.email || clientId, {
+        client_id: clientId,
+        is_active: !profile.is_active,
+      }, profile.organization, "staff");
       toast.success(`Client ${profile.is_active ? "désactivé" : "activé"} avec succès`, { id: toastId });
       await loadProfile();
     } catch (error: any) {
@@ -637,8 +673,56 @@ function ClientProfile() {
   // ----------------------------------------------------
   
   // Action EDR : Isoler / Rétablir la machine
+  const handleDeleteMachine = async (pcId: string, pcName: string) => {
+    if (!extData) return;
+
+    setDeletingPcId(pcId);
+    try {
+      const cloudSynced = await deleteClientPcFromCloud(clientId, pcId);
+      void recordAuditEvent("EDR_PC_DELETE", pcName, {
+        endpoint_id: pcId,
+        client_id: clientId,
+        sync_status: cloudSynced ? "synced" : "local_only",
+      }, profile?.organization);
+      const updated = { ...extData, pcs: extData.pcs.filter((pc) => pc.id !== pcId) };
+      setExtData(updated);
+      localStorage.setItem(`client_ext_${clientId}`, JSON.stringify({ ...updated, _v: 2 }));
+      setPcTelemetry((current) => {
+        const next = { ...current };
+        delete next[pcId];
+        return next;
+      });
+      setSelectedPcId((current) => current === pcId ? null : current);
+      setDeleteTarget(null);
+      if (cloudSynced) {
+        toast.success("Poste supprimé", { description: `${pcName} a été retiré du profil client.` });
+      } else {
+        toast.warning("Poste supprimé sur cet appareil", {
+          description: "La session ou la table Supabase n'a pas permis la synchronisation. La suppression locale n'est pas encore partagée avec les autres appareils.",
+        });
+      }
+    } catch (error) {
+      void recordAuditEvent("EDR_PC_DELETE_FAILED", pcName, {
+        endpoint_id: pcId,
+        client_id: clientId,
+        error: error instanceof Error ? error.message : String(error),
+      }, profile?.organization);
+      toast.error("Suppression impossible", { description: getClientPcSyncErrorMessage(error) });
+    } finally {
+      setDeletingPcId(null);
+    }
+  };
+
   const toggleIsolatePc = (pcId: string) => {
     if (!extData) return;
+    const targetPc = extData.pcs.find((pc) => pc.id === pcId);
+    if (targetPc) {
+      void recordAuditEvent(targetPc.status === "isolated" ? "EDR_PC_RECONNECT" : "EDR_PC_ISOLATE", targetPc.name, {
+        endpoint_id: pcId,
+        previous_status: targetPc.status,
+        new_status: targetPc.status === "isolated" ? "active" : "isolated",
+      }, profile?.organization);
+    }
     
     const updatedPcs = extData.pcs.map(pc => {
       if (pc.id === pcId) {
@@ -666,7 +750,7 @@ function ClientProfile() {
     newExtData.cyberScore = Math.min(99, Math.max(45, baseScore));
 
     setExtData(newExtData);
-    localStorage.setItem(`client_ext_${clientId}`, JSON.stringify(newExtData));
+    localStorage.setItem(`client_ext_${clientId}`, JSON.stringify({ ...newExtData, _v: 2 }));
   };
 
   // Action EDR : Lancer un scan de vulnérabilités
@@ -704,10 +788,10 @@ function ClientProfile() {
     }, 300);
   };
 
-  // Action EDR : Télécharger rapport de logs forensic (DFIR)
-  const downloadDfirLogs = (pcName: string, pcIp: string, os: string) => {
+  // Action EDR : Télécharger rapport de logs forensic (EDR)
+  const downloadForensicLogs = (pcName: string, pcIp: string, os: string) => {
     const logs = `================================================================================
-                    RAPPORT FORENSIC INOVA EDR (DFIR LIGHT)
+                    RAPPORT FORENSIC INOVA EDR
 ================================================================================
 GÉNÉRÉ LE         : ${new Date().toISOString()}
 HOSTNAME          : ${pcName}
@@ -754,12 +838,12 @@ UDP   0.0.0.0:123            *:*
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `DFIR_Logs_${pcName}.txt`;
+    link.download = `Forensic_Logs_${pcName}.txt`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    toast.success("Rapport DFIR exporté", {
+    toast.success("Rapport forensic exporté", {
       description: `Les logs forensic de ${pcName} ont été téléchargés avec succès.`
     });
   };
@@ -799,7 +883,7 @@ UDP   0.0.0.0:123            *:*
               contractEnd: new Date(Date.now() + 365 * 86400000).toISOString().split("T")[0] // Renouvelé pour un an
             };
             setExtData(updated);
-            localStorage.setItem(`client_ext_${clientId}`, JSON.stringify(updated));
+            localStorage.setItem(`client_ext_${clientId}`, JSON.stringify({ ...updated, _v: 2 }));
           }
           return 100;
         }
@@ -826,7 +910,7 @@ UDP   0.0.0.0:123            *:*
     if (!extData) return;
 
     setAddingMachine(true);
-    setTimeout(() => {
+    setTimeout(async () => {
       const newId = `${extData.clientId}-pc-${Date.now()}`;
       const newPc = {
         id: newId,
@@ -844,10 +928,55 @@ UDP   0.0.0.0:123            *:*
       };
       const updated = { ...extData, pcs: [...extData.pcs, newPc] };
       setExtData(updated);
-      localStorage.setItem(`client_ext_${clientId}`, JSON.stringify(updated));
-      toast.success("Machine enregistrée !", {
-        description: `${newPc.name} (${newPc.ip}) est maintenant surveillée par l'agent EDR.`,
+      localStorage.setItem(`client_ext_${clientId}`, JSON.stringify({ ...updated, _v: 2 }));
+
+      // Synchroniser dans le registre global pour la visibilité cross-dashboard
+      const registeredPc = registerClientPc({
+        id: newPc.id,
+        name: newPc.name,
+        hostname: newPc.name,
+        clientName: form.organization || "Client",
+        clientId: clientId,
+        os: newPc.os,
+        ip: newPc.ip,
+        status: newPc.status,
+        cpu: newPc.cpu,
+        ram: newPc.ram,
+        version: "v4.14.5",
+        lastSeen: newPc.lastSeen,
+        wazuhId: newPc.wazuhId,
       });
+
+      let cloudSaved = true;
+      try {
+        await saveClientPcToCloud(registeredPc);
+        void recordAuditEvent("EDR_PC_CREATE", registeredPc.name, {
+          endpoint_id: registeredPc.id,
+          ip: registeredPc.ip,
+          os: registeredPc.os,
+          client_id: clientId,
+        }, profile?.organization);
+      } catch (error) {
+        cloudSaved = false;
+        console.error("Erreur d'enregistrement du poste dans Supabase:", error);
+      }
+
+      if (cloudSaved) {
+        toast.success("Machine enregistrée !", {
+          description: `${newPc.name} (${newPc.ip}) est maintenant liée au profil durable du client.`,
+        });
+      } else {
+        void recordAuditEvent("EDR_PC_CREATE_FAILED", newPc.name, {
+          endpoint_id: newPc.id,
+          client_id: clientId,
+          ip: newPc.ip,
+          os: newPc.os,
+          error: "Supabase n'a pas confirmé l'enregistrement du poste.",
+        }, profile?.organization);
+        toast.error("Machine conservée sur cet appareil, mais non synchronisée", {
+          description: getClientPcSyncErrorMessage(error),
+        });
+      }
       setAddMachineOpen(false);
       setNewMachineForm({ name: "", ip: "", owner: "", os: "windows", mac: "", department: "" });
       setAddingMachine(false);
@@ -1789,7 +1918,7 @@ UDP   0.0.0.0:123            *:*
                       else if (log.source === "TheHive") {
                         tagColor = "bg-red-500/10 text-red-400 border-red-500/20";
                         messageColor = "text-rose-300 font-bold";
-                      } else if (log.source === "DFIR-IRIS") tagColor = "bg-teal-500/10 text-teal-400 border-teal-500/20";
+                      } else if (log.source === "Audit") tagColor = "bg-teal-500/10 text-teal-400 border-teal-500/20";
 
                       return (
                         <div key={log.id} className="border-b border-border/10 pb-1.5 flex flex-col gap-0.5 animate-fadeIn">
@@ -1982,11 +2111,15 @@ UDP   0.0.0.0:123            *:*
                                           });
                                           const updatedExt = { ...extData, pcs: updatedPcs };
                                           setExtData(updatedExt);
-                                          localStorage.setItem(`client_ext_${clientId}`, JSON.stringify(updatedExt));
+                                          localStorage.setItem(`client_ext_${clientId}`, JSON.stringify({ ...updatedExt, _v: 2 }));
                                         }
                                         toast.success("Terminal reconnecté", {
                                           description: `L'accès réseau a été entièrement rétabli pour ${pc.name}.`
                                         });
+                                        void recordAuditEvent("EDR_PC_RECONNECT", pc.name, {
+                                          endpoint_id: pc.id,
+                                          client_id: clientId,
+                                        }, profile?.organization);
                                         addGlobalLog(pc.name, "SOAR", "info", "Endpoint reconnecté au réseau. Quarantaine désactivée.");
                                       }}
                                     >
@@ -2005,6 +2138,17 @@ UDP   0.0.0.0:123            *:*
                                   )}
                                 </div>
                               )}
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                                title="Supprimer ce poste"
+                                aria-label={`Supprimer ${pc.name}`}
+                                disabled={deletingPcId === pc.id}
+                                onClick={() => setDeleteTarget({ id: pc.id, name: pc.name, ip: pc.ip })}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
                             </td>
                           </tr>
                         );
@@ -2031,6 +2175,19 @@ UDP   0.0.0.0:123            *:*
 
               return (
                 <div className="grid gap-6 md:grid-cols-2 animate-fadeIn border-t border-border/40 pt-6">
+                  <div className="md:col-span-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-slate-900 dark:text-zinc-100">Poste sélectionné : {pc.name}</p>
+                      <p className="text-xs text-slate-500 dark:text-zinc-400">{pc.ip} · {pc.os.toUpperCase()} · ID Wazuh {pc.wazuhId || "—"}</p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      className="shrink-0 gap-2 border-rose-200 text-rose-700 hover:bg-rose-50 hover:text-rose-800 dark:border-rose-900 dark:text-rose-300 dark:hover:bg-rose-950/40"
+                      onClick={() => setDeleteTarget({ id: pc.id, name: pc.name, ip: pc.ip })}
+                    >
+                      <Trash2 className="h-4 w-4" /> Supprimer ce PC
+                    </Button>
+                  </div>
                   
                   {/* Colonne de Gauche : Console Terminal Shell Remote */}
                   <Card className="shadow-lg border-border/50 bg-slate-950 dark:bg-black text-slate-100 rounded-xl overflow-hidden flex flex-col justify-between min-h-[380px] p-0 font-mono">
@@ -2167,11 +2324,11 @@ UDP   0.0.0.0:123            *:*
                           </Badge>
                         </div>
 
-                        {/* DFIR-IRIS */}
+                        {/* Djib'son IA */}
                         <div className="border border-border/40 rounded-xl p-2.5 text-center bg-slate-50/50 dark:bg-slate-900/30">
-                          <span className="text-[10px] text-muted-foreground block font-bold">DFIR-IRIS</span>
+                          <span className="text-[10px] text-muted-foreground block font-bold">Djib'son IA</span>
                           <Badge variant="outline" className="text-[9px] font-bold mt-1.5 border-none bg-teal-500/10 text-teal-400 px-2 rounded-full">
-                            ✓ Case Manager
+                            ✓ Copilote Actif
                           </Badge>
                         </div>
 
@@ -2427,6 +2584,56 @@ UDP   0.0.0.0:123            *:*
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={(open) => {
+          if (!open && !deletingPcId) setDeleteTarget(null);
+        }}
+      >
+        <AlertDialogContent className="max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl dark:border-zinc-800 dark:bg-zinc-950">
+          <div className="h-1 bg-rose-500" />
+          <AlertDialogHeader className="px-6 pt-6 text-left">
+            <div className="flex items-start gap-4">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900 dark:bg-rose-950/50 dark:text-rose-300">
+                <Trash2 className="h-5 w-5" />
+              </div>
+              <div className="space-y-1">
+                <AlertDialogTitle className="text-lg font-bold text-slate-900 dark:text-zinc-100">
+                  Supprimer ce poste ?
+                </AlertDialogTitle>
+                <AlertDialogDescription className="text-sm leading-5 text-slate-600 dark:text-zinc-400">
+                  Le poste sera retiré du parc INOVA-IRIS et cette action sera inscrite au journal d'audit.
+                </AlertDialogDescription>
+              </div>
+            </div>
+          </AlertDialogHeader>
+          {deleteTarget && (
+            <div className="mx-6 mt-5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900">
+              <p className="truncate text-sm font-semibold text-slate-900 dark:text-zinc-100">{deleteTarget.name}</p>
+              <p className="mt-1 font-mono text-xs text-slate-500 dark:text-zinc-400">{deleteTarget.ip}</p>
+            </div>
+          )}
+          <p className="px-6 pt-3 text-xs text-slate-500 dark:text-zinc-500">
+            Cette action ne désinstalle pas l'agent Wazuh sur l'ordinateur.
+          </p>
+          <AlertDialogFooter className="px-6 pb-6 pt-5">
+            <AlertDialogCancel disabled={Boolean(deletingPcId)} className="rounded-lg">Annuler</AlertDialogCancel>
+            <Button
+              variant="destructive"
+              disabled={!deleteTarget || deletingPcId === deleteTarget.id}
+              className="gap-2 rounded-lg"
+              onClick={() => deleteTarget && void handleDeleteMachine(deleteTarget.id, deleteTarget.name)}
+            >
+              {deleteTarget && deletingPcId === deleteTarget.id ? (
+                <><Loader2 className="h-4 w-4 animate-spin" /> Suppression...</>
+              ) : (
+                <><Trash2 className="h-4 w-4" /> Supprimer le poste</>
+              )}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
     </div>
   );

@@ -1,7 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { ThreatMapPage } from "@/components/soc/ThreatMapPage";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/threat-map")({
-  head: () => ({ meta: [{ title: "Threat Map — INOVA-IRIS" }] }),
-  component: ThreatMapPage,
+  beforeLoad: () => {
+    throw redirect({ to: "/dashboard" });
+  },
+  component: () => null,
 });

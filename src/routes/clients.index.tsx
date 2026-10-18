@@ -9,6 +9,7 @@ import { Search, MoreVertical, CheckCircle, XCircle, Users, Building2, ExternalL
 import { supabase } from "@/integrations/supabase/client";
 import { RequireAuth } from "@/components/RequireAuth";
 import { toast } from "sonner";
+import { recordAuditEvent } from "@/lib/audit-log";
 import type { AppRole } from "@/lib/auth-context";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -355,7 +356,7 @@ export function generateContractPDF(orgName: string, fullName: string, extData: 
   <div class="footer">
     <div class="footer-brand">INOVA IRIS — SOC Platform</div>
     <div>${ref} • ${today} • Confidentiel</div>
-    <div>© ${new Date().getFullYear()} INOVA Cyber SOC — Tous droits réservés</div>
+    <div>© ${new Date().getFullYear()} INOVA Cyber SOC — Djibril Sanou Gueye (djibrilsanougueye@esp.sn)</div>
   </div>
 
 </div>
@@ -502,6 +503,10 @@ function ClientsList() {
     try {
       const { error } = await supabase.from("profiles").update({ is_active: !p.is_active }).eq("id", p.id);
       if (error) throw error;
+      void recordAuditEvent("CLIENT_STATUS_UPDATE", p.organization || p.email || p.id, {
+        client_id: p.id,
+        is_active: !p.is_active,
+      }, p.organization, "staff");
       toast.success(`Client ${p.is_active ? "désactivé" : "activé"} avec succès`, { id: toastId });
       await load();
     } catch (error: any) {

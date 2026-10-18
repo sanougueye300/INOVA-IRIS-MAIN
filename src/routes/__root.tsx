@@ -170,8 +170,8 @@ function AppFrame() {
   const isAuth = pathname === "/" || pathname === "/login" || pathname === "/auth" || pathname.startsWith("/auth/");
   if (isAuth) {
     return (
-      <div className="flex min-h-screen flex-col bg-background text-foreground">
-        <main className="flex-1">
+      <div className="h-screen w-screen overflow-hidden flex flex-col bg-background text-foreground">
+        <main className="h-full w-full overflow-hidden flex flex-col">
           <Outlet />
         </main>
       </div>

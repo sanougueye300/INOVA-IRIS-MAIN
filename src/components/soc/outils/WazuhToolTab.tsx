@@ -46,7 +46,7 @@ const OFFER_WAZUH_QUOTA: Record<string, { maxAgents: number; mttd: string; featu
   "gainde-secure": {
     maxAgents: 50,
     mttd: "< 10 min",
-    features: ["Wazuh EDR Premium", "FIM + Rootkit detection", "Threat Intel MISP", "Playbooks automatisés", "Analyste SOC dédié", "Investigation DFIR-IRIS"],
+    features: ["Wazuh EDR Premium", "FIM + Rootkit detection", "Threat Intel MISP", "Playbooks automatisés", "Analyste SOC dédié", "Investigation Avancée EDR"],
   },
 };
 
@@ -185,7 +185,6 @@ export function WazuhToolTab() {
       <Tabs defaultValue="scenario" className="space-y-4">
         <TabsList className="flex h-auto min-h-10 flex-wrap justify-start gap-1">
           <TabsTrigger value="scenario">Scénario de supervision</TabsTrigger>
-          <TabsTrigger value="overview">Présentation</TabsTrigger>
           <TabsTrigger value="agents">Agents</TabsTrigger>
           <TabsTrigger value="rules">Règles</TabsTrigger>
           <TabsTrigger value="inventory">Inventaire</TabsTrigger>
@@ -397,29 +396,6 @@ export function WazuhToolTab() {
         </TabsContent>
 
         {/* ─── PRÉSENTATION ─── */}
-        <TabsContent value="overview">
-          <Card className="p-6">
-            <h3 className="text-2xl font-bold text-primary mb-2">Wazuh : Plateforme de Sécurité Unifiée</h3>
-            <p className="text-muted-foreground mb-8">Wazuh est une solution open-source complète de SIEM et XDR, constituant le cœur de la détection pour votre SOC.</p>
-            <div className="grid gap-6 md:grid-cols-2">
-              {[
-                { icon: FileText, title: "Collecte & Analyse de Logs", items: ["Surveillance temps réel des journaux systèmes, applications et réseau.", "Normalisation, enrichissement et corrélation automatique des événements."] },
-                { icon: Shield, title: "Intégrité des Fichiers (FIM)", items: ["Détection des modifications non autorisées (fichiers, base de registre).", "Alerte immédiate en cas de changement ou de suppression suspecte."] },
-                { icon: Network, title: "Détection des Vulnérabilités", items: ["Scan automatisé des systèmes pour détecter les logiciels obsolètes (CVE).", "Comparaison en continu avec les bases de données de vulnérabilités globales."] },
-                { icon: Server, title: "Détection Malware & Rootkits", items: ["Analyse comportementale des processus, des ports ouverts et des fichiers cachés.", "Utilisation de signatures croisées et d'heuristiques avancées."] },
-                { icon: PlugZap, title: "Réponse aux Incidents", items: ["Exécution d'actions de réponse prédéfinies (Active Response).", "Intégration fluide pour l'automatisation et l'orchestration des workflows."] },
-                { icon: Settings, title: "Conformité & Audits", items: ["Aide à la conformité aux standards du marché (PCI DSS, GDPR, NIS2, CIS).", "Génération de rapports et tableaux de bord d'audit consolidés."] },
-              ].map(({ icon: Icon, title, items }) => (
-                <div key={title} className="space-y-2">
-                  <h4 className="font-semibold text-lg flex items-center gap-2"><Icon className="w-5 h-5 text-primary"/> {title}</h4>
-                  <ul className="list-disc pl-5 space-y-1 text-sm text-muted-foreground">
-                    {items.map((i) => <li key={i}>{i}</li>)}
-                  </ul>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </TabsContent>
 
         {/* ─── AGENTS ─── */}
         <TabsContent value="agents">

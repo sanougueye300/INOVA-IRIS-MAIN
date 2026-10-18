@@ -5,7 +5,7 @@
 
 export const PAYTECH_API_KEY = import.meta.env.VITE_PAYTECH_API_KEY || "93e4fd002cc03fd97b88fb11d696f5644bea04cab90f8f4180f3de8451b5400d";
 export const PAYTECH_SECRET_KEY = import.meta.env.VITE_PAYTECH_SECRET_KEY || "b7ed28b0eb915faaf4a38df8a6aad4237554aed0c386c6f88d9baf145c72d741";
-export const PAYTECH_ENV = import.meta.env.VITE_PAYTECH_ENV || "test";
+export const PAYTECH_ENV = import.meta.env.VITE_PAYTECH_ENV || "prod";
 
 export const PAYTECH_API_URL = "https://paytech.sn/api/payment/request-payment";
 

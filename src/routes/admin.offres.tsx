@@ -16,6 +16,7 @@ import {
 import { toast } from "sonner";
 import type { Offer } from "@/lib/offers";
 import { DEFAULT_OFFERS, computeCatalogStats } from "@/lib/offers";
+import { recordAuditEvent } from "@/lib/audit-log";
 
 export type { Offer };
 export { DEFAULT_OFFERS };
@@ -196,6 +197,12 @@ function AdminOffres() {
     const updated = offers.map(o => o.id === id ? { ...o, isActive: !o.isActive } : o);
     saveOffersToStorage(updated);
     const offer = updated.find(o => o.id === id);
+    if (offer) {
+      void recordAuditEvent("OFFER_STATUS_UPDATE", offer.name, {
+        offer_id: id,
+        is_active: offer.isActive,
+      }, null, "staff");
+    }
     toast.success(`Offre ${offer?.name}`, {
       description: `L'offre est désormais ${offer?.isActive ? "active" : "désactivée"}.`
     });
@@ -237,6 +244,7 @@ function AdminOffres() {
     if (!deleteTarget) return;
     const updated = offers.filter(o => o.id !== deleteTarget.id);
     saveOffersToStorage(updated);
+    void recordAuditEvent("OFFER_DELETE", deleteTarget.name, { offer_id: deleteTarget.id }, null, "staff");
     toast.error(`Offre ${deleteTarget.name} supprimée`, {
       description: "L'offre a été retirée du catalogue."
     });
@@ -258,6 +266,11 @@ function AdminOffres() {
           : o
       );
       saveOffersToStorage(updated);
+      void recordAuditEvent("OFFER_UPDATE", formName, {
+        offer_id: editingOffer.id,
+        value: Number(formValue),
+        max_pcs: Number(formMaxPcs),
+      }, null, "staff");
       toast.success("Offre modifiée", { description: `L'offre ${formName} a été mise à jour.` });
     } else {
       const newOffer: Offer = {
@@ -276,6 +289,11 @@ function AdminOffres() {
         theme: formTheme,
       };
       saveOffersToStorage([...offers, newOffer]);
+      void recordAuditEvent("OFFER_CREATE", newOffer.name, {
+        offer_id: newOffer.id,
+        value: newOffer.value,
+        max_pcs: newOffer.maxPcs,
+      }, null, "staff");
       toast.success("Offre créée", { description: `L'offre ${formName} a été ajoutée au catalogue.` });
     }
     setIsPanelOpen(false);

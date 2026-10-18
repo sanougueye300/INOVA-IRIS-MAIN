@@ -1,9 +1,9 @@
 /**
  * Données de démonstration SOC — prêtes à être remplacées par des appels API
- * (Wazuh, TheHive, MISP, Shuffle, VirusTotal, DFIR-IRIS).
+ * (Wazuh, TheHive, MISP, Shuffle, VirusTotal).
  */
 
-export type ConnectorId = "wazuh" | "thehive" | "misp" | "shuffle" | "virustotal" | "iris";
+export type ConnectorId = "wazuh" | "thehive" | "misp" | "shuffle" | "virustotal" | "iris" | "edr";
 
 export type ConnectorStatus = "up" | "degraded" | "down";
 
@@ -136,7 +136,7 @@ export const mockConnectors: SocConnector[] = [
   { id: "misp", label: "MISP", status: "degraded", latencyMs: 890, lastSync: new Date(Date.now() - 900_000).toISOString() },
   { id: "shuffle", label: "Shuffle", status: "up", latencyMs: 210, lastSync: new Date(Date.now() - 30_000).toISOString() },
   { id: "virustotal", label: "VirusTotal", status: "up", latencyMs: 340, lastSync: new Date(Date.now() - 45_000).toISOString() },
-  { id: "iris", label: "DFIR-IRIS", status: "up", latencyMs: 156, lastSync: new Date(Date.now() - 180_000).toISOString() },
+  { id: "edr", label: "Agent EDR", status: "up", latencyMs: 56, lastSync: new Date(Date.now() - 40_000).toISOString() },
 ];
 
 export function computeSocHealth(
@@ -344,7 +344,7 @@ export const mockIrisInvestigation: IrisInvestigation = {
   timeline: [
     { at: new Date(Date.now() - 8 * 3600_000).toISOString(), label: "Première alerte Wazuh" },
     { at: new Date(Date.now() - 7.5 * 3600_000).toISOString(), label: "Cas TheHive créé" },
-    { at: new Date(Date.now() - 6 * 3600_000).toISOString(), label: "Collecte DFIR-IRIS" },
+    { at: new Date(Date.now() - 6 * 3600_000).toISOString(), label: "Collecte EDR Forensique" },
   ],
   evidenceCount: 14,
 };

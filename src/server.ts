@@ -62,8 +62,8 @@ async function getServerEntry(): Promise<ServerEntry> {
   return serverEntryPromise;
 }
 
-function brandedErrorResponse(): Response {
-  return new Response(renderErrorPage(), {
+function brandedErrorResponse(err?: unknown): Response {
+  return new Response(renderErrorPage(err), {
     status: 500,
     headers: { "content-type": "text/html; charset=utf-8" },
   });
@@ -106,8 +106,9 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
     return response;
   }
 
-  console.error(consumeLastCapturedError() ?? new Error(`h3 swallowed SSR error: ${body}`));
-  return brandedErrorResponse();
+  const err = consumeLastCapturedError() ?? new Error(`h3 swallowed SSR error: ${body}`);
+  console.error(err);
+  return brandedErrorResponse(err);
 }
 
 async function handlePaytechCheckoutRequest(request: Request): Promise<Response> {
@@ -238,6 +239,118 @@ async function handlePaytechCheckoutRequest(request: Request): Promise<Response>
   }
 }
 
+async function handlePaytechIpnRequest(request: Request): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: AI_API_CORS });
+  }
+
+  try {
+    const contentType = request.headers.get("content-type") || "";
+    let data: Record<string, any> = {};
+
+    if (contentType.includes("application/json")) {
+      data = (await request.json()) as Record<string, any>;
+    } else if (contentType.includes("application/x-www-form-urlencoded")) {
+      const formData = await request.formData();
+      formData.forEach((val, key) => {
+        data[key] = val.toString();
+      });
+    } else {
+      try {
+        data = (await request.json()) as Record<string, any>;
+      } catch {
+        const text = await request.text();
+        try {
+          data = JSON.parse(text);
+        } catch {
+          data = Object.fromEntries(new URLSearchParams(text));
+        }
+      }
+    }
+
+    console.log("🔔 Notification PayTech IPN reçue :", data);
+
+    const typeEvent = data.type_event || data.event || "sale_complete";
+    const refCommand = data.ref_command || data.ref || `PAYTECH-${Date.now()}`;
+    const itemPrice = Number(data.item_price || data.amount || 100000);
+    const paymentMethod = data.payment_method || "Wave";
+
+    let customData: Record<string, any> = {};
+    if (data.custom_field) {
+      try {
+        customData = typeof data.custom_field === "string" ? JSON.parse(data.custom_field) : data.custom_field;
+      } catch {
+        customData = {};
+      }
+    }
+
+    const email = customData.email || data.email || data.client_email || "client@inova-iris.sn";
+    const fullName = customData.fullName || data.fullName || data.client_name || "Client SOC";
+    const companyName = customData.companyName || data.companyName || data.organization || "Entreprise";
+    const phone = customData.phone || data.phone || data.client_phone || "+22100000000";
+    const offerId = customData.offerId || data.offerId || "inova-secure";
+    const offerName = customData.offerName || data.offerName || "Inova Secure";
+
+    // Enregistrer dans Supabase si configuré
+    const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+
+    if (supabaseUrl && serviceKey) {
+      try {
+        const subRecord = {
+          stripe_subscription_id: refCommand,
+          offer_id: offerId,
+          offer_name: offerName,
+          status: "active",
+          amount: itemPrice,
+          currency: "xof",
+          client_email: email,
+          client_name: fullName,
+          client_phone: phone,
+          organization: companyName,
+          metadata: {
+            provider: "paytech",
+            payment_method: paymentMethod,
+            ref_command: refCommand,
+            event: typeEvent,
+            received_at: new Date().toISOString(),
+          },
+        };
+
+        const res = await fetch(`${supabaseUrl}/rest/v1/subscriptions`, {
+          method: "POST",
+          headers: {
+            "apikey": serviceKey,
+            "Authorization": `Bearer ${serviceKey}`,
+            "Content-Type": "application/json",
+            "Prefer": "resolution=merge-duplicates",
+          },
+          body: JSON.stringify(subRecord),
+        });
+
+        console.log("Statut enregistrement Supabase Subscriptions :", res.status);
+      } catch (dbErr) {
+        console.warn("Erreur écriture Supabase IPN:", dbErr);
+      }
+    }
+
+    return Response.json(
+      {
+        success: 1,
+        message: "Notification PayTech enregistrée avec succès",
+        ref_command: refCommand,
+      },
+      { status: 200, headers: AI_API_CORS }
+    );
+  } catch (err) {
+    console.error("Erreur IPN PayTech :", err);
+    return Response.json(
+      { success: 0, error: err instanceof Error ? err.message : "Erreur interne IPN" },
+      { status: 200, headers: AI_API_CORS }
+    );
+  }
+}
+
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     const { pathname } = new URL(request.url);
@@ -250,6 +363,9 @@ export default {
     if (pathname === "/api/paytech-checkout") {
       return handlePaytechCheckoutRequest(request);
     }
+    if (pathname === "/api/paytech-ipn") {
+      return handlePaytechIpnRequest(request);
+    }
 
     try {
       const handler = await getServerEntry();
@@ -257,7 +373,7 @@ export default {
       return await normalizeCatastrophicSsrResponse(response);
     } catch (error) {
       console.error(error);
-      return brandedErrorResponse();
+      return brandedErrorResponse(error);
     }
   },
 };

@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
   ThumbsUp, Send, Smile, Meh, Frown, MessageSquare,
-  Sparkles, AlertCircle, RefreshCw, TrendingUp, Star, Bell
+  Sparkles, AlertCircle, RefreshCw, Star, Bell
 } from "lucide-react";
 
 export const Route = createFileRoute("/clients/satisfaction")({
@@ -34,14 +34,7 @@ const SEED: NpsEntry[] = [
   { id: "6", clientName: "Mariam Koné", organization: "Groupe CFAO", score: 6, comment: "Le tableau de bord est parfois lent. Nous espérons des optimisations.", date: "2026-05-08", sentiment: "négatif", category: "Performance" },
 ];
 
-const TREND = [
-  { month: "Jan", p: 65, pa: 22, d: 13, nps: 52 },
-  { month: "Fév", p: 70, pa: 18, d: 12, nps: 58 },
-  { month: "Mar", p: 68, pa: 20, d: 12, nps: 56 },
-  { month: "Avr", p: 72, pa: 17, d: 11, nps: 61 },
-  { month: "Mai", p: 75, pa: 15, d: 10, nps: 65 },
-  { month: "Jun", p: 78, pa: 13, d: 9,  nps: 69 },
-];
+
 
 const TEMPLATES: Record<string, { label: string; subject: string; body: string }> = {
   post_incident: { label: "Post-incident", subject: "Votre avis sur notre traitement — SOC Sonatel", body: "Bonjour [Nom],\n\nSuite à l'incident de sécurité récemment traité, nous souhaitons recueillir votre feedback.\n\nSur une échelle de 0 à 10, dans quelle mesure nous recommanderiez-vous ?\n[LIEN_SONDAGE]\n\nMerci,\nL'équipe SOC Sonatel" },
@@ -166,30 +159,8 @@ function SatisfactionPage() {
           </Card>
         </div>
 
-        {/* Trend bars */}
-        <Card className="bg-white/80 dark:bg-zinc-900/60 backdrop-blur-md border border-slate-100 dark:border-zinc-800 shadow-xl rounded-2xl p-6 mb-8">
-          <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-6 flex items-center gap-2">
-            <TrendingUp className="h-4 w-4 text-amber-500" /> Évolution du NPS sur 6 mois
-          </h3>
-          <div className="flex items-end gap-3 h-44">
-            {TREND.map(m => (
-              <div key={m.month} className="flex-1 flex flex-col items-center gap-1">
-                <div className="w-full bg-slate-100 dark:bg-zinc-950 rounded-xl h-36 flex flex-col justify-end overflow-hidden">
-                  <div className="w-full bg-red-400/60" style={{ height: `${m.d}%` }} />
-                  <div className="w-full bg-amber-400/60" style={{ height: `${m.pa}%` }} />
-                  <div className="w-full bg-emerald-400/80" style={{ height: `${m.p}%` }} />
-                </div>
-                <span className="text-[10px] font-black text-muted-foreground uppercase">{m.month}</span>
-                <span className={`text-[10px] font-black ${m.nps >= 60 ? "text-emerald-500" : m.nps >= 40 ? "text-amber-500" : "text-red-500"}`}>{m.nps}</span>
-              </div>
-            ))}
-          </div>
-          <div className="flex gap-6 mt-4 text-[10px] font-bold uppercase">
-            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-emerald-400/80 inline-block" /> Promoteurs (9-10)</span>
-            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-amber-400/60 inline-block" /> Passifs (7-8)</span>
-            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-red-400/60 inline-block" /> Détracteurs (0-6)</span>
-          </div>
-        </Card>
+
+
 
         {/* Reviews */}
         <Card className="bg-white/80 dark:bg-zinc-900/60 backdrop-blur-md border border-slate-100 dark:border-zinc-800 shadow-xl rounded-2xl overflow-hidden">

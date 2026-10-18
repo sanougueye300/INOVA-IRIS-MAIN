@@ -112,25 +112,25 @@ export async function invokeAuthSecurity<T extends Record<string, unknown>>(
 
 /** Envoie l'e-mail de récupération (branded via serveur, ou Supabase Auth en secours). */
 export async function sendPasswordResetWithFallback(email: string): Promise<void> {
+  const normalizedEmail = email.trim().toLowerCase();
+  const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:8080";
+
+  // 1. Tenter en priorité le canal serveur / Edge Function avec le template HTML INOVA-IRIS
   try {
-    await invokeAuthSecurity("send_password_reset", { email: email.trim().toLowerCase() }, { requireAuth: false });
+    await invokeAuthSecurity("send_password_reset", {
+      email: normalizedEmail,
+      redirectOrigin: `${origin}`,
+    }, { requireAuth: false });
+    return;
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "";
-    const useFallback =
-      msg.includes("Configuration Supabase") ||
-      msg.includes("manquante") ||
-      msg.includes("NOT_FOUND") ||
-      msg.includes("Failed to send") ||
-      msg.includes("FunctionsFetchError") ||
-      msg.includes("indisponible");
-
-    if (!useFallback) throw e;
-
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
-      redirectTo: `${window.location.origin}/auth/reset-password`,
-    });
-    if (error) throw error;
+    console.warn("[auth-security] send_password_reset backend error, utilisation du secours Supabase Auth:", e);
   }
+
+  // 2. Secours direct Supabase Client avec redirection ciblée vers /auth/reset-password
+  const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
+    redirectTo: `${origin}/auth/reset-password`,
+  });
+  if (error) throw error;
 }
 
 /** Charge les questions de secours ; retourne [] si le serveur n'est pas configuré. */

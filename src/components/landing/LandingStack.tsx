@@ -10,14 +10,14 @@ const TOOLS = [
   { name: "TheHive", role: "Case Management", icon: Activity, desc: "Gestion collaborative des incidents et investigations forensiques.", gradient: "from-purple-500 to-violet-500", glow: "shadow-purple-500/20" },
   { name: "MISP", role: "Threat Intelligence", icon: Database, desc: "Partage et corrélation d'indicateurs de compromission (IoC).", gradient: "from-red-500 to-rose-500", glow: "shadow-red-500/20" },
   { name: "VirusTotal", role: "Enrichissement", icon: Search, desc: "Analyse multi-moteurs des fichiers, URLs et hashes suspects.", gradient: "from-cyan-500 to-teal-500", glow: "shadow-cyan-500/20" },
-  { name: "DFIR-IRIS", role: "Forensique", icon: Fingerprint, desc: "Plateforme d'investigation numérique et gestion de preuves.", gradient: "from-rose-500 to-pink-500", glow: "shadow-rose-500/20" },
+  { name: "Djib'son IA", role: "Copilote Cyber", icon: Fingerprint, desc: "Copilote IA d'assistance aux analystes, corrélation et réponse guidée.", gradient: "from-rose-500 to-pink-500", glow: "shadow-rose-500/20" },
 ];
 
 const FEATURES = [
   "Détection temps réel des menaces sur 142+ endpoints",
   "Enrichissement automatique des IoC via MISP & VirusTotal",
   "Playbooks de réponse personnalisables et auto-exécutés",
-  "Investigation collaborative avec TheHive & DFIR-IRIS",
+  "Investigation collaborative avec TheHive & Wazuh EDR",
   "Tableau de bord SOC avec métriques en direct",
   "Copilote IA intégré pour l'analyse avancée",
 ];

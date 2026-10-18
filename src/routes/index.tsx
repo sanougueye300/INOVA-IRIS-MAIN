@@ -5,7 +5,7 @@ import {
   Phone, Smartphone, CheckCircle, RefreshCw, Cpu, Database, 
   Search, FolderOpen, Zap, Fingerprint, Eye, EyeOff, HelpCircle,
   Building2, MapPin, Briefcase, Mail, Send, CheckSquare, Sparkles,
-  Loader2, ArrowRightCircle, Clock, ChevronDown,
+  Loader2, ArrowRightCircle, Clock, ChevronDown, User,
   Laptop, ShieldAlert, HeartHandshake, Layers
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,8 @@ import { toast } from "sonner";
 import { loadOffers, type Offer } from "@/lib/offers";
 import { createPaytechCheckout, isPaytechConfigured } from "@/lib/paytech";
 import { StripeCardForm } from "@/components/StripeCardForm";
+import { supabase } from "@/integrations/supabase/client";
+import { authenticateRegisteredClient } from "@/lib/registered-client-auth";
 import orangeLogo from "@/assets/orange-logo.png";
 
 export const Route = createFileRoute("/")({
@@ -115,7 +117,7 @@ function LandingPage() {
     const planId = urlParams.get("plan");
 
     if (paymentStatus === "success") {
-      toast.success("Paiement PayTech confirmé avec succès !", {
+      toast.success("Paiement PayTech Wave confirmé avec succès !", {
         description: `Référence transaction : ${refCommand || "PayTech-OK"}`
       });
       const loaded = loadOffers();
@@ -125,6 +127,47 @@ function LandingPage() {
         setCheckoutStep("success");
         setShowCheckoutModal(true);
       }
+
+      // Persist to localStorage and Supabase
+      const newPaidSub = {
+        id: `paytech_${refCommand || Date.now()}`,
+        stripe_subscription_id: `paytech_${refCommand || Date.now()}`,
+        stripe_customer_id: "paytech_wave",
+        user_id: null,
+        offer_id: targetPlan?.id || planId || "standard",
+        offer_name: `PayTech Wave - ${targetPlan?.name || "Abonnement SOC"}`,
+        status: "active",
+        amount: targetPlan?.value || 100000,
+        currency: "XOF",
+        current_period_start: new Date().toISOString(),
+        current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        cancel_at_period_end: false,
+        canceled_at: null,
+        client_email: "client@paytech.sn",
+        client_name: "Client PayTech Wave",
+        client_phone: null,
+        organization: "Paiement Wave PayTech",
+        created_at: new Date().toISOString()
+      };
+
+      try {
+        const stored = localStorage.getItem("inova_paid_subscriptions");
+        const list = stored ? JSON.parse(stored) : [];
+        if (!list.some((s: any) => s.id === newPaidSub.id || s.stripe_subscription_id === newPaidSub.stripe_subscription_id)) {
+          list.unshift(newPaidSub);
+          localStorage.setItem("inova_paid_subscriptions", JSON.stringify(list));
+        }
+      } catch (e) {
+        console.warn("Failed to update localStorage paid subscriptions", e);
+      }
+
+      (async () => {
+        try {
+          await (supabase as any).from("subscriptions").insert([newPaidSub]);
+        } catch (err) {
+          console.warn("Could not insert to supabase subscriptions:", err);
+        }
+      })();
     } else if (paymentStatus === "cancel") {
       toast.error("Règlement PayTech annulé.", {
         description: "Vous pouvez retenter votre souscription SOC à tout moment."
@@ -139,7 +182,7 @@ function LandingPage() {
       "Shuffle SOAR: Playbook 'Vérification de réputation IP' exécuté",
       "VirusTotal API: Hash SHA256 analysé — Statut sain (0 détection)",
       "MISP CTI: Flux d'indicateurs de compromission synchronisé",
-      "DFIR-IRIS: Rapport d'audit mensuel généré automatiquement",
+      "Audit & Conformité: Rapport d'audit mensuel généré automatiquement",
       "Wazuh Manager: Alerte niveau 12 détectée sur Serveur-Prod-01 — Résolu",
       "TheHive Case Management: Incident #10432 fermé avec succès",
       "Shuffle SOAR: Playbook 'Quarantaine de fichier suspect' déclenché",
@@ -336,16 +379,24 @@ function LandingPage() {
     toast.success("Paiement Stripe validé ! Vos accès ont été configurés.");
   };
 
-  const handleAccessDashboard = () => {
-    // Enregistrer la session mock pour accès au dashboard
-    const mockSession = {
-      id: "mock-uid-123",
-      email: email,
-      organization: companyName,
-      user_metadata: { full_name: fullName }
-    };
-    localStorage.setItem("inova_mock_user", JSON.stringify(mockSession));
-    
+  const handleAccessDashboard = async () => {
+    const registeredUser = JSON.parse(localStorage.getItem("inova_registered_user") || "null");
+    if (!registeredUser?.password) {
+      toast.error("Identifiants client introuvables", {
+        description: "Relancez la création de vos accès depuis l'étape de paiement.",
+      });
+      return;
+    }
+
+    try {
+      await authenticateRegisteredClient(registeredUser);
+    } catch (error) {
+      toast.error("Impossible d'activer le compte client", {
+        description: error instanceof Error ? error.message : "Vérifiez votre connexion Supabase.",
+      });
+      return;
+    }
+
     // Nettoyer les paramètres d'URL de retour PayTech
     const cleanUrl = window.location.pathname;
     window.history.replaceState({}, document.title, cleanUrl);
@@ -818,7 +869,7 @@ function LandingPage() {
               { title: "MISP CTI", desc: "Vérifie les indicateurs de compromission en temps réel.", icon: Database },
               { title: "TheHive Case Mgmt", desc: "Fournit un espace d'investigation et d'historisation collaborative.", icon: FolderOpen },
               { title: "VirusTotal API", desc: "Valide la réputation cyber des URLs et hashes suspects.", icon: Search },
-              { title: "DFIR-IRIS", desc: "Permet de collecter les preuves mémoire en direct en cas d'attaque.", icon: Fingerprint }
+              { title: "Djib'son IA Copilot", desc: "Assiste les analystes en temps réel avec des recommandations de remédiation.", icon: Sparkles }
             ].map((svc, i) => {
               const SvcIcon = svc.icon;
               return (
@@ -891,7 +942,13 @@ function LandingPage() {
             <img src={orangeLogo} alt="Orange Logo" className="h-6 w-auto" />
             <span className="font-bold text-[#FF7900] font-mono">INOVA IRIS</span>
           </div>
-          <p className="font-light">© {new Date().getFullYear()} INOVA-IRIS SOC. Direction de la Cybersécurité Sonatel. Tous droits réservés.</p>
+          <p className="font-light">
+            © {new Date().getFullYear()} INOVA-IRIS SOC · Direction de la Cybersécurité Sonatel — Djibril Sanou Gueye (
+            <a href="mailto:djibrilsanougueye@esp.sn" className="text-[#FF7900] font-medium hover:underline">
+              djibrilsanougueye@esp.sn
+            </a>
+            )
+          </p>
         </div>
       </footer>
 
@@ -943,205 +1000,144 @@ function LandingPage() {
               
               {checkoutStep !== "success" ? (
                 <>
-                  {/* Carte Récapitulative de la Formule Sélectionnée */}
-                  <div className="rounded-2xl p-4 sm:p-5 bg-gradient-to-br from-orange-50/60 via-amber-50/30 to-white border border-orange-200/80 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-black uppercase tracking-wider bg-[#FF7900] text-white px-2.5 py-0.5 rounded-full">
-                          Formule Sélectionnée
-                        </span>
-                        <span className="text-xs font-semibold text-slate-500">Sans engagement</span>
+                  {/* Récapitulatif compact de la Formule */}
+                  <div className="rounded-2xl p-4 bg-orange-50/70 border border-orange-200/80 flex items-center justify-between gap-3 shadow-xs">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="h-10 w-10 rounded-xl bg-[#FF7900] text-white flex items-center justify-center shrink-0 shadow-sm">
+                        <ShieldCheck className="h-5 w-5" />
                       </div>
-                      <h4 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">
-                        {checkoutPlan.name}
-                      </h4>
-                      <p className="text-xs text-slate-600 font-light">
-                        Supervision SOC 24/7 • {checkoutPlan.maxPcs} agents EDR inclus • Détection & réponse
-                      </p>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-base font-extrabold text-slate-900 tracking-tight truncate">
+                            {checkoutPlan.name}
+                          </h4>
+                          <span className="text-[10px] font-semibold bg-white border border-orange-200 text-slate-600 px-2 py-0.5 rounded-full shrink-0">
+                            Sans engagement
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-600 font-medium">
+                          Supervision SOC 24/7 • {checkoutPlan.maxPcs} agents EDR inclus
+                        </p>
+                      </div>
                     </div>
-
-                    <div className="sm:text-right bg-white sm:bg-transparent p-3 sm:p-0 rounded-xl border sm:border-0 border-orange-100 w-full sm:w-auto">
-                      <span className="text-xs text-slate-500 font-medium block">Montant à régler</span>
-                      <div className="text-2xl font-black text-slate-950 text-[#FF7900]">
-                        {checkoutPlan.value.toLocaleString("fr-FR")} <span className="text-sm font-bold text-slate-600">FCFA/mois</span>
+                    <div className="text-right shrink-0">
+                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Montant</span>
+                      <div className="text-xl sm:text-2xl font-black text-[#FF7900] tabular-nums leading-none">
+                        {checkoutPlan.value.toLocaleString("fr-FR")} <span className="text-xs font-bold text-slate-600">FCFA/m</span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Formulaire de Coordonnées */}
-                  <form onSubmit={handleInitiatePaytech} className="space-y-5">
+                  {/* Formulaire Allégé — Champs identiques à Création Nouveau Client */}
+                  <form onSubmit={handleInitiatePaytech} className="space-y-4">
                     
-                    <div>
-                      <h4 className="text-xs font-black uppercase tracking-wider text-slate-800 flex items-center gap-2 mb-3">
-                        <Building2 className="h-4 w-4 text-[#FF7900]" />
-                        1. Informations sur votre organisation
-                      </h4>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                        {/* Entreprise */}
-                        <div className="space-y-1.5">
-                          <label htmlFor="compName" className="text-[11px] font-bold uppercase tracking-wider text-slate-700 block">
-                            Nom de l'entreprise / Structure *
-                          </label>
-                          <input 
-                            id="compName"
-                            type="text" 
-                            required 
-                            value={companyName}
-                            onChange={(e) => setCompanyName(e.target.value)}
-                            placeholder="Ex: SONATEL SA, INOVA, SARL..."
-                            className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-[#FF7900] focus:bg-white transition-all shadow-inner"
-                          />
-                        </div>
-
-                        {/* Secteur */}
-                        <div className="space-y-1.5">
-                          <label htmlFor="secAct" className="text-[11px] font-bold uppercase tracking-wider text-slate-700 block">
-                            Secteur d'activité
-                          </label>
-                          <select
-                            id="secAct"
-                            value={businessSector}
-                            onChange={(e) => setBusinessSector(e.target.value)}
-                            className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-[#FF7900] focus:bg-white transition-all"
-                          >
-                            <option value="Finance">Banque & Services Financiers</option>
-                            <option value="Telecom">Télécommunications & Tech</option>
-                            <option value="Health">Santé & Pharma</option>
-                            <option value="Gov">Administrations Publiques</option>
-                            <option value="Commerce">Commerce & Distribution</option>
-                            <option value="Autre">Autre secteur d'activité</option>
-                          </select>
-                        </div>
-
-                        {/* Nom du Responsable */}
-                        <div className="space-y-1.5">
-                          <label htmlFor="mgrName" className="text-[11px] font-bold uppercase tracking-wider text-slate-700 block">
-                            Nom complet du responsable *
-                          </label>
-                          <input 
-                            id="mgrName"
-                            type="text" 
-                            required 
-                            value={fullName}
-                            onChange={(e) => setFullName(e.target.value)}
-                            placeholder="Ex: Sanou Gueye"
-                            className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-[#FF7900] focus:bg-white transition-all shadow-inner"
-                          />
-                        </div>
-
-                        {/* Téléphone */}
-                        <div className="space-y-1.5">
-                          <label htmlFor="mgrPhone" className="text-[11px] font-bold uppercase tracking-wider text-slate-700 block">
-                            Téléphone mobile (Wave / OM) *
-                          </label>
-                          <input 
-                            id="mgrPhone"
-                            type="tel" 
-                            required 
-                            value={phone}
-                            onChange={(e) => setPhone(e.target.value)}
-                            placeholder="Ex: 77 123 45 67"
-                            className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-[#FF7900] focus:bg-white transition-all shadow-inner"
-                          />
-                        </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                      {/* Nom de l'entreprise */}
+                      <div className="space-y-1.5">
+                        <label htmlFor="compName" className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                          <Building2 className="h-3.5 w-3.5 text-[#FF7900]" />
+                          Nom de l'entreprise *
+                        </label>
+                        <input 
+                          id="compName"
+                          type="text" 
+                          required 
+                          value={companyName}
+                          onChange={(e) => setCompanyName(e.target.value)}
+                          placeholder="Ex: SONATEL SA, INOVA, SARL..."
+                          className="w-full rounded-xl border border-slate-200 bg-slate-50/70 px-3.5 py-2.5 text-xs text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-[#FF7900] focus:bg-white transition-all shadow-xs"
+                        />
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 mt-3.5">
-                        {/* Email */}
-                        <div className="space-y-1.5">
-                          <label htmlFor="mgrEmail" className="text-[11px] font-bold uppercase tracking-wider text-slate-700 block">
-                            E-mail professionnel (Identifiant SOC) *
-                          </label>
-                          <input 
-                            id="mgrEmail"
-                            type="email" 
-                            required 
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            placeholder="contact@entreprise.sn"
-                            className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-[#FF7900] focus:bg-white transition-all shadow-inner"
-                          />
-                        </div>
+                      {/* Nom complet du représentant */}
+                      <div className="space-y-1.5">
+                        <label htmlFor="mgrName" className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                          <User className="h-3.5 w-3.5 text-[#FF7900]" />
+                          Nom du responsable *
+                        </label>
+                        <input 
+                          id="mgrName"
+                          type="text" 
+                          required 
+                          value={fullName}
+                          onChange={(e) => setFullName(e.target.value)}
+                          placeholder="Ex: Sanou Gueye"
+                          className="w-full rounded-xl border border-slate-200 bg-slate-50/70 px-3.5 py-2.5 text-xs text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-[#FF7900] focus:bg-white transition-all shadow-xs"
+                        />
+                      </div>
 
-                        {/* Adresse */}
-                        <div className="space-y-1.5">
-                          <label htmlFor="mgrAddr" className="text-[11px] font-bold uppercase tracking-wider text-slate-700 block">
-                            Adresse / Ville *
-                          </label>
-                          <input 
-                            id="mgrAddr"
-                            type="text" 
-                            required 
-                            value={physicalAddress}
-                            onChange={(e) => setPhysicalAddress(e.target.value)}
-                            placeholder="Ex: VDN, Dakar, Sénégal"
-                            className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-[#FF7900] focus:bg-white transition-all shadow-inner"
-                          />
-                        </div>
+                      {/* Email professionnel */}
+                      <div className="space-y-1.5">
+                        <label htmlFor="mgrEmail" className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                          <Mail className="h-3.5 w-3.5 text-[#FF7900]" />
+                          E-mail professionnel *
+                        </label>
+                        <input 
+                          id="mgrEmail"
+                          type="email" 
+                          required 
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          placeholder="contact@entreprise.sn"
+                          className="w-full rounded-xl border border-slate-200 bg-slate-50/70 px-3.5 py-2.5 text-xs text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-[#FF7900] focus:bg-white transition-all shadow-xs"
+                        />
+                      </div>
+
+                      {/* Téléphone mobile */}
+                      <div className="space-y-1.5">
+                        <label htmlFor="mgrPhone" className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                          <Phone className="h-3.5 w-3.5 text-[#FF7900]" />
+                          Contact téléphonique (Wave / OM) *
+                        </label>
+                        <input 
+                          id="mgrPhone"
+                          type="tel" 
+                          required 
+                          value={phone}
+                          onChange={(e) => setPhone(e.target.value)}
+                          placeholder="+221 77 123 45 67"
+                          className="w-full rounded-xl border border-slate-200 bg-slate-50/70 px-3.5 py-2.5 text-xs text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-[#FF7900] focus:bg-white transition-all shadow-xs"
+                        />
+                      </div>
+
+                      {/* Adresse / Ville */}
+                      <div className="space-y-1.5 sm:col-span-2">
+                        <label htmlFor="mgrAddr" className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                          <MapPin className="h-3.5 w-3.5 text-[#FF7900]" />
+                          Adresse / Ville *
+                        </label>
+                        <input 
+                          id="mgrAddr"
+                          type="text" 
+                          required 
+                          value={physicalAddress}
+                          onChange={(e) => setPhysicalAddress(e.target.value)}
+                          placeholder="Ex: VDN, Dakar, Sénégal"
+                          className="w-full rounded-xl border border-slate-200 bg-slate-50/70 px-3.5 py-2.5 text-xs text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-[#FF7900] focus:bg-white transition-all shadow-xs"
+                        />
                       </div>
                     </div>
 
-                    {/* Section Mode de Paiement : EXCLUSIVEMENT PAYTECH */}
-                    <div className="pt-2">
-                      <h4 className="text-xs font-black uppercase tracking-wider text-slate-800 flex items-center gap-2 mb-3">
-                        <CreditCard className="h-4 w-4 text-[#FF7900]" />
-                        2. Mode de Règlement Sécurisé
-                      </h4>
-
-                      <div className="relative rounded-2xl p-4 sm:p-5 bg-gradient-to-r from-orange-500/10 via-amber-500/5 to-white border-2 border-orange-400/50 shadow-md">
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                          <div className="flex items-center gap-3.5">
-                            {/* Logo PayTech stylisé */}
-                            <div className="h-12 w-20 bg-gradient-to-br from-[#FF7900] via-orange-600 to-amber-600 rounded-xl flex flex-col items-center justify-center text-white shadow-md border border-orange-400/30 shrink-0">
-                              <span className="font-black text-xs tracking-tight">PAYTECH</span>
-                              <span className="text-[6px] font-extrabold uppercase tracking-widest bg-white/20 px-1.5 rounded mt-0.5">SÉNÉGAL</span>
-                            </div>
-
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-extrabold text-slate-900">
-                                  Passerelle Officielle PayTech
-                                </span>
-                                <Badge className="bg-emerald-500/15 text-emerald-700 border-emerald-300 text-[9px] font-bold px-2 py-0.5">
-                                  Agréé BCEAO
-                                </Badge>
-                              </div>
-                              <p className="text-[11px] text-slate-600 font-light mt-0.5">
-                                Guichet unique sécurisé : Wave, Orange Money, Free Money, Wizall & Cartes Bancaires.
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="h-6 w-6 rounded-full bg-[#FF7900] text-white flex items-center justify-center shadow-sm shrink-0">
-                            <Check className="h-3.5 w-3.5 stroke-[3]" />
-                          </div>
-                        </div>
-
-                        {/* Badges des opérateurs intégrés */}
-                        <div className="mt-3.5 pt-3 border-t border-orange-200/50 flex flex-wrap items-center gap-2 text-[10px] text-slate-600 font-medium">
-                          <span className="text-slate-400 font-semibold">Moyens inclus au guichet :</span>
-                          <span className="px-2 py-0.5 rounded-full bg-sky-100 text-sky-800 font-bold">Wave</span>
-                          <span className="px-2 py-0.5 rounded-full bg-orange-100 text-orange-800 font-bold">Orange Money</span>
-                          <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold">Free Money</span>
-                          <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 font-bold">Wizall</span>
-                          <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-800 font-bold">VISA / Mastercard</span>
-                        </div>
+                    {/* Mode de règlement PayTech épuré */}
+                    <div className="rounded-xl p-3 bg-slate-50 border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                      <div className="flex items-center gap-2 text-xs text-slate-700 font-semibold">
+                        <Lock className="h-4 w-4 text-emerald-600 shrink-0" />
+                        <span>Paiement sécurisé PayTech SN (Agréé BCEAO)</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[10px] font-bold">
+                        <span className="px-2 py-0.5 rounded-md bg-sky-100 text-sky-800">Wave</span>
+                        <span className="px-2 py-0.5 rounded-md bg-orange-100 text-orange-800">Orange Money</span>
+                        <span className="px-2 py-0.5 rounded-md bg-slate-200 text-slate-800">Carte</span>
                       </div>
                     </div>
 
-                    {/* Message d'erreur éventuel ou lien direct */}
+                    {/* Message d'erreur éventuel */}
                     {paytechErrorDetails && (
-                      <div className="p-3.5 rounded-xl border border-amber-200 bg-amber-50/80 text-amber-900 text-xs flex items-start gap-2.5">
+                      <div className="p-3 rounded-xl border border-amber-200 bg-amber-50/80 text-amber-900 text-xs flex items-start gap-2">
                         <HelpCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-                        <div className="space-y-1">
+                        <div className="space-y-0.5">
                           <p className="font-bold text-amber-800">Note de connexion PayTech :</p>
-                          <p className="text-[11px] text-amber-700 leading-relaxed font-light">
-                            {paytechErrorDetails}
-                          </p>
-                          <p className="text-[10px] text-amber-600 font-medium">
-                            Vous pouvez réessayer la passerelle ou utiliser l'option d'activation immédiate ci-dessous pour continuer vos tests sans attendre.
-                          </p>
+                          <p className="text-[11px] text-amber-700 font-light">{paytechErrorDetails}</p>
                         </div>
                       </div>
                     )}
@@ -1151,17 +1147,17 @@ function LandingPage() {
                       <Button 
                         type="submit"
                         disabled={isPaytechRedirecting}
-                        className="w-full bg-gradient-to-r from-[#FF7900] via-orange-600 to-amber-600 hover:from-orange-600 hover:to-orange-700 text-white font-extrabold text-sm h-12 rounded-2xl shadow-xl shadow-orange-500/25 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2.5 cursor-pointer"
+                        className="w-full bg-gradient-to-r from-[#FF7900] via-orange-600 to-amber-600 hover:from-orange-600 hover:to-orange-700 text-white font-extrabold text-sm h-11 rounded-xl shadow-lg shadow-orange-500/25 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer"
                       >
                         {isPaytechRedirecting ? (
                           <>
-                            <Loader2 className="h-5 w-5 animate-spin text-white" />
+                            <Loader2 className="h-4 w-4 animate-spin text-white" />
                             <span>Ouverture du guichet PayTech SN en cours...</span>
                           </>
                         ) : (
                           <>
                             <Lock className="h-4 w-4" />
-                            <span>Payer {checkoutPlan.value.toLocaleString("fr-FR")} FCFA via PayTech</span>
+                            <span>Valider & Payer {checkoutPlan.value.toLocaleString("fr-FR")} FCFA</span>
                             <ArrowRight className="h-4 w-4" />
                           </>
                         )}
@@ -1194,18 +1190,16 @@ function LandingPage() {
                               toast.error("Veuillez saisir au minimum le nom de votre entreprise et votre email.");
                               return;
                             }
-                            if (!generatedPassword) {
-                              const pass = "INOVA-" + Math.random().toString(36).substring(2, 6).toUpperCase() + "-" + Math.random().toString(36).substring(2, 6).toUpperCase();
-                              setGeneratedPassword(pass);
-                            }
+                            const pass = generatedPassword || "INOVA-" + Math.random().toString(36).substring(2, 6).toUpperCase() + "-" + Math.random().toString(36).substring(2, 6).toUpperCase();
+                            setGeneratedPassword(pass);
                             const registeredUser = {
                               email,
-                              password: generatedPassword || "INOVA-DEMO-2026",
+                              password: pass,
                               fullName: fullName || "Responsable SOC",
                               companyName: companyName || "Entreprise Démo",
                               phone: phone || "77 000 00 00",
                               address: physicalAddress || "Dakar",
-                              sector: businessSector,
+                              sector: "Cybersécurité",
                               planId: checkoutPlan.id,
                               planName: checkoutPlan.name,
                               paymentMethod: "PAYTECH"

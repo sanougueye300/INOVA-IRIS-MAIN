@@ -18,6 +18,7 @@ import type { AppRole } from "@/lib/auth-context";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
+import { recordAuditEvent } from "@/lib/audit-log";
 
 export const Route = createFileRoute("/facturation")({
   head: () => ({ meta: [{ title: "Facturation & Rappels — SOC Platform" }] }),
@@ -71,21 +72,356 @@ const PRESET_TEMPLATES = {
   amical: {
     label: "Rappel Amical (Douce Relance)",
     subject: "Rappel concernant votre facture d'abonnement CyberSOC Sonatel",
-    body: "Bonjour [Nom],\n\nNous espérons que vous allez bien. Sauf erreur de notre part, le paiement de votre facture d'abonnement [Facture] d'un montant de [Montant] € n'a pas encore été reçu. Nous vous invitons à régulariser votre compte dès que possible.\n\nCordialement,\nL'équipe Sonatel CyberSOC"
+    body: "Bonjour [Nom],\n\nNous espérons que vous allez bien. Sauf erreur de notre part, le paiement de votre facture d'abonnement [Facture] d'un montant de [Montant] FCFA n'a pas encore été reçu. Nous vous invitons à régulariser votre compte dès que possible.\n\nCordialement,\nL'équipe Sonatel CyberSOC"
   },
   standard: {
     label: "Avertissement Standard (Relance intermédiaire)",
     subject: "URGENT : Régularisation de votre facture Sonatel CyberSOC",
-    body: "Bonjour [Nom],\n\nNous vous informons que la facture [Facture] d'un montant de [Montant] € est en attente de paiement depuis le [Echeance]. Veuillez procéder au règlement sous 48h afin de maintenir l'accès complet à vos services de détection d'alertes.\n\nCordialement,\nDirection Commerciale Orange Sonatel"
+    body: "Bonjour [Nom],\n\nNous vous informons que la facture [Facture] d'un montant de [Montant] FCFA est en attente de paiement depuis le [Echeance]. Veuillez procéder au règlement sous 48h afin de maintenir l'accès complet à vos services de détection d'alertes.\n\nCordialement,\nDirection Commerciale Orange Sonatel"
   },
   severe: {
     label: "Dernière Mise en Demeure (Avant suspension)",
     subject: "MISE EN DEMEURE : Suspension imminente de vos accès de sécurité",
-    body: "IMPORTANT - [Nom],\n\nMalgré nos précédentes relances, la facture [Facture] ([Montant] €) reste impayée. Sans règlement reçu d'ici 24 heures, nous serons contraints de suspendre vos quotas d'agents Wazuh et l'accès à la console de réponse aux incidents.\n\nCordialement,\nService Contentieux Orange Business"
+    body: "IMPORTANT - [Nom],\n\nMalgré nos précédentes relances, la facture [Facture] ([Montant] FCFA) reste impayée. Sans règlement reçu d'ici 24 heures, nous serons contraints de suspendre vos quotas d'agents Wazuh et l'accès à la console de réponse aux incidents.\n\nCordialement,\nService Contentieux Orange Business"
   }
 };
 
+// ─────────────────────────────────────────────────────────────
+// Composant Abonnements PayTech (onglet dans Module Facturation)
+// ─────────────────────────────────────────────────────────────
+type SubStatus2 = "active" | "past_due" | "canceled" | "pending";
+
+interface PaytechSub {
+  id: string;
+  stripe_subscription_id: string | null;
+  offer_id: string;
+  offer_name: string;
+  status: SubStatus2;
+  amount: number;
+  currency: string;
+  current_period_start: string | null;
+  current_period_end: string | null;
+  client_email: string | null;
+  client_name: string | null;
+  client_phone: string | null;
+  organization: string | null;
+  created_at: string;
+}
+
+const PLAN_HIERARCHY: { id: string; name: string; price: number; features: string[]; color: string }[] = [
+  { id: "inova-secure", name: "Inova Secure", price: 100000, color: "from-orange-500 to-amber-500", features: ["10 PCs max", "SIEM Wazuh EDR de base", "Support 8h-18h L-V"] },
+  { id: "terranga-secure", name: "Terranga Secure", price: 250000, color: "from-blue-500 to-cyan-500", features: ["25 PCs max", "SOAR Pipeline", "Gestion incidents TheHive", "Support 24h/7 L-V"] },
+  { id: "gainde-secure", name: "Gainde Secure", price: 500000, color: "from-yellow-500 to-amber-600", features: ["50 PCs max", "Threat Intel MISP", "Analyste SOC Dédié 24/7/365"] },
+];
+
+function AbonnementsPaytech() {
+  const [subs, setSubs] = useState<PaytechSub[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [upgradeTarget, setUpgradeTarget] = useState<PaytechSub | null>(null);
+  const [upgradePlan, setUpgradePlan] = useState<typeof PLAN_HIERARCHY[0] | null>(null);
+  const [upgrading, setUpgrading] = useState(false);
+
+  useEffect(() => {
+    setLoading(true);
+    let list: PaytechSub[] = [];
+
+    // Merge from Supabase and localStorage
+    const runLoad = async () => {
+      try {
+        const { data } = await (supabase as any).from("subscriptions").select("*").order("created_at", { ascending: false });
+        if (data) list = data as PaytechSub[];
+      } catch (e) {
+        console.warn("Could not load from Supabase:", e);
+      }
+      try {
+        const localRaw = localStorage.getItem("inova_paid_subscriptions");
+        if (localRaw) {
+          const local: PaytechSub[] = JSON.parse(localRaw);
+          for (const item of local) {
+            if (!list.some((s) => s.id === item.id || (s.stripe_subscription_id && s.stripe_subscription_id === item.stripe_subscription_id))) {
+              list.unshift(item);
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("Could not load from localStorage:", e);
+      }
+      setSubs(list);
+      setLoading(false);
+    };
+    runLoad();
+  }, []);
+
+  const handleUpgrade = async () => {
+    if (!upgradeTarget || !upgradePlan) return;
+    setUpgrading(true);
+    try {
+      const { createPaytechCheckout } = await import("@/lib/paytech");
+      const result = await createPaytechCheckout({
+        offerId: upgradePlan.id,
+        offerName: upgradePlan.name,
+        amount: upgradePlan.price,
+        customer: {
+          email: upgradeTarget.client_email || "",
+          fullName: upgradeTarget.client_name || "",
+          phone: upgradeTarget.client_phone || "",
+          companyName: upgradeTarget.organization || "",
+        },
+      });
+      if (result.success && result.redirect_url) {
+        window.location.href = result.redirect_url;
+      } else {
+        toast.error("Erreur PayTech", { description: result.error || "Impossible d'initier la migration." });
+      }
+    } catch (e) {
+      toast.error("Erreur", { description: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setUpgrading(false);
+    }
+  };
+
+  const fmtAmount = (amount: number, currency: string) =>
+    currency.toUpperCase() === "XOF"
+      ? `${amount.toLocaleString("fr-FR")} FCFA`
+      : `${amount.toLocaleString()} ${currency.toUpperCase()}`;
+
+  const fmtDate = (d: string | null) => d ? new Date(d).toLocaleDateString("fr-FR") : "—";
+
+  const statusCfg: Record<SubStatus2, { label: string; cls: string }> = {
+    active:   { label: "Actif",       cls: "bg-emerald-500/10 text-emerald-600 border-emerald-500/30" },
+    past_due: { label: "En retard",   cls: "bg-red-500/10 text-red-600 border-red-500/30 animate-pulse" },
+    canceled: { label: "Annulé",      cls: "bg-slate-500/10 text-slate-500 border-slate-300" },
+    pending:  { label: "En attente",  cls: "bg-amber-500/10 text-amber-600 border-amber-500/30" },
+  };
+
+  const totalRevenu = subs.filter(s => s.status === "active").reduce((acc, s) => acc + s.amount, 0);
+  const activeCount = subs.filter(s => s.status === "active").length;
+
+  if (loading) {
+    return (
+      <div className="space-y-4 animate-in fade-in duration-300">
+        {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-20 rounded-2xl" />)}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-300">
+
+      {/* Stats row */}
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Card className="bg-gradient-to-br from-emerald-500/10 to-teal-500/5 border border-emerald-500/20 rounded-2xl shadow-sm p-5">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-emerald-500/10 rounded-xl"><CreditCard className="h-5 w-5 text-emerald-500" /></div>
+            <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Abonnements Actifs</span>
+          </div>
+          <div className="text-3xl font-extrabold text-emerald-600">{activeCount}</div>
+          <div className="text-[10px] text-muted-foreground mt-1">{subs.length} abonnement{subs.length !== 1 ? "s" : ""} total</div>
+        </Card>
+        <Card className="bg-gradient-to-br from-amber-500/10 to-orange-500/5 border border-amber-500/20 rounded-2xl shadow-sm p-5">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-amber-500/10 rounded-xl"><DollarSign className="h-5 w-5 text-amber-500" /></div>
+            <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Revenu Wave (FCFA)</span>
+          </div>
+          <div className="text-3xl font-extrabold text-amber-600">{totalRevenu.toLocaleString("fr-FR")}</div>
+          <div className="text-[10px] text-muted-foreground mt-1">Paiements PayTech Wave confirmés</div>
+        </Card>
+        <Card className="bg-gradient-to-br from-blue-500/10 to-indigo-500/5 border border-blue-500/20 rounded-2xl shadow-sm p-5">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-blue-500/10 rounded-xl"><ArrowRight className="h-5 w-5 text-blue-500" /></div>
+            <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Migrations disponibles</span>
+          </div>
+          <div className="text-3xl font-extrabold text-blue-600">{subs.filter(s => s.status === "active").length}</div>
+          <div className="text-[10px] text-muted-foreground mt-1">Offres supérieures éligibles</div>
+        </Card>
+      </div>
+
+      {/* Subscriptions Table */}
+      <Card className="bg-white/80 dark:bg-zinc-900/60 backdrop-blur border border-slate-100 dark:border-zinc-800 shadow-xl rounded-2xl overflow-hidden">
+        <CardHeader className="px-6 py-5 border-b border-slate-100 dark:border-zinc-850">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-base font-extrabold">Abonnements PayTech Wave</CardTitle>
+              <CardDescription className="text-xs mt-0.5">Tous les paiements confirmés via PayTech Wave / Orange Money</CardDescription>
+            </div>
+            <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 text-xs font-bold px-3 py-1">
+              {subs.length} entrée{subs.length !== 1 ? "s" : ""}
+            </Badge>
+          </div>
+        </CardHeader>
+
+        {subs.length === 0 ? (
+          <div className="py-20 text-center">
+            <CreditCard className="h-12 w-12 text-muted-foreground/20 mx-auto mb-4" />
+            <p className="text-sm font-semibold text-muted-foreground">Aucun abonnement PayTech enregistré.</p>
+            <p className="text-xs text-muted-foreground/70 mt-1">Les paiements Wave / Orange Money apparaîtront ici après confirmation.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-slate-50 dark:bg-zinc-950">
+                  {["Client / Organisation", "Offre Souscrite", "Statut", "Montant", "Période", "Créé le", "Actions"].map(h => (
+                    <TableHead key={h} className="text-[10px] font-black uppercase tracking-wider text-muted-foreground py-4 px-4">{h}</TableHead>
+                  ))}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {subs.map((sub) => {
+                  const st = statusCfg[sub.status] ?? statusCfg.pending;
+                  const currentPlanIdx = PLAN_HIERARCHY.findIndex(p => p.id === sub.offer_id);
+                  const upgradePlans = PLAN_HIERARCHY.filter((_, i) => i > currentPlanIdx);
+                  return (
+                    <TableRow key={sub.id} className="hover:bg-slate-50/60 dark:hover:bg-zinc-950/30 border-b border-slate-100 dark:border-zinc-850 transition-colors">
+                      <TableCell className="py-4 px-4">
+                        <div className="text-xs font-black text-slate-800 dark:text-zinc-100">{sub.organization || sub.client_name || "—"}</div>
+                        <div className="text-[10px] text-muted-foreground font-semibold mt-0.5">{sub.client_email || "—"}</div>
+                        {sub.client_phone && <div className="text-[10px] text-muted-foreground/60">{sub.client_phone}</div>}
+                      </TableCell>
+                      <TableCell className="py-4 px-4">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full border text-[10px] font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-700 border-emerald-500/30">
+                          {sub.offer_name}
+                        </span>
+                      </TableCell>
+                      <TableCell className="py-4 px-4">
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[10px] font-black uppercase tracking-wider ${st.cls}`}>
+                          {st.label}
+                        </span>
+                      </TableCell>
+                      <TableCell className="py-4 px-4">
+                        <span className="text-sm font-black text-slate-800 dark:text-zinc-100">{fmtAmount(sub.amount, sub.currency)}</span>
+                      </TableCell>
+                      <TableCell className="py-4 px-4">
+                        {sub.current_period_start && sub.current_period_end ? (
+                          <div className="text-xs text-muted-foreground font-semibold space-y-0.5">
+                            <div className="flex items-center gap-1"><Calendar className="h-3 w-3 shrink-0" />{fmtDate(sub.current_period_start)}</div>
+                            <div className="text-[10px] text-muted-foreground/70">→ {fmtDate(sub.current_period_end)}</div>
+                          </div>
+                        ) : <span className="text-xs text-muted-foreground">—</span>}
+                      </TableCell>
+                      <TableCell className="py-4 px-4 text-xs text-muted-foreground font-semibold">{fmtDate(sub.created_at)}</TableCell>
+                      <TableCell className="py-4 px-4">
+                        <div className="flex gap-2">
+                          {sub.status === "active" && upgradePlans.length > 0 && (
+                            <div className="relative group">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 text-[10px] font-black uppercase bg-gradient-to-r from-amber-500/10 to-orange-500/10 border-amber-500/30 text-amber-600 hover:bg-amber-500 hover:text-white rounded-lg transition-all"
+                                onClick={() => { setUpgradeTarget(sub); setUpgradePlan(upgradePlans[0]); }}
+                              >
+                                <ArrowRight className="h-3 w-3 mr-1" />
+                                Migrer
+                              </Button>
+                            </div>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 text-[10px] font-black uppercase hover:bg-emerald-500/10 hover:text-emerald-600 text-emerald-600 rounded-lg"
+                            onClick={() => window.open("https://paytech.sn/dashboard", "_blank")}
+                          >
+                            <ExternalLink className="h-3 w-3 mr-1" />
+                            PayTech
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </Card>
+
+      {/* Migration Modal */}
+      {upgradeTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl max-w-lg w-full p-8 space-y-6 animate-in fade-in zoom-in-95 duration-300">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-amber-500/10 rounded-2xl">
+                <ArrowRight className="h-6 w-6 text-amber-500" />
+              </div>
+              <div>
+                <h3 className="text-lg font-extrabold text-slate-900 dark:text-zinc-100">Migration d'Offre</h3>
+                <p className="text-xs text-muted-foreground">Choisissez l'offre vers laquelle migrer</p>
+              </div>
+            </div>
+
+            {/* Current plan */}
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700">
+              <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground mb-1">Offre actuelle</p>
+              <p className="text-sm font-extrabold text-slate-800 dark:text-zinc-200">{upgradeTarget.offer_name}</p>
+              <p className="text-xs text-muted-foreground">{fmtAmount(upgradeTarget.amount, upgradeTarget.currency)} / mois</p>
+            </div>
+
+            {/* Plan selection */}
+            <div className="space-y-3">
+              <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Offres supérieures disponibles</p>
+              {(() => {
+                const currentIdx = PLAN_HIERARCHY.findIndex(p => p.id === upgradeTarget.offer_id);
+                const available = PLAN_HIERARCHY.filter((_, i) => i > currentIdx);
+                return available.map(plan => (
+                  <button
+                    key={plan.id}
+                    onClick={() => setUpgradePlan(plan)}
+                    className={`w-full text-left p-4 rounded-2xl border-2 transition-all duration-200 ${upgradePlan?.id === plan.id
+                      ? "border-amber-500 bg-amber-500/5 shadow-md"
+                      : "border-slate-200 dark:border-zinc-700 hover:border-amber-300"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className={`inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider text-white bg-gradient-to-r ${plan.color} mb-2`}>
+                          {plan.name}
+                        </div>
+                        <ul className="space-y-0.5">
+                          {plan.features.map(f => (
+                            <li key={f} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                              <CheckCircle className="h-3 w-3 text-emerald-500 shrink-0" />
+                              {f}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div className="text-right ml-4">
+                        <div className="text-lg font-extrabold text-slate-900 dark:text-zinc-100">{plan.price.toLocaleString("fr-FR")}</div>
+                        <div className="text-[10px] text-muted-foreground">FCFA / mois</div>
+                      </div>
+                    </div>
+                  </button>
+                ));
+              })()}
+            </div>
+
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                className="flex-1 rounded-xl font-bold"
+                onClick={() => { setUpgradeTarget(null); setUpgradePlan(null); }}
+                disabled={upgrading}
+              >
+                Annuler
+              </Button>
+              <Button
+                className="flex-1 rounded-xl font-extrabold bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white gap-2"
+                onClick={handleUpgrade}
+                disabled={upgrading || !upgradePlan}
+              >
+                {upgrading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
+                Procéder à la migration
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Facturation() {
+
   const hash = useRouterState({ select: (s) => (s.location.hash ?? "").replace(/^#/, "") });
   const [activeTab, setActiveTab] = useState<string>("dashboard");
 
@@ -111,7 +447,7 @@ function Facturation() {
 
   // Synchronize Tab with Page Hash
   useEffect(() => {
-    if (["dashboard", "invoices", "contracts", "reminders"].includes(hash)) {
+    if (["dashboard", "invoices", "contracts", "reminders", "abonnements"].includes(hash)) {
       setActiveTab(hash);
     } else {
       setActiveTab("dashboard");
@@ -134,13 +470,13 @@ function Facturation() {
       setClients(clientProfiles);
 
       // Load or build Invoices
-      const storedInvoices = localStorage.getItem("soc_billing_invoices");
+      const storedInvoices = localStorage.getItem("soc_billing_invoices_v2");
       if (storedInvoices) {
         setInvoices(JSON.parse(storedInvoices));
       } else {
         // Generate dynamic mock invoices based on clients
         const formulas = ["Platine", "Or", "Argent", "Bronze"];
-        const amounts = [2500, 1500, 750, 450];
+        const amounts = [1500000, 750000, 350000, 150000];
         const generated: Invoice[] = clientProfiles.flatMap((c, index) => {
           const formIdx = index % formulas.length;
           const formula = formulas[formIdx];
@@ -189,7 +525,7 @@ function Facturation() {
               organization: fallbackOrg,
               client_email: "obs.billing@orange-sonatel.com",
               client_phone: "+221 77 567 43 21",
-              amount: 3500,
+              amount: 350000,
               issue_date: "01/05/2026",
               due_date: "15/05/2026",
               status: "en_retard",
@@ -205,7 +541,7 @@ function Facturation() {
               organization: fallbackOrg,
               client_email: "obs.billing@orange-sonatel.com",
               client_phone: "+221 77 567 43 21",
-              amount: 3500,
+              amount: 350000,
               issue_date: "15/05/2026",
               due_date: "30/05/2026",
               status: "en_attente",
@@ -215,9 +551,41 @@ function Facturation() {
           );
         }
 
-        setInvoices(generated);
-        localStorage.setItem("soc_billing_invoices", JSON.stringify(generated));
+        localStorage.setItem("soc_billing_invoices_v2", JSON.stringify(generated));
       }
+
+      let finalInvoices: Invoice[] = storedInvoices ? JSON.parse(storedInvoices) : [];
+
+      // Inject invoices from PayTech paid subscriptions
+      try {
+        const localPaidRaw = localStorage.getItem("inova_paid_subscriptions");
+        if (localPaidRaw) {
+          const localPaid = JSON.parse(localPaidRaw);
+          const paytechInvoices: Invoice[] = localPaid.map((p: any, idx: number) => ({
+            id: `paytech-inv-${p.id || idx}`,
+            invoice_number: `FACT-PT-${(p.stripe_subscription_id || "").replace("paytech_", "").substring(0, 8).toUpperCase() || (1000 + idx)}`,
+            client_id: p.id || `client-${idx}`,
+            organization: p.organization || "Paiement Wave PayTech",
+            client_email: p.client_email || "client@paytech.sn",
+            client_phone: p.client_phone || "+221 77 000 00 00",
+            amount: p.amount || 104,
+            issue_date: new Date(p.created_at || Date.now()).toLocaleDateString("fr-FR"),
+            due_date: new Date(Date.now() + 30 * 86400000).toLocaleDateString("fr-FR"),
+            status: "a_jour" as const,
+            reminders_sent: 0,
+            formula: p.offer_name || "Abonnement SOC (PayTech Wave)",
+          }));
+          for (const ptInv of paytechInvoices) {
+            if (!finalInvoices.some((i) => i.id === ptInv.id || i.invoice_number === ptInv.invoice_number)) {
+              finalInvoices.unshift(ptInv);
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to inject paytech invoices", e);
+      }
+
+      setInvoices(finalInvoices);
 
       // Load Reminders history logs
       const storedLogs = localStorage.getItem("soc_billing_reminders");
@@ -231,7 +599,7 @@ function Facturation() {
             client_name: "OBS Security Division",
             invoice_number: "FACT-2026-0982",
             channel: "email",
-            message: "Rappel concernant votre facture d'abonnement CyberSOC d'un montant de 3 500 €",
+            message: "Rappel concernant votre facture d'abonnement CyberSOC d'un montant de 350 000 FCFA",
             status: "delivered"
           }
         ];
@@ -347,6 +715,12 @@ function Facturation() {
     const updatedLogs = [newLog, ...remindersLog];
     setRemindersLog(updatedLogs);
     localStorage.setItem("soc_billing_reminders", JSON.stringify(updatedLogs));
+    void recordAuditEvent("INVOICE_REMINDER_SEND", selectedInvoice.invoice_number, {
+      invoice_id: selectedInvoice.id,
+      client_name: selectedInvoice.organization,
+      channel: reminderChannel,
+      status: "delivered",
+    }, selectedInvoice.organization, "staff");
 
     toast.success("Rappel transmis", {
       description: `La facture ${selectedInvoice.invoice_number} a fait l'objet d'une relance.`
@@ -422,7 +796,7 @@ function Facturation() {
             { id: "dashboard", label: "Tableau de Bord", icon: BarChart3 },
             { id: "invoices", label: "Factures & Échéances", icon: FileText },
             { id: "contracts", label: "Contrats Clients", icon: Briefcase },
-            { id: "reminders", label: "Relances & Rappels", icon: BellRing }
+            { id: "abonnements", label: "Abonnements PayTech", icon: CreditCard }
           ].map((tab) => {
             const active = activeTab === tab.id;
             return (
@@ -472,7 +846,7 @@ function Facturation() {
                     </CardHeader>
                     <CardContent>
                       <div className="text-2xl font-black text-slate-900 dark:text-white">
-                        {stats.totalRevenue.toLocaleString()} €
+                        {stats.totalRevenue.toLocaleString("fr-FR")} FCFA
                       </div>
                       <p className="text-[10px] text-emerald-500 font-bold mt-1">
                         +12.4% comparé au mois précédent
@@ -489,7 +863,7 @@ function Facturation() {
                     </CardHeader>
                     <CardContent>
                       <div className="text-2xl font-black text-slate-900 dark:text-white">
-                        {stats.unpaidRevenue.toLocaleString()} €
+                        {stats.unpaidRevenue.toLocaleString("fr-FR")} FCFA
                       </div>
                       <p className="text-[10px] text-amber-500 font-bold mt-1">
                         En attente ou retard de facturation
@@ -506,7 +880,7 @@ function Facturation() {
                     </CardHeader>
                     <CardContent>
                       <div className="text-2xl font-black text-red-500">
-                        {stats.overdueRevenue.toLocaleString()} €
+                        {stats.overdueRevenue.toLocaleString("fr-FR")} FCFA
                       </div>
                       <p className="text-[10px] text-red-500 font-bold mt-1">
                         {stats.overdueCount} facture(s) en souffrance
@@ -543,13 +917,13 @@ function Facturation() {
                     </h3>
                     <div className="h-[250px] flex items-end justify-between gap-2 pt-6">
                       {[
-                        { month: "Jan", val: 4000, max: 7000 },
-                        { month: "Féb", val: 5500, max: 7000 },
-                        { month: "Mar", val: 6800, max: 7000 },
-                        { month: "Avr", val: 7800, max: 9000 },
-                        { month: "Mai", val: stats.totalRevenue, max: 12000 }
+                        { month: "Jan", val: 1800000, max: 4000000 },
+                        { month: "Féb", val: 2400000, max: 4000000 },
+                        { month: "Mar", val: 2900000, max: 4000000 },
+                        { month: "Avr", val: 3200000, max: 4000000 },
+                        { month: "Mai", val: stats.totalRevenue || 3500000, max: 4000000 }
                       ].map((bar) => {
-                        const pct = (bar.val / bar.max) * 100;
+                        const pct = Math.min(100, (bar.val / bar.max) * 100);
                         return (
                           <div key={bar.month} className="flex-1 flex flex-col items-center gap-2">
                             <div className="w-full bg-slate-100 dark:bg-zinc-950 rounded-xl h-[180px] relative overflow-hidden flex items-end">
@@ -559,7 +933,7 @@ function Facturation() {
                               />
                             </div>
                             <span className="text-[10px] font-black text-muted-foreground uppercase">{bar.month}</span>
-                            <span className="text-[9px] font-mono text-muted-foreground/80 font-bold">{bar.val.toLocaleString()} €</span>
+                            <span className="text-[9px] font-mono text-muted-foreground/80 font-bold">{bar.val.toLocaleString("fr-FR")} FCFA</span>
                           </div>
                         );
                       })}
@@ -605,6 +979,11 @@ function Facturation() {
 
                 </div>
               </div>
+            )}
+
+            {/* TAB ABONNEMENTS PAYTECH */}
+            {activeTab === "abonnements" && (
+              <AbonnementsPaytech />
             )}
 
             {/* TAB 2: FACTURES ET ECHEANCES */}
@@ -684,7 +1063,7 @@ function Facturation() {
                                 {inv.due_date}
                               </TableCell>
                               <TableCell className="text-xs font-black text-slate-800 dark:text-zinc-200 py-4">
-                                {inv.amount.toLocaleString()} €
+                                {inv.amount.toLocaleString("fr-FR")} FCFA
                               </TableCell>
                               <TableCell className="py-4">
                                 {getStatusBadge(inv.status)}
@@ -1149,7 +1528,7 @@ function Facturation() {
                           
                           <div className="flex justify-between items-center">
                             <span className="text-[10px] font-black uppercase tracking-wider text-slate-700">Montant Net :</span>
-                            <span className="text-xs font-extrabold text-amber-500">{selectedInvoice.amount.toLocaleString()} €</span>
+                            <span className="text-xs font-extrabold text-amber-500">{selectedInvoice.amount.toLocaleString("fr-FR")} FCFA</span>
                           </div>
                         </div>
 

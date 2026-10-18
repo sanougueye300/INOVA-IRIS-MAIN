@@ -16,7 +16,7 @@ const PROTOCOLS = [
   { id: "wazuh", label: "Wazuh EDR", icon: Shield, score: 25 },
   { id: "shuffle", label: "Shuffle SOAR", icon: Zap, score: 25 },
   { id: "misp", label: "MISP Intel", icon: Globe2, score: 25 },
-  { id: "dfir", label: "DFIR Forensics", icon: Eye, score: 25 },
+  { id: "thehive", label: "TheHive SIRP", icon: Eye, score: 25 },
 ];
 
 const STATS = [
@@ -51,7 +51,7 @@ function AnimatedCounter({ target, suffix, duration = 2000 }: { target: number; 
 export function LandingHero() {
   const [threatLevel, setThreatLevel] = useState("stable");
   const [activeProtocols, setActiveProtocols] = useState<Record<string, boolean>>({
-    wazuh: true, shuffle: true, misp: true, dfir: true,
+    wazuh: true, shuffle: true, misp: true, thehive: true,
   });
   const [aiTyping, setAiTyping] = useState(false);
   const [aiText, setAiText] = useState(AI_MESSAGES.stable);
@@ -300,7 +300,7 @@ export function LandingHero() {
                   { name: "TheHive", status: "Opérationnel", dot: "bg-emerald-400" },
                   { name: "MISP", status: "2450 IOCs", dot: "bg-emerald-400" },
                   { name: "VirusTotal", status: "Quota 82%", dot: "bg-amber-400" },
-                  { name: "DFIR-IRIS", status: "Opérationnel", dot: "bg-emerald-400" },
+                  { name: "Djib'son IA", status: "Opérationnel", dot: "bg-emerald-400" },
                 ].map((m) => (
                   <div key={m.name} className="flex items-center gap-2.5 rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2.5">
                     <span className={`h-1.5 w-1.5 rounded-full ${m.dot} shrink-0`} />

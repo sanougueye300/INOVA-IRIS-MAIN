@@ -41,18 +41,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const mockUser = JSON.parse(mockUserStr);
         setUser(mockUser);
         setSession({ user: mockUser } as any);
-        setRoles(["admin", "client"]);
+        setRoles(["client"]);
         setOrganization(mockUser.organization || "Client Souscrit");
         setLoading(false);
-        
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => {
-          if (!s) {
+
+        const applyRealSession = (s: Session | null) => {
+          if (s?.user) {
+            localStorage.removeItem("inova_mock_user");
+            setSession(s);
+            setUser(s.user);
+            setLoading(false);
+            setTimeout(() => { loadProfile(s.user.id); }, 0);
+          } else {
             localStorage.removeItem("inova_mock_user");
             setUser(null);
             setSession(null);
             setRoles([]);
             setOrganization(null);
           }
+        };
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => {
+          if (s?.user) applyRealSession(s);
+          else if (_e === "SIGNED_OUT") applyRealSession(null);
+        });
+        supabase.auth.getSession().then(({ data: { session: s } }) => {
+          if (s?.user) applyRealSession(s);
         });
         return () => subscription.unsubscribe();
       } catch (e) {

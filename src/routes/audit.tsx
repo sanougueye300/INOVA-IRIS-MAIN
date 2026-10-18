@@ -9,6 +9,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RequireAuth } from "@/components/RequireAuth";
 import { useAuth } from "@/lib/auth-context";
+import { supabase } from "@/integrations/supabase/client";
+import { getLocalAuditEvents, LOCAL_AUDIT_EVENT } from "@/lib/audit-log";
 import { 
   FileText, Search, Download, Filter, Eye, ShieldAlert, User, 
   Server, Terminal, Lock, CheckCircle2, AlertTriangle, XCircle, 
@@ -22,28 +24,106 @@ export const Route = createFileRoute("/audit")({
 });
 
 // Mock Audit Logs
-const AUDIT_LOGS = [
-  { id: "al-001", date: "17 Mai 2026 14:32:01", user: "admin@sonatel.com", action: "UPDATE_CONFIG", resource: "Wazuh API", ip: "192.168.1.45", status: "success", details: '{"endpoint":"/manager/configuration", "method":"PUT", "changes":["syscheck.frequency: 43200"]}' },
-  { id: "al-002", date: "17 Mai 2026 14:15:22", user: "analyst1@sonatel.com", action: "CLOSE_INCIDENT", resource: "TheHive Case #TH-4829", ip: "10.0.4.12", status: "success", details: '{"caseId":"TH-4829", "resolutionStatus":"TruePositive", "summary":"Malware isolé et supprimé par EDR."}' },
-  { id: "al-003", date: "17 Mai 2026 13:05:11", user: "system", action: "TRIGGER_PLAYBOOK", resource: "Shuffle Workflow", ip: "127.0.0.1", status: "success", details: '{"playbook":"Auto_Isolate_Host", "trigger":"Wazuh_Alert_100200", "executionTime":"1.2s"}' },
-  { id: "al-004", date: "17 Mai 2026 11:42:55", user: "manager@sonatel.com", action: "USER_LOGIN_FAILED", resource: "Auth Service", ip: "41.82.19.123", status: "failure", details: '{"reason":"Invalid MFA Token", "attempts": 3, "location":"Dakar, SN"}' },
-  { id: "al-005", date: "17 Mai 2026 11:45:02", user: "manager@sonatel.com", action: "USER_LOGIN", resource: "Auth Service", ip: "41.82.19.123", status: "success", details: '{"mfa":"Verified", "sessionType":"Web", "userAgent":"Mozilla/5.0"}' },
-  { id: "al-006", date: "16 Mai 2026 18:20:00", user: "system", action: "API_QUOTA_WARNING", resource: "VirusTotal API", ip: "127.0.0.1", status: "warning", details: '{"quota_used": 850, "quota_limit": 1000, "message":"Approaching daily limit"}' },
-  { id: "al-007", date: "16 Mai 2026 09:12:33", user: "admin@sonatel.com", action: "CREATE_CLIENT", resource: "Client Management", ip: "192.168.1.45", status: "success", details: '{"clientId":"cl-8821", "organization":"Orange CI", "role":"Client"}' },
+interface AuditLogEntry {
+  id: string;
+  date: string;
+  user: string;
+  action: string;
+  resource: string;
+  ip: string;
+  status: string;
+  details: string;
+  organization?: string | null;
+  actor_scope?: "client" | "staff";
+  client_id?: string | null;
+  timestamp?: number;
+}
+
+function formatAuditTimestamp(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Date invalide";
+  return new Intl.DateTimeFormat("fr-FR", {
+    timeZone: "Africa/Dakar",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).format(date);
+}
+
+const AUDIT_LOGS: AuditLogEntry[] = [
+  { id: "al-001", date: "17/05/2026 14:32:01", user: "admin@sonatel.com", action: "UPDATE_CONFIG", resource: "Wazuh API", ip: "192.168.1.45", status: "success", details: '{"endpoint":"/manager/configuration", "method":"PUT", "changes":["syscheck.frequency: 43200"]}', actor_scope: "staff", timestamp: Date.UTC(2026, 4, 17, 14, 32, 1) },
+  { id: "al-002", date: "17/05/2026 14:15:22", user: "analyst1@sonatel.com", action: "CLOSE_INCIDENT", resource: "TheHive Case #TH-4829", ip: "10.0.4.12", status: "success", details: '{"caseId":"TH-4829", "resolutionStatus":"TruePositive", "summary":"Malware isolé et supprimé par EDR."}', actor_scope: "staff", timestamp: Date.UTC(2026, 4, 17, 14, 15, 22) },
+  { id: "al-003", date: "17/05/2026 13:05:11", user: "system", action: "TRIGGER_PLAYBOOK", resource: "Shuffle Workflow", ip: "127.0.0.1", status: "success", details: '{"playbook":"Auto_Isolate_Host", "trigger":"Wazuh_Alert_100200", "executionTime":"1.2s"}', actor_scope: "staff", timestamp: Date.UTC(2026, 4, 17, 13, 5, 11) },
+  { id: "al-004", date: "17/05/2026 11:42:55", user: "manager@sonatel.com", action: "USER_LOGIN_FAILED", resource: "Auth Service", ip: "41.82.19.123", status: "failure", details: '{"reason":"Invalid MFA Token", "attempts": 3, "location":"Dakar, SN"}', actor_scope: "staff", timestamp: Date.UTC(2026, 4, 17, 11, 42, 55) },
+  { id: "al-005", date: "17/05/2026 11:45:02", user: "manager@sonatel.com", action: "USER_LOGIN", resource: "Auth Service", ip: "41.82.19.123", status: "success", details: '{"mfa":"Verified", "sessionType":"Web", "userAgent":"Mozilla/5.0"}', actor_scope: "staff", timestamp: Date.UTC(2026, 4, 17, 11, 45, 2) },
+  { id: "al-006", date: "16/05/2026 18:20:00", user: "system", action: "API_QUOTA_WARNING", resource: "VirusTotal API", ip: "127.0.0.1", status: "warning", details: '{"quota_used": 850, "quota_limit": 1000, "message":"Approaching daily limit"}', actor_scope: "staff", timestamp: Date.UTC(2026, 4, 16, 18, 20, 0) },
+  { id: "al-007", date: "16/05/2026 09:12:33", user: "admin@sonatel.com", action: "CREATE_CLIENT", resource: "Client Management", ip: "192.168.1.45", status: "success", details: '{"clientId":"cl-8821", "organization":"Orange CI", "role":"Client"}', actor_scope: "staff", timestamp: Date.UTC(2026, 4, 16, 9, 12, 33) },
 ];
 
 function AdminAuditLogs() {
   const { roles, organization, user } = useAuth();
   const isClientOnly = roles.includes("client") && !roles.includes("admin") && !roles.includes("analyste") && !roles.includes("manager");
 
-  // Filter logs to show only the client's organization when client-only
+  const [persistedLogs, setPersistedLogs] = useState<AuditLogEntry[]>([]);
+  const [localLogs, setLocalLogs] = useState<AuditLogEntry[]>(() => getLocalAuditEvents().map((log) => ({
+    ...log,
+    date: formatAuditTimestamp(log.date),
+    timestamp: new Date(log.date).getTime(),
+  })));
+  useEffect(() => {
+    let cancelled = false;
+    const refreshLocalLogs = () => setLocalLogs(getLocalAuditEvents().map((log) => ({
+      ...log,
+      date: formatAuditTimestamp(log.date),
+      timestamp: new Date(log.date).getTime(),
+    })));
+    window.addEventListener(LOCAL_AUDIT_EVENT, refreshLocalLogs);
+    (async () => {
+      const [{ data: rows, error }, { data: profiles }] = await Promise.all([
+        (supabase as any).from("audit_logs").select("id,user_id,action,metadata,organization,actor_scope,client_id,created_at").order("created_at", { ascending: false }).limit(500),
+        supabase.from("profiles").select("id,email"),
+      ]);
+      if (error) {
+        console.error("Impossible de charger le journal d'audit:", error);
+        return;
+      }
+
+      const emails = new Map((profiles ?? []).map((profile) => [profile.id, profile.email || profile.id]));
+      const mapped: AuditLogEntry[] = (rows ?? []).map((row: any) => {
+        const metadata = row.metadata && typeof row.metadata === "object" ? row.metadata : {};
+        return {
+          id: row.id,
+          date: formatAuditTimestamp(row.created_at),
+          timestamp: new Date(row.created_at).getTime(),
+          user: emails.get(row.user_id) || row.user_id || "system",
+          action: row.action,
+          resource: metadata.resource || "Plateforme SOC",
+          ip: metadata.ip || "—",
+          status: row.action.toLowerCase().includes("failed") ? "failure" : "success",
+          details: JSON.stringify(metadata),
+          organization: row.organization,
+          actor_scope: row.actor_scope || "staff",
+          client_id: row.client_id || null,
+        };
+      });
+      if (!cancelled) setPersistedLogs(mapped);
+    })();
+    return () => {
+      cancelled = true;
+      window.removeEventListener(LOCAL_AUDIT_EVENT, refreshLocalLogs);
+    };
+  }, []);
+
+  const allLogs = Array.from(new Map(
+    [...localLogs, ...persistedLogs, ...AUDIT_LOGS].map((log) => [log.id, log]),
+  ).values()).sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0));
   const BASE_LOGS = isClientOnly
-    ? AUDIT_LOGS.filter(log =>
-        // Show logs related to this user's email or organization
-        log.user === (user?.email ?? "") ||
-        log.user === "system" && log.resource.toLowerCase().includes((organization ?? "").toLowerCase())
-      )
-    : AUDIT_LOGS;
+    ? allLogs.filter((log) => log.actor_scope === "client" && log.client_id === user?.id)
+    : allLogs.filter((log) => log.actor_scope === "staff");
 
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");

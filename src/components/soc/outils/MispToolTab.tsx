@@ -44,66 +44,14 @@ export function MispToolTab() {
         <p className="text-sm text-muted-foreground">Intelligence de menace, génération de règles, analyse de malware, partage d'IOCs (démo).</p>
       </div>
 
-      <Tabs defaultValue="overview" className="space-y-4">
+      <Tabs defaultValue="events" className="space-y-4">
         <TabsList className="flex h-auto min-h-10 flex-wrap justify-start gap-1">
-          <TabsTrigger value="overview">Présentation</TabsTrigger>
           <TabsTrigger value="events">Événements</TabsTrigger>
           <TabsTrigger value="rules">Génération de règles</TabsTrigger>
           <TabsTrigger value="analysis">Analyse malware</TabsTrigger>
           <TabsTrigger value="sharing">Partage & API</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview">
-          <Card className="p-6">
-            <h3 className="text-2xl font-bold text-primary mb-2">MISP : Partage d'Informations sur les Menaces (TIP)</h3>
-            <p className="text-muted-foreground mb-8">MISP (Malware Information Sharing Platform) est une plateforme open-source essentielle de CTI (Cyber Threat Intelligence) permettant le partage, le stockage et la corrélation structurés d'informations sur les menaces.</p>
-            
-            <div className="grid gap-6 md:grid-cols-2">
-              <div className="space-y-2">
-                <h4 className="font-semibold text-lg flex items-center gap-2"><Share2 className="w-5 h-5 text-primary"/> Partage d'IOCs & CTI</h4>
-                <ul className="list-disc pl-5 space-y-1 text-sm text-muted-foreground">
-                  <li>Partage et réception d'IOCs, TTPs, et informations sur les campagnes d'attaques.</li>
-                  <li>Synchronisation bidirectionnelle fluide avec d'autres instances MISP partenaires.</li>
-                </ul>
-              </div>
-              <div className="space-y-2">
-                <h4 className="font-semibold text-lg flex items-center gap-2"><Database className="w-5 h-5 text-primary"/> Gestion des IOCs</h4>
-                <ul className="list-disc pl-5 space-y-1 text-sm text-muted-foreground">
-                  <li>Stockage hautement organisé d'IOCs (IP, hachages, domaines, URL).</li>
-                  <li>Ajout de contexte riche pour chaque indicateur (niveau de confiance, source, date).</li>
-                </ul>
-              </div>
-              <div className="space-y-2">
-                <h4 className="font-semibold text-lg flex items-center gap-2"><Brain className="w-5 h-5 text-primary"/> Modélisation des Menaces</h4>
-                <ul className="list-disc pl-5 space-y-1 text-sm text-muted-foreground">
-                  <li>Mise en relation d'IOCs avec des événements, campagnes et acteurs malveillants.</li>
-                  <li>Alignement et taggage selon le framework MITRE ATT&CK.</li>
-                </ul>
-              </div>
-              <div className="space-y-2">
-                <h4 className="font-semibold text-lg flex items-center gap-2"><Zap className="w-5 h-5 text-primary"/> Corrélation & Enrichissement</h4>
-                <ul className="list-disc pl-5 space-y-1 text-sm text-muted-foreground">
-                  <li>Corrélation automatique et instantanée d'IOCs entre différents événements.</li>
-                  <li>Enrichissement automatique via des services et sources externes (ex: VirusTotal).</li>
-                </ul>
-              </div>
-              <div className="space-y-2">
-                <h4 className="font-semibold text-lg flex items-center gap-2"><FileCode2 className="w-5 h-5 text-primary"/> Formats Standards</h4>
-                <ul className="list-disc pl-5 space-y-1 text-sm text-muted-foreground">
-                  <li>Utilisation de formats standardisés pour l'interopérabilité (JSON natif).</li>
-                  <li>Support complet de l'import/export via les standards STIX/TAXII.</li>
-                </ul>
-              </div>
-              <div className="space-y-2">
-                <h4 className="font-semibold text-lg flex items-center gap-2"><Globe className="w-5 h-5 text-primary"/> Flux CTI (Feeds)</h4>
-                <ul className="list-disc pl-5 space-y-1 text-sm text-muted-foreground">
-                  <li>Génération de flux d'IOCs dynamiques, triés par niveau de confiance et pertinence.</li>
-                  <li>Consommation directe par les SIEM, EDR et IDS (ex: Wazuh, Suricata).</li>
-                </ul>
-              </div>
-            </div>
-          </Card>
-        </TabsContent>
 
         <TabsContent value="events" className="space-y-4">
 
@@ -169,12 +117,12 @@ export function MispToolTab() {
               <Zap className="h-5 w-5 text-primary" />
               <h3 className="font-semibold">Génération de règles de détection (Rule Generation & Export)</h3>
             </div>
-            <p className="text-sm text-muted-foreground mb-4">Conversion automatique d'IOCs en règles YARA, Sigma, Suricata, Snort pour détection proactive.</p>
+            <p className="text-sm text-muted-foreground mb-4">Conversion automatique d'IOCs en règles YARA, Sigma, Snort pour détection proactive.</p>
             <div className="space-y-3">
               {[
                 { format: "YARA", desc: "Scanning statique de malwares", example: "rule:emotet_c2" },
                 { format: "Sigma", desc: "Format standard SIEM-agnostique", example: "detection: EventID 4688" },
-                { format: "Suricata/Snort", desc: "Détection IDS/IPS en temps réel", example: "alert http any any -> any any" },
+                { format: "Snort NIDS", desc: "Détection réseau en temps réel", example: "alert http any any -> any any" },
                 { format: "VirusTotal Livehunt", desc: "Détection proactive sur VT", example: "import \"pe\"" },
               ].map((rule) => (
                 <Card key={rule.format} className="p-3 border-border/60">

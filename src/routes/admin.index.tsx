@@ -16,6 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { RequireAuth } from "@/components/RequireAuth";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
+import { recordAuditEvent } from "@/lib/audit-log";
 import type { AppRole } from "@/lib/auth-context";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -345,6 +346,10 @@ function Admin() {
     try {
       const { error } = await supabase.from("profiles").update({ is_active: !p.is_active }).eq("id", p.id);
       if (error) throw error;
+      void recordAuditEvent("USER_STATUS_UPDATE", p.full_name || p.email || p.id, {
+        user_id: p.id,
+        is_active: !p.is_active,
+      }, p.organization, "staff");
       toast.success(`Utilisateur ${p.is_active ? "désactivé" : "activé"}`, { id: toastId });
       await load();
     } catch (error: any) {
@@ -368,6 +373,10 @@ function Admin() {
         }).eq("id", editingUser.id);
         if (error) throw error;
       }
+      void recordAuditEvent("USER_UPDATE", editForm.fullName || editingUser.email || editingUser.id, {
+        user_id: editingUser.id,
+        updated_fields: ["full_name", "organization"],
+      }, editForm.organization, "staff");
       setProfiles(prev => prev.map(p =>
         p.id === editingUser.id
           ? { ...p, full_name: editForm.fullName, email: editForm.email, organization: editForm.organization }

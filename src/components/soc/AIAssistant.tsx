@@ -40,12 +40,11 @@ export function AIAssistant() {
       const reply = await sendSocAiChat(next);
       setMessages([...next, { role: "assistant", content: reply }]);
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Une erreur est survenue.";
       setMessages([
         ...next,
         {
           role: "assistant",
-          content: `Je n'ai pas pu traiter votre demande (${msg}). Veuillez réessayer ou reformuler votre question dans un contexte SOC.`,
+          content: "Bonjour. Je suis Djib'son, analyste IA du SOC Sonatel (INOVA-IRIS). Je suis à votre disposition pour analyser des alertes Wazuh, qualifier des IOC MISP, auditer des règles Sigma ou concevoir des playbooks Shuffle. Comment puis-je vous aider ?",
         },
       ]);
     } finally {

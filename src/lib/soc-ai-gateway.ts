@@ -111,16 +111,24 @@ async function callClaudeApi(messages: ChatMessage[], apiKey: string): Promise<s
   return typeof text === "string" && text.trim() ? text.trim() : "(réponse vide)";
 }
 
-/** Appelle Claude en priorité (si clé), sinon Lovable/Gemini selon les clés disponibles. */
+/** Appelle Claude en priorité (si clé), sinon Lovable/Gemini selon les clés disponibles avec tolérance de panne. */
 export async function callSocAiGateway(messages: ChatMessage[]): Promise<string> {
   const claudeKey = process.env.ANTHROPIC_API_KEY;
-  if (claudeKey) {
-    return callClaudeApi(messages, claudeKey);
+  if (claudeKey && !claudeKey.includes("VOTRE_CLE")) {
+    try {
+      return await callClaudeApi(messages, claudeKey);
+    } catch (err) {
+      console.warn("[SOC AI Gateway] Échec de l'appel Claude API, tentative avec le fournisseur suivant:", err);
+    }
   }
 
   const lovableKey = process.env.LOVABLE_API_KEY ?? process.env.OPENAI_API_KEY;
-  if (lovableKey) {
-    return callLovableGateway(messages, lovableKey);
+  if (lovableKey && !lovableKey.includes("VOTRE_CLE")) {
+    try {
+      return await callLovableGateway(messages, lovableKey);
+    } catch (err) {
+      console.warn("[SOC AI Gateway] Échec de l'appel Lovable/OpenAI API:", err);
+    }
   }
 
   const geminiKey =
@@ -128,8 +136,12 @@ export async function callSocAiGateway(messages: ChatMessage[]): Promise<string>
     process.env.GOOGLE_GENERATIVE_AI_API_KEY ??
     process.env.VITE_GEMINI_API_KEY;
 
-  if (geminiKey) {
-    return callGeminiApi(messages, geminiKey);
+  if (geminiKey && !geminiKey.includes("VOTRE_CLE")) {
+    try {
+      return await callGeminiApi(messages, geminiKey);
+    } catch (err) {
+      console.warn("[SOC AI Gateway] Échec de l'appel Gemini API:", err);
+    }
   }
 
   throw new Error("AI_KEY_MISSING");

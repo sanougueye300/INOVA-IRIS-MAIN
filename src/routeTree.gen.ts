@@ -28,8 +28,14 @@ import { Route as AlertesRouteImport } from './routes/alertes'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AbonnementsRouteImport } from './routes/abonnements'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as OutilsIndexRouteImport } from './routes/outils.index'
 import { Route as ClientsIndexRouteImport } from './routes/clients.index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as OutilsWazuhRouteImport } from './routes/outils.wazuh'
+import { Route as OutilsVirustotalRouteImport } from './routes/outils.virustotal'
+import { Route as OutilsThehiveRouteImport } from './routes/outils.thehive'
+import { Route as OutilsShuffleRouteImport } from './routes/outils.shuffle'
+import { Route as OutilsMispRouteImport } from './routes/outils.misp'
 import { Route as ClientsSlaRouteImport } from './routes/clients.sla'
 import { Route as ClientsSatisfactionRouteImport } from './routes/clients.satisfaction'
 import { Route as ClientsNewRouteImport } from './routes/clients.new'
@@ -142,6 +148,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OutilsIndexRoute = OutilsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => OutilsRoute,
+} as any)
 const ClientsIndexRoute = ClientsIndexRouteImport.update({
   id: '/clients/',
   path: '/clients/',
@@ -151,6 +162,31 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AdminRoute,
+} as any)
+const OutilsWazuhRoute = OutilsWazuhRouteImport.update({
+  id: '/wazuh',
+  path: '/wazuh',
+  getParentRoute: () => OutilsRoute,
+} as any)
+const OutilsVirustotalRoute = OutilsVirustotalRouteImport.update({
+  id: '/virustotal',
+  path: '/virustotal',
+  getParentRoute: () => OutilsRoute,
+} as any)
+const OutilsThehiveRoute = OutilsThehiveRouteImport.update({
+  id: '/thehive',
+  path: '/thehive',
+  getParentRoute: () => OutilsRoute,
+} as any)
+const OutilsShuffleRoute = OutilsShuffleRouteImport.update({
+  id: '/shuffle',
+  path: '/shuffle',
+  getParentRoute: () => OutilsRoute,
+} as any)
+const OutilsMispRoute = OutilsMispRouteImport.update({
+  id: '/misp',
+  path: '/misp',
+  getParentRoute: () => OutilsRoute,
 } as any)
 const ClientsSlaRoute = ClientsSlaRouteImport.update({
   id: '/clients/sla',
@@ -249,7 +285,7 @@ export interface FileRoutesByFullPath {
   '/iocs': typeof IocsRoute
   '/iris': typeof IrisRoute
   '/login': typeof LoginRoute
-  '/outils': typeof OutilsRoute
+  '/outils': typeof OutilsRouteWithChildren
   '/settings': typeof SettingsRoute
   '/threat-map': typeof ThreatMapRoute
   '/workflow': typeof WorkflowRoute
@@ -269,8 +305,14 @@ export interface FileRoutesByFullPath {
   '/clients/new': typeof ClientsNewRoute
   '/clients/satisfaction': typeof ClientsSatisfactionRoute
   '/clients/sla': typeof ClientsSlaRoute
+  '/outils/misp': typeof OutilsMispRoute
+  '/outils/shuffle': typeof OutilsShuffleRoute
+  '/outils/thehive': typeof OutilsThehiveRoute
+  '/outils/virustotal': typeof OutilsVirustotalRoute
+  '/outils/wazuh': typeof OutilsWazuhRoute
   '/admin/': typeof AdminIndexRoute
   '/clients/': typeof ClientsIndexRoute
+  '/outils/': typeof OutilsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -287,7 +329,6 @@ export interface FileRoutesByTo {
   '/iocs': typeof IocsRoute
   '/iris': typeof IrisRoute
   '/login': typeof LoginRoute
-  '/outils': typeof OutilsRoute
   '/settings': typeof SettingsRoute
   '/threat-map': typeof ThreatMapRoute
   '/workflow': typeof WorkflowRoute
@@ -307,8 +348,14 @@ export interface FileRoutesByTo {
   '/clients/new': typeof ClientsNewRoute
   '/clients/satisfaction': typeof ClientsSatisfactionRoute
   '/clients/sla': typeof ClientsSlaRoute
+  '/outils/misp': typeof OutilsMispRoute
+  '/outils/shuffle': typeof OutilsShuffleRoute
+  '/outils/thehive': typeof OutilsThehiveRoute
+  '/outils/virustotal': typeof OutilsVirustotalRoute
+  '/outils/wazuh': typeof OutilsWazuhRoute
   '/admin': typeof AdminIndexRoute
   '/clients': typeof ClientsIndexRoute
+  '/outils': typeof OutilsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -327,7 +374,7 @@ export interface FileRoutesById {
   '/iocs': typeof IocsRoute
   '/iris': typeof IrisRoute
   '/login': typeof LoginRoute
-  '/outils': typeof OutilsRoute
+  '/outils': typeof OutilsRouteWithChildren
   '/settings': typeof SettingsRoute
   '/threat-map': typeof ThreatMapRoute
   '/workflow': typeof WorkflowRoute
@@ -347,8 +394,14 @@ export interface FileRoutesById {
   '/clients/new': typeof ClientsNewRoute
   '/clients/satisfaction': typeof ClientsSatisfactionRoute
   '/clients/sla': typeof ClientsSlaRoute
+  '/outils/misp': typeof OutilsMispRoute
+  '/outils/shuffle': typeof OutilsShuffleRoute
+  '/outils/thehive': typeof OutilsThehiveRoute
+  '/outils/virustotal': typeof OutilsVirustotalRoute
+  '/outils/wazuh': typeof OutilsWazuhRoute
   '/admin/': typeof AdminIndexRoute
   '/clients/': typeof ClientsIndexRoute
+  '/outils/': typeof OutilsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -388,8 +441,14 @@ export interface FileRouteTypes {
     | '/clients/new'
     | '/clients/satisfaction'
     | '/clients/sla'
+    | '/outils/misp'
+    | '/outils/shuffle'
+    | '/outils/thehive'
+    | '/outils/virustotal'
+    | '/outils/wazuh'
     | '/admin/'
     | '/clients/'
+    | '/outils/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -406,7 +465,6 @@ export interface FileRouteTypes {
     | '/iocs'
     | '/iris'
     | '/login'
-    | '/outils'
     | '/settings'
     | '/threat-map'
     | '/workflow'
@@ -426,8 +484,14 @@ export interface FileRouteTypes {
     | '/clients/new'
     | '/clients/satisfaction'
     | '/clients/sla'
+    | '/outils/misp'
+    | '/outils/shuffle'
+    | '/outils/thehive'
+    | '/outils/virustotal'
+    | '/outils/wazuh'
     | '/admin'
     | '/clients'
+    | '/outils'
   id:
     | '__root__'
     | '/'
@@ -465,8 +529,14 @@ export interface FileRouteTypes {
     | '/clients/new'
     | '/clients/satisfaction'
     | '/clients/sla'
+    | '/outils/misp'
+    | '/outils/shuffle'
+    | '/outils/thehive'
+    | '/outils/virustotal'
+    | '/outils/wazuh'
     | '/admin/'
     | '/clients/'
+    | '/outils/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -485,7 +555,7 @@ export interface RootRouteChildren {
   IocsRoute: typeof IocsRoute
   IrisRoute: typeof IrisRoute
   LoginRoute: typeof LoginRoute
-  OutilsRoute: typeof OutilsRoute
+  OutilsRoute: typeof OutilsRouteWithChildren
   SettingsRoute: typeof SettingsRoute
   ThreatMapRoute: typeof ThreatMapRoute
   WorkflowRoute: typeof WorkflowRoute
@@ -633,6 +703,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/outils/': {
+      id: '/outils/'
+      path: '/'
+      fullPath: '/outils/'
+      preLoaderRoute: typeof OutilsIndexRouteImport
+      parentRoute: typeof OutilsRoute
+    }
     '/clients/': {
       id: '/clients/'
       path: '/clients'
@@ -646,6 +723,41 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
+    }
+    '/outils/wazuh': {
+      id: '/outils/wazuh'
+      path: '/wazuh'
+      fullPath: '/outils/wazuh'
+      preLoaderRoute: typeof OutilsWazuhRouteImport
+      parentRoute: typeof OutilsRoute
+    }
+    '/outils/virustotal': {
+      id: '/outils/virustotal'
+      path: '/virustotal'
+      fullPath: '/outils/virustotal'
+      preLoaderRoute: typeof OutilsVirustotalRouteImport
+      parentRoute: typeof OutilsRoute
+    }
+    '/outils/thehive': {
+      id: '/outils/thehive'
+      path: '/thehive'
+      fullPath: '/outils/thehive'
+      preLoaderRoute: typeof OutilsThehiveRouteImport
+      parentRoute: typeof OutilsRoute
+    }
+    '/outils/shuffle': {
+      id: '/outils/shuffle'
+      path: '/shuffle'
+      fullPath: '/outils/shuffle'
+      preLoaderRoute: typeof OutilsShuffleRouteImport
+      parentRoute: typeof OutilsRoute
+    }
+    '/outils/misp': {
+      id: '/outils/misp'
+      path: '/misp'
+      fullPath: '/outils/misp'
+      preLoaderRoute: typeof OutilsMispRouteImport
+      parentRoute: typeof OutilsRoute
     }
     '/clients/sla': {
       id: '/clients/sla'
@@ -800,6 +912,27 @@ const AuthRouteChildren: AuthRouteChildren = {
 
 const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 
+interface OutilsRouteChildren {
+  OutilsMispRoute: typeof OutilsMispRoute
+  OutilsShuffleRoute: typeof OutilsShuffleRoute
+  OutilsThehiveRoute: typeof OutilsThehiveRoute
+  OutilsVirustotalRoute: typeof OutilsVirustotalRoute
+  OutilsWazuhRoute: typeof OutilsWazuhRoute
+  OutilsIndexRoute: typeof OutilsIndexRoute
+}
+
+const OutilsRouteChildren: OutilsRouteChildren = {
+  OutilsMispRoute: OutilsMispRoute,
+  OutilsShuffleRoute: OutilsShuffleRoute,
+  OutilsThehiveRoute: OutilsThehiveRoute,
+  OutilsVirustotalRoute: OutilsVirustotalRoute,
+  OutilsWazuhRoute: OutilsWazuhRoute,
+  OutilsIndexRoute: OutilsIndexRoute,
+}
+
+const OutilsRouteWithChildren =
+  OutilsRoute._addFileChildren(OutilsRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AbonnementsRoute: AbonnementsRoute,
@@ -816,7 +949,7 @@ const rootRouteChildren: RootRouteChildren = {
   IocsRoute: IocsRoute,
   IrisRoute: IrisRoute,
   LoginRoute: LoginRoute,
-  OutilsRoute: OutilsRoute,
+  OutilsRoute: OutilsRouteWithChildren,
   SettingsRoute: SettingsRoute,
   ThreatMapRoute: ThreatMapRoute,
   WorkflowRoute: WorkflowRoute,

@@ -85,7 +85,7 @@ export function ClientEndpointTopology() {
     setExtData(prev => {
       if (!prev) return prev;
       const updated = { ...prev, pcs: prev.pcs.map(p => p.id === pcId ? { ...p, status: newStatus } : p) };
-      if (user) localStorage.setItem(`client_ext_${user.id}`, JSON.stringify(updated));
+      if (user) localStorage.setItem(`client_ext_${user.id}`, JSON.stringify({ ...updated, _v: 2 }));
       return updated;
     });
   };

@@ -102,16 +102,16 @@ const CONNECTOR_DEFS: ConnectorConfig[] = [
     ],
   },
   {
-    id: "iris",
-    name: "DFIR-IRIS",
-    desc: "Digital Forensics & Incident Response",
+    id: "paytech",
+    name: "PayTech",
+    desc: "Passerelle de paiement mobile — Wave, Orange Money, MTN",
     icon: ServerCog,
-    color: "text-rose-500",
-    bg: "bg-rose-500/10",
-    docsUrl: "https://docs.dfir-iris.org/operations/api/",
+    color: "text-emerald-500",
+    bg: "bg-emerald-500/10",
+    docsUrl: "https://paytech.sn/documentation",
     fields: [
-      { key: "IRIS_URL", label: "URL IRIS (ex: https://iris.domain.com)", placeholder: "https://your-iris-instance" },
-      { key: "IRIS_API_KEY", label: "Clé API", placeholder: "••••••••", type: "password" },
+      { key: "PAYTECH_API_KEY", label: "Clé API PayTech", placeholder: "••••••••", type: "password" },
+      { key: "PAYTECH_SECRET_KEY", label: "Secret Key PayTech", placeholder: "••••••••", type: "password" },
     ],
   },
 ];
@@ -328,10 +328,6 @@ function AdminIntegrations() {
               Vérifier tous
             </Button>
           </div>
-          <p className="text-muted-foreground">
-            Gérez et testez les connexions avec les outils de la stack SOC.
-            Les clés API sont stockées en secrets Supabase Edge Functions — jamais côté client.
-          </p>
         </div>
 
         {/* Bannière d'info configuration */}
@@ -498,20 +494,7 @@ function AdminIntegrations() {
           })}
         </div>
 
-        {/* Guide rapide */}
-        <div className="rounded-xl border border-border/50 bg-white/50 dark:bg-zinc-950/50 p-6 space-y-3">
-          <h2 className="font-semibold flex items-center gap-2">
-            <Info className="h-4 w-4 text-primary" />
-            Guide de connexion rapide
-          </h2>
-          <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
-            <li><strong className="text-foreground">Wazuh Cloud</strong> : récupérez votre clé API sur <code className="font-mono bg-muted px-1 rounded">console.cloud.wazuh.com → API-INOVA</code>, puis définissez-la : <code className="font-mono bg-muted px-1 rounded">npx supabase secrets set WAZUH_CLOUD_API_KEY=votre_clé</code>.</li>
-            <li><strong className="text-foreground">Wazuh auto-hébergé</strong> : installez Wazuh sur un VPS Linux et ouvrez le port <code className="font-mono bg-muted px-1 rounded">55000</code>. Configurez <code className="font-mono bg-muted px-1 rounded">WAZUH_URL</code>, <code className="font-mono bg-muted px-1 rounded">WAZUH_USER</code> et <code className="font-mono bg-muted px-1 rounded">WAZUH_PASSWORD</code>.</li>
-            <li>Pour les autres outils, ouvrez les ports : <code className="font-mono bg-muted px-1 rounded">9000</code> (TheHive), <code className="font-mono bg-muted px-1 rounded">443</code> (MISP), <code className="font-mono bg-muted px-1 rounded">3001</code> (Shuffle).</li>
-            <li>Déployez les Edge Functions : <code className="font-mono bg-muted px-1 rounded">npx supabase functions deploy --no-verify-jwt check-connector sync-wazuh-alerts get-wazuh-agents</code></li>
-            <li>Cliquez <strong className="text-foreground">Tester</strong> sur chaque connecteur pour vérifier la connexion en temps réel.</li>
-          </ol>
-        </div>
+
 
       </div>
     </div>

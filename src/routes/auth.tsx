@@ -76,9 +76,9 @@ function AuthLayout() {
   }, [logs]);
 
   return (
-    <div className="flex h-full w-full flex-col bg-background text-foreground lg:flex-row overflow-hidden">
+    <div className="flex h-screen w-full flex-col bg-background text-foreground lg:flex-row overflow-hidden">
       {/* LEFT PANEL: Next-Gen Cyber Operations Visuals */}
-      <div className="relative hidden w-full overflow-hidden bg-zinc-950 px-8 py-12 lg:flex lg:w-1/2 flex-col justify-between border-r border-zinc-800">
+      <div className="relative hidden w-full overflow-hidden bg-zinc-950 px-8 py-6 lg:flex lg:w-1/2 flex-col justify-between border-r border-zinc-800 h-full">
         {/* Animated Cyber Grid Backdrop */}
         <div className="absolute inset-0 opacity-15 pointer-events-none">
           <svg className="h-full w-full" xmlns="http://www.w3.org/2000/svg">
@@ -111,14 +111,14 @@ function AuthLayout() {
           </div>
 
           {/* Operational Microservices */}
-          <div className="mt-12 grid grid-cols-2 gap-3 max-w-md">
+          <div className="mt-6 grid grid-cols-2 gap-2.5 max-w-md">
             {[
               { name: "Wazuh SIEM", status: "Operational" },
               { name: "Shuffle SOAR", status: "Operational" },
               { name: "TheHive Core", status: "Active" },
               { name: "MISP Threat Intel", status: "Synced" }
             ].map((srv) => (
-              <div key={srv.name} className="flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900/40 p-3 backdrop-blur-sm">
+              <div key={srv.name} className="flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900/40 p-2.5 backdrop-blur-sm">
                 <div className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
@@ -133,13 +133,13 @@ function AuthLayout() {
         </div>
 
         {/* Middle Section: Cybersecurity Logs Console */}
-        <div className="relative z-10 flex-1 my-10 flex flex-col justify-end max-w-xl">
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-4 font-mono text-[11px] text-zinc-400 backdrop-blur-md shadow-2xl">
-            <div className="flex items-center gap-2 border-b border-zinc-800 pb-2 mb-3">
+        <div className="relative z-10 flex-1 my-4 flex flex-col justify-end max-w-xl">
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-3.5 font-mono text-[11px] text-zinc-400 backdrop-blur-md shadow-2xl">
+            <div className="flex items-center gap-2 border-b border-zinc-800 pb-2 mb-2.5">
               <Terminal className="h-3.5 w-3.5 text-primary" />
               <span className="text-[10px] uppercase tracking-wider font-semibold text-zinc-300">Live Telemetry Pipeline Console</span>
             </div>
-            <div ref={consoleContainerRef} className="h-44 overflow-y-auto space-y-1.5 scrollbar-none pr-1">
+            <div ref={consoleContainerRef} className="h-32 overflow-y-auto space-y-1 scrollbar-none pr-1">
               {logs.map((log, idx) => {
                 const parts = log.split(": ");
                 const header = parts[0];
@@ -158,31 +158,31 @@ function AuthLayout() {
         </div>
 
         {/* Bottom Section: Footer Credits */}
-        <div className="relative z-10 flex items-center justify-between text-xs text-zinc-500">
+        <div className="relative z-10 flex items-center justify-between text-xs text-zinc-500 pt-2 border-t border-zinc-800/60">
           <div className="flex items-center gap-2">
-            <Cpu className="h-4 w-4 text-zinc-600 animate-spin" style={{ animationDuration: "12s" }} />
-            <span>Node Core: Operational</span>
+            <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-[11px] text-zinc-400">SOC Sonatel • En ligne</span>
           </div>
-          <div>© Sonatel · Inova-Iris SOC</div>
+          <div>© Sonatel · Inova-Iris SOC · Djibril Sanou Gueye</div>
         </div>
       </div>
 
       {/* RIGHT PANEL: Auth Pages Outlet */}
-      <div className="flex flex-1 flex-col justify-start lg:justify-center overflow-y-auto bg-background px-6 py-12 md:px-12 lg:w-1/2 lg:px-20 relative">
+      <div className="flex flex-1 flex-col justify-center items-center h-full overflow-hidden bg-background px-6 py-4 md:px-10 lg:w-1/2 lg:px-12 relative">
         {/* Soft Background Radial Glow for Modern Glassmorphic Look */}
         <div className="absolute right-10 top-1/4 h-72 w-72 rounded-full bg-primary/5 blur-3xl pointer-events-none" />
         <div className="absolute left-10 bottom-1/4 h-72 w-72 rounded-full bg-accent/5 blur-3xl pointer-events-none" />
 
-        <div className="mx-auto w-full max-w-md relative z-10 flex flex-col my-auto">
+        <div className="mx-auto w-full max-w-md relative z-10 flex flex-col justify-center my-auto py-2">
           {/* Unified Orange brand logo header on all auth subpages */}
-          <div className="flex justify-center mb-8 select-none shrink-0">
-            <div className="inline-flex items-center justify-center gap-4 py-3.5 px-6 rounded-2xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-zinc-800/80 shadow-sm hover:shadow-md hover:border-primary/20 transition-all duration-300">
+          <div className="flex justify-center mb-4 select-none shrink-0">
+            <div className="inline-flex items-center justify-center gap-3 py-2 px-4 rounded-xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-zinc-800/80 shadow-sm hover:shadow-md hover:border-primary/20 transition-all duration-300">
               <img
                 src={logoSrc}
                 alt="Sonatel Logo"
-                className="h-10 sm:h-12 w-auto object-contain select-none"
+                className="h-8 sm:h-9 w-auto object-contain select-none"
               />
-              <div className="h-8 w-px bg-zinc-300 dark:bg-zinc-800" />
+              <div className="h-6 w-px bg-zinc-300 dark:bg-zinc-800" />
               <div className="text-left font-mono">
                 <div className="text-[10px] font-black tracking-widest text-primary uppercase">INOVA-IRIS</div>
                 <div className="text-[9px] font-semibold text-muted-foreground tracking-tight">Sonatel SOC platform</div>
@@ -192,6 +192,15 @@ function AuthLayout() {
 
           {/* Outlet for Nested Pages */}
           <Outlet />
+
+          {/* Auth page footer */}
+          <div className="mt-4 text-center text-[11px] text-muted-foreground">
+            © {new Date().getFullYear()} INOVA-IRIS SOC — Djibril Sanou Gueye (
+            <a href="mailto:djibrilsanougueye@esp.sn" className="text-primary hover:underline">
+              djibrilsanougueye@esp.sn
+            </a>
+            )
+          </div>
         </div>
       </div>
     </div>

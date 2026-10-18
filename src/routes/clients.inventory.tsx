@@ -9,16 +9,20 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import {
   Laptop, ShieldAlert, Cpu, HardDrive, Terminal, Search, Play,
   RefreshCw, PowerOff, ShieldCheck, Database, CheckCircle,
   AlertTriangle, XCircle, Info, Download, Shield, Check, Copy,
   Monitor, Activity, ChevronDown, ChevronUp, KeyRound, Plus,
-  Lock, ArrowRight, Wifi, CheckCircle2, Sparkles,
+  Lock, ArrowRight, Wifi, CheckCircle2, Sparkles, Trash2,
 } from "lucide-react";
 import { getClientExtendedData, OFFER_MAX_PCS } from "./clients.index";
 import type { ClientExtendedData } from "./clients.index";
+import { registerClientPc, getAllClientPcs, loadAllClientPcsFromCloud, saveClientPcToCloud, syncClientPcsWithCloud, deleteClientPcFromCloud } from "@/lib/pcs-sync";
+import { getClientPcSyncErrorMessage } from "@/lib/registered-client-auth";
+import { recordAuditEvent } from "@/lib/audit-log";
 
 export const Route = createFileRoute("/clients/inventory")({
   head: () => ({ meta: [{ title: "Parc & Inventaire EDR — SOC Platform" }] }),
@@ -29,6 +33,7 @@ interface EdrDevice {
   id: string; hostname: string; clientName: string; ip: string;
   os: "windows" | "linux" | "macos"; status: "active" | "disconnected" | "alert" | "isolated";
   cpu: number; ram: number; version: string; lastSeen: string;
+  clientId?: string;
 }
 
 const SEED_DEVICES: EdrDevice[] = [
@@ -108,6 +113,9 @@ function InventoryPage() {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [terminalDevice, setTerminalDevice] = useState<EdrDevice | null>(null);
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<EdrDevice | null>(null);
+  const [deletingDevice, setDeletingDevice] = useState(false);
   const [terminalHistory, setTerminalHistory] = useState<string[]>([
     "=== CONSOLE WAZUH REMOTE EDR v4.14.5 ===",
     "Sélectionnez un poste pour ouvrir une session sécurisée.",
@@ -126,18 +134,58 @@ function InventoryPage() {
   const [addForm, setAddForm] = useState({ hostname: "", ip: "", os: "windows" as "windows" | "linux" | "macos" });
 
   useEffect(() => {
+    let cancelled = false;
     if (isClientOnly && user) {
       const orgName = organization || "Client";
       const extData = getClientExtendedData(user.id, orgName);
       setExt(extData);
       setDevices(extData.pcs.map(pc => ({
-        id: pc.id, hostname: pc.name, clientName: orgName,
+        id: pc.id, clientId: user.id, hostname: pc.name, clientName: orgName,
         ip: pc.ip, os: pc.os, status: pc.status,
         cpu: pc.cpu, ram: pc.ram, version: "v4.14.5", lastSeen: pc.lastSeen,
       })));
+      syncClientPcsWithCloud(user.id, orgName, extData.pcs).then((syncedPcs) => {
+        const updatedExt = { ...extData, pcs: syncedPcs.map(({ id, name, os, ip, status, cpu, ram, lastSeen, wazuhId }) => ({
+          id, name, os, ip, status, cpu, ram, lastSeen, wazuhId: wazuhId ?? "",
+        })) };
+        saveExt(updatedExt);
+        setExt(updatedExt);
+        setDevices(updatedExt.pcs.map(pc => ({
+          id: pc.id, clientId: user.id, hostname: pc.name, clientName: orgName,
+          ip: pc.ip, os: pc.os, status: pc.status,
+          cpu: pc.cpu, ram: pc.ram, version: "v4.14.5", lastSeen: pc.lastSeen,
+        })));
+      }).catch((error) => console.error("Erreur de synchronisation des postes client:", error));
     } else {
-      setDevices(SEED_DEVICES);
+      const clientPcs = getAllClientPcs();
+      const mapDevice = (pc: (typeof clientPcs)[number]): EdrDevice => ({
+        id: pc.id,
+        clientId: pc.clientId,
+        hostname: pc.hostname,
+        clientName: pc.clientName,
+        ip: pc.ip,
+        os: pc.os,
+        status: pc.status,
+        cpu: pc.cpu,
+        ram: pc.ram,
+        version: pc.version,
+        lastSeen: pc.lastSeen,
+      });
+      const mappedClientPcs: EdrDevice[] = clientPcs.map(mapDevice);
+      setDevices([...mappedClientPcs, ...SEED_DEVICES]);
+      loadAllClientPcsFromCloud().then((cloudPcs) => {
+        if (cancelled) return;
+        const merged = new Map(clientPcs.map((pc) => [pc.id, pc]));
+        cloudPcs.forEach((pc) => merged.set(pc.id, pc));
+        setDevices([...Array.from(merged.values()).map(mapDevice), ...SEED_DEVICES]);
+      }).catch((error) => {
+        console.error("Impossible de charger les postes clients depuis Supabase:", error);
+        toast.error("Parc partagé indisponible", {
+          description: "Les postes des autres sessions ne peuvent pas être chargés. Vérifiez que la migration client_pcs est appliquée sur Supabase.",
+        });
+      });
     }
+    return () => { cancelled = true; };
   }, [isClientOnly, organization, user]);
 
   const maxPcs = ext ? (OFFER_MAX_PCS[ext.contractTier] ?? 10) : 10;
@@ -161,6 +209,12 @@ function InventoryPage() {
     if (action === "update")  toast.success("Mise à jour poussée", { description: `Agent Wazuh mis à jour sur : ${names}` });
     if (action === "isolate") {
       setDevices(prev => prev.map(d => selectedIds.includes(d.id) ? { ...d, status: "isolated" as const } : d));
+      devices.filter((device) => selectedIds.includes(device.id)).forEach((device) => {
+        void recordAuditEvent("EDR_PC_ISOLATE", device.hostname, {
+          endpoint_id: device.id,
+          trigger: "mass_action",
+        }, organization, isClientOnly ? "client" : "staff", isClientOnly ? user?.id : null);
+      });
       toast.warning("Isolation réseau ordonnée", { description: `Réseau coupé pour : ${names}` });
     }
   };
@@ -174,6 +228,49 @@ function InventoryPage() {
       `Agent ID : WAZUH-${dev.id.toUpperCase()}`,
       `Tapez 'help' pour lister les actions autorisées.`,
     ]);
+  };
+
+  const handleDeleteDevice = async (dev: EdrDevice) => {
+    if (!user || !dev.clientId || (isClientOnly && dev.clientId !== user.id)) return;
+
+    setDeletingDevice(true);
+    try {
+      const cloudSynced = await deleteClientPcFromCloud(dev.clientId, dev.id);
+      void recordAuditEvent("EDR_PC_DELETE", dev.hostname, {
+        endpoint_id: dev.id,
+        ip: dev.ip,
+        os: dev.os,
+        client_id: dev.clientId,
+        sync_status: cloudSynced ? "synced" : "local_only",
+      }, dev.clientName, isClientOnly ? "client" : "staff", isClientOnly ? user?.id : null);
+      setDevices((current) => current.filter((device) => device.id !== dev.id));
+      setExt((current) => {
+        if (!current) return current;
+        const updated = { ...current, pcs: current.pcs.filter((pc) => pc.id !== dev.id) };
+        saveExt(updated);
+        return updated;
+      });
+      setSelectedIds((current) => current.filter((id) => id !== dev.id));
+      setSelectedDeviceId((current) => current === dev.id ? null : current);
+      if (terminalDevice?.id === dev.id) setTerminalDevice(null);
+      setDeleteTarget(null);
+      if (cloudSynced) {
+        toast.success("Poste supprimé", { description: `${dev.hostname} a été retiré du parc EDR.` });
+      } else {
+        toast.warning("Poste supprimé sur cet appareil", {
+          description: "La table Supabase client_pcs est absente. La suppression n'est pas encore synchronisée avec les autres appareils.",
+        });
+      }
+    } catch (error) {
+      void recordAuditEvent("EDR_PC_DELETE_FAILED", dev.hostname, {
+        endpoint_id: dev.id,
+        client_id: dev.clientId,
+        error: error instanceof Error ? error.message : String(error),
+      }, dev.clientName, isClientOnly ? "client" : "staff", isClientOnly ? user?.id : null);
+      toast.error("Suppression impossible", { description: getClientPcSyncErrorMessage(error) });
+    } finally {
+      setDeletingDevice(false);
+    }
   };
 
   const handleCommand = (e: React.FormEvent) => {
@@ -219,9 +316,48 @@ function InventoryPage() {
     const updated: ClientExtendedData = { ...ext, pcs: [...ext.pcs, newPc] };
     saveExt(updated);
     setExt(updated);
-    setDevices(prev => [...prev, {
+
+    const registeredPc = registerClientPc({
+      id: newPc.id,
+      name: newPc.name,
+      hostname: newPc.name,
+      clientName: organization || "Client Espace",
+      clientId: user.id,
+      os: newPc.os,
+      ip: newPc.ip,
+      status: newPc.status,
+      cpu: newPc.cpu,
+      ram: newPc.ram,
+      version: "v4.14.5",
+      lastSeen: newPc.lastSeen,
+      wazuhId: newPc.wazuhId,
+    });
+
+    try {
+      await saveClientPcToCloud(registeredPc);
+      void recordAuditEvent("EDR_PC_CREATE", registeredPc.name, {
+        endpoint_id: registeredPc.id,
+        ip: registeredPc.ip,
+        os: registeredPc.os,
+      }, organization, "client", user.id);
+    } catch (error) {
+      console.error("Erreur d'enregistrement du poste dans Supabase:", error);
+      setInstalling(false);
+      void recordAuditEvent("EDR_PC_CREATE_FAILED", newPc.name, {
+        endpoint_id: newPc.id,
+        ip: newPc.ip,
+        os: newPc.os,
+        error: error instanceof Error ? error.message : String(error),
+      }, organization, "client", user.id);
+      toast.error("Poste conservé sur cet appareil, mais non synchronisé", {
+        description: getClientPcSyncErrorMessage(error),
+      });
+      return;
+    }
+
+    setDevices(prev => [{
       ...newPc, hostname: newPc.name, clientName: organization || "Client", version: "v4.14.5",
-    }]);
+    }, ...prev]);
 
     setInstalling(false);
     setAddOpen(false);
@@ -622,8 +758,12 @@ function InventoryPage() {
                   </TableHeader>
                   <TableBody>
                     {filtered.map(dev => (
-                      <TableRow key={dev.id} className="hover:bg-slate-50/50 dark:hover:bg-zinc-950/20 border-b border-slate-100 dark:border-zinc-850">
-                        {!isClientOnly && <TableCell className="py-3"><Checkbox checked={selectedIds.includes(dev.id)} onCheckedChange={(c) => handleSelectOne(dev.id, !!c)} /></TableCell>}
+                      <TableRow
+                        key={dev.id}
+                        onClick={() => setSelectedDeviceId(dev.id)}
+                        className={`cursor-pointer hover:bg-slate-50/50 dark:hover:bg-zinc-950/20 border-b border-slate-100 dark:border-zinc-850 ${selectedDeviceId === dev.id ? "bg-orange-50/70 dark:bg-orange-950/20" : ""}`}
+                      >
+                        {!isClientOnly && <TableCell className="py-3" onClick={(event) => event.stopPropagation()}><Checkbox checked={selectedIds.includes(dev.id)} onCheckedChange={(c) => handleSelectOne(dev.id, !!c)} /></TableCell>}
                         <TableCell className="py-3">
                           <div className="text-xs font-black text-slate-800 dark:text-zinc-100">{dev.hostname}</div>
                           <div className="text-[9px] text-muted-foreground font-mono">Agent: {dev.version}</div>
@@ -646,9 +786,16 @@ function InventoryPage() {
                           ) : <span className="text-[10px] text-muted-foreground">—</span>}
                         </TableCell>
                         <TableCell className="py-3">
-                          <Button size="sm" onClick={() => openTerminal(dev)} variant="ghost" className="h-7 w-7 p-0 rounded-lg">
-                            <Terminal className="h-4.5 w-4.5 text-amber-500" />
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            <Button size="sm" onClick={() => { setSelectedDeviceId(dev.id); openTerminal(dev); }} variant="ghost" className="h-7 w-7 p-0 rounded-lg" title="Ouvrir le terminal">
+                              <Terminal className="h-4.5 w-4.5 text-amber-500" />
+                            </Button>
+                            {dev.clientId && (
+                              <Button size="sm" onClick={() => setDeleteTarget(dev)} variant="ghost" className="h-7 w-7 p-0 rounded-lg text-rose-600 hover:text-rose-700 hover:bg-rose-50" title="Supprimer ce poste" aria-label={`Supprimer ${dev.hostname}`}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -682,7 +829,86 @@ function InventoryPage() {
             </Card>
           </div>
         </div>
+
+        {selectedDeviceId && devices.find((device) => device.id === selectedDeviceId) && (() => {
+          const selectedDevice = devices.find((device) => device.id === selectedDeviceId)!;
+          const canDelete = Boolean(selectedDevice.clientId && (!isClientOnly || selectedDevice.clientId === user?.id));
+          return (
+            <Card className="mt-5 border border-slate-200 bg-white/90 p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-orange-200 bg-orange-50 text-orange-600 dark:border-orange-900 dark:bg-orange-950/30 dark:text-orange-300">
+                    <Laptop className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-bold text-slate-900 dark:text-zinc-100">Poste sélectionné : {selectedDevice.hostname}</p>
+                    <p className="mt-1 text-xs text-slate-500 dark:text-zinc-400">
+                      {selectedDevice.clientName} · {selectedDevice.ip} · {selectedDevice.os.toUpperCase()} · {selectedDevice.status}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => openTerminal(selectedDevice)} className="gap-2">
+                    <Terminal className="h-4 w-4" /> Ouvrir le terminal
+                  </Button>
+                  {canDelete && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setDeleteTarget(selectedDevice)}
+                      className="gap-2 border-rose-200 text-rose-700 hover:bg-rose-50 hover:text-rose-800 dark:border-rose-900 dark:text-rose-300 dark:hover:bg-rose-950/40"
+                    >
+                      <Trash2 className="h-4 w-4" /> Supprimer ce PC
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </Card>
+          );
+        })()}
       </div>
+
+      <AlertDialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={(open) => {
+          if (!open && !deletingDevice) setDeleteTarget(null);
+        }}
+      >
+        <AlertDialogContent className="max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl dark:border-zinc-800 dark:bg-zinc-950">
+          <div className="h-1 bg-rose-500" />
+          <AlertDialogHeader className="px-6 pt-6 text-left">
+            <div className="flex items-start gap-4">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900 dark:bg-rose-950/50 dark:text-rose-300">
+                <Trash2 className="h-5 w-5" />
+              </div>
+              <div className="space-y-1">
+                <AlertDialogTitle className="text-lg font-bold text-slate-900 dark:text-zinc-100">Supprimer ce poste ?</AlertDialogTitle>
+                <AlertDialogDescription className="text-sm leading-5 text-slate-600 dark:text-zinc-400">
+                  Le poste sera retiré du parc INOVA-IRIS et cette action sera inscrite au journal d'audit.
+                </AlertDialogDescription>
+              </div>
+            </div>
+          </AlertDialogHeader>
+          {deleteTarget && (
+            <div className="mx-6 mt-5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900">
+              <p className="truncate text-sm font-semibold text-slate-900 dark:text-zinc-100">{deleteTarget.hostname}</p>
+              <p className="mt-1 font-mono text-xs text-slate-500 dark:text-zinc-400">{deleteTarget.ip} · {deleteTarget.clientName}</p>
+            </div>
+          )}
+          <p className="px-6 pt-3 text-xs text-slate-500 dark:text-zinc-500">Cette action ne désinstalle pas l'agent Wazuh sur l'ordinateur.</p>
+          <AlertDialogFooter className="px-6 pb-6 pt-5">
+            <AlertDialogCancel disabled={deletingDevice} className="rounded-lg">Annuler</AlertDialogCancel>
+            <Button
+              variant="destructive"
+              disabled={!deleteTarget || deletingDevice || !deleteTarget.clientId}
+              className="gap-2 rounded-lg"
+              onClick={() => deleteTarget && void handleDeleteDevice(deleteTarget)}
+            >
+              {deletingDevice ? <><RefreshCw className="h-4 w-4 animate-spin" /> Suppression...</> : <><Trash2 className="h-4 w-4" /> Supprimer le poste</>}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Add Machine Modal */}
       {addOpen && (

@@ -9,6 +9,7 @@ import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RequireAuth } from "@/components/RequireAuth";
 import { toast } from "sonner";
+import { recordAuditEvent } from "@/lib/audit-log";
 import { useSocPreferences } from "@/lib/soc-preferences";
 import { useAuth } from "@/lib/auth-context";
 import { 
@@ -100,6 +101,9 @@ function AdminSettings() {
     // Simulate API call and save to localStorage
     setTimeout(() => {
       localStorage.setItem("soc-admin-settings", JSON.stringify(settings));
+      void recordAuditEvent("SETTINGS_UPDATE", "Paramètres globaux", {
+        changed_fields: Object.keys(settings),
+      }, null, "staff");
       setSaving(false);
       window.dispatchEvent(new Event("soc-logo-updated"));
       toast.success("Paramètres mis à jour", {
@@ -134,6 +138,7 @@ function AdminSettings() {
     setTimeout(() => {
       window.dispatchEvent(new Event("soc-logo-updated"));
     }, 100);
+    void recordAuditEvent("SETTINGS_RESTORE", "Paramètres globaux", { operation: "restore_defaults" }, null, "staff");
     toast.success("Paramètres restaurés", {
       description: "Les valeurs d'usine par défaut ont été rechargées.",
     });
@@ -372,10 +377,10 @@ function AdminSettings() {
                             <div className="space-y-1">
                               <Label className="font-semibold text-base flex items-center gap-1.5">
                                 <Globe className="h-4 w-4 text-emerald-500 animate-pulse" />
-                                Géo-blocage Actif (Threat Map)
+                                Géo-blocage Actif (Filtrage IP)
                               </Label>
                               <p className="text-xs text-muted-foreground">
-                                Bloque automatiquement l'accès au portail depuis les pays classés "Haut Risque" sur la Threat Map.
+                                Bloque automatiquement l'accès au portail depuis les pays et blocs IP classés à haut risque.
                               </p>
                             </div>
                             <Switch 
@@ -698,7 +703,7 @@ function AdminSettings() {
                   <div className="flex justify-between py-1 border-b border-border/20">
                     <span className="text-muted-foreground">Géo-blocage:</span>
                     <span className={`font-semibold ${settings.blockHighRiskCountries ? "text-emerald-500" : "text-amber-500"}`}>
-                      {settings.blockHighRiskCountries ? "Actif (Threat Map)" : "Inactif"}
+                      {settings.blockHighRiskCountries ? "Actif (Filtrage IP)" : "Inactif"}
                     </span>
                   </div>
                   <div className="flex justify-between py-1 border-b border-border/20">

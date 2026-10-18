@@ -55,7 +55,7 @@ function formatCriticalAlertSummary(): string {
     "",
     "**Prochaines étapes recommandées**",
     "1. Isoler l'hôte concerné (segment Finance) et préserver les preuves.",
-    "2. Collecter les logs PowerShell et lancer une acquisition mémoire (IRIS).",
+    "2. Collecter les logs PowerShell et lancer une acquisition mémoire (EDR).",
     "3. Enrichir les indicateurs via MISP et VirusTotal.",
     "4. Mettre à jour le cas TheHive et notifier l'astreinte SOC.",
     "5. Ajuster ou créer une règle Sigma/LQL Wazuh si le scénario n'est pas couvert.",
@@ -181,19 +181,6 @@ function localFallbackReply(messages: SocAiMessage[]): string {
   return replyGeneralSocOffer();
 }
 
-function shouldUseLocalFallback(message: string): boolean {
-  const m = message.toLowerCase();
-  return (
-    m.includes("not_found") ||
-    m.includes("requested function was not found") ||
-    m.includes("lovable_api_key") ||
-    m.includes("ai_key_missing") ||
-    m.includes("gemini_api_key") ||
-    m.includes("failed to send a request to the edge function") ||
-    m.includes("failed to fetch")
-  );
-}
-
 async function callAppApiRoute(messages: SocAiMessage[]): Promise<string> {
   const res = await fetch("/api/soc-ai-chat", {
     method: "POST",
@@ -202,51 +189,36 @@ async function callAppApiRoute(messages: SocAiMessage[]): Promise<string> {
   });
   const data = (await res.json()) as { reply?: string; error?: string };
   if (!res.ok || data.error) {
-    if (data.error && shouldUseLocalFallback(data.error)) {
-      return localFallbackReply(messages);
-    }
     throw new Error(data.error ?? `API ${res.status}`);
   }
   return data.reply?.trim() || "(réponse vide)";
 }
 
-/** Envoie l'historique au chat IA SOC (API serveur → Supabase → repli local). */
+/** Envoie l'historique au chat IA SOC (API serveur → Supabase → repli local intelligent). */
 export async function sendSocAiChat(messages: SocAiMessage[]): Promise<string> {
   const payload = messages.map(({ role, content }) => ({ role, content }));
 
+  // 1. Tenter la route API locale / serveur
   try {
-    return await callAppApiRoute(payload);
+    const reply = await callAppApiRoute(payload);
+    if (reply && reply !== "(réponse vide)") return reply;
   } catch (apiErr) {
-    const apiMsg = apiErr instanceof Error ? apiErr.message : String(apiErr);
-    if (!shouldUseLocalFallback(apiMsg)) {
-      throw apiErr instanceof Error ? apiErr : new Error(apiMsg);
-    }
+    console.warn("[SOC AI] API route indisponible ou erreur fournisseur:", apiErr);
   }
 
+  // 2. Tenter la fonction Edge Supabase
   try {
     const { data, error } = await supabase.functions.invoke("soc-ai-chat", {
       body: { messages: payload },
     });
 
-    if (error) {
-      const msg = await parseFunctionError(error);
-      if (shouldUseLocalFallback(msg)) return localFallbackReply(messages);
-      throw new Error(msg);
+    if (!error && data?.reply && typeof data.reply === "string" && data.reply.trim()) {
+      return data.reply;
     }
-
-    if (data && typeof data === "object" && "error" in data && data.error) {
-      const errMsg = String(data.error);
-      if (shouldUseLocalFallback(errMsg)) return localFallbackReply(messages);
-      throw new Error(errMsg);
-    }
-
-    const reply = data?.reply;
-    if (typeof reply === "string" && reply.trim()) return reply;
   } catch (e: unknown) {
-    const msg = await parseFunctionError(e);
-    if (shouldUseLocalFallback(msg)) return localFallbackReply(messages);
-    throw new Error(msg);
+    console.warn("[SOC AI] Supabase function indisponible:", e);
   }
 
+  // 3. Repli local expert Djib'son (SOC Sonatel INOVA-IRIS) garanti
   return localFallbackReply(messages);
 }

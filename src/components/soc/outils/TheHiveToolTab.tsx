@@ -106,66 +106,14 @@ export function TheHiveToolTab() {
         <p className="text-sm text-muted-foreground">Gestion de cas, observables, intégrations multi-source et réponse aux incidents (démo).</p>
       </div>
 
-      <Tabs defaultValue="overview" className="space-y-4">
+      <Tabs defaultValue="kanban" className="space-y-4">
         <TabsList className="flex h-auto min-h-10 flex-wrap justify-start gap-1">
-          <TabsTrigger value="overview">Présentation</TabsTrigger>
           <TabsTrigger value="kanban">Kanban</TabsTrigger>
           <TabsTrigger value="templates">Templates</TabsTrigger>
           <TabsTrigger value="integrations">Intégrations</TabsTrigger>
           <TabsTrigger value="api">API & Rôles</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview">
-          <Card className="p-6">
-            <h3 className="text-2xl font-bold text-primary mb-2">TheHive : Gestion & Réponse aux Incidents (SIRP)</h3>
-            <p className="text-muted-foreground mb-8">TheHive est une plateforme SIRP (Security Incident Response Platform) open-source conçue pour faciliter le travail des analystes SOC grâce à une gestion collaborative, rapide et structurée des incidents de sécurité.</p>
-            
-            <div className="grid gap-6 md:grid-cols-2">
-              <div className="space-y-2">
-                <h4 className="font-semibold text-lg flex items-center gap-2"><LayoutTemplate className="w-5 h-5 text-primary"/> Gestion des Cas (Case Management)</h4>
-                <ul className="list-disc pl-5 space-y-1 text-sm text-muted-foreground">
-                  <li>Création, suivi et attribution des cas (statut, priorité, responsable).</li>
-                  <li>Regroupement intelligent des alertes pertinentes pour éviter la fatigue d'alerte.</li>
-                </ul>
-              </div>
-              <div className="space-y-2">
-                <h4 className="font-semibold text-lg flex items-center gap-2"><Eye className="w-5 h-5 text-primary"/> Alertes & Observables</h4>
-                <ul className="list-disc pl-5 space-y-1 text-sm text-muted-foreground">
-                  <li>Ingestion d'alertes provenant de sources multiples (SIEM, IDS/IPS, EDR).</li>
-                  <li>Extraction, enrichissement et gestion des IOCs (IP, hachages, URL...).</li>
-                </ul>
-              </div>
-              <div className="space-y-2">
-                <h4 className="font-semibold text-lg flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-primary"/> Tâches & Workflows</h4>
-                <ul className="list-disc pl-5 space-y-1 text-sm text-muted-foreground">
-                  <li>Définition de tâches personnalisables pour chaque étape de la réponse à incident.</li>
-                  <li>Assignation automatique, suivi de progression et utilisation de modèles (templates).</li>
-                </ul>
-              </div>
-              <div className="space-y-2">
-                <h4 className="font-semibold text-lg flex items-center gap-2"><MessageSquare className="w-5 h-5 text-primary"/> Collaboration Active</h4>
-                <ul className="list-disc pl-5 space-y-1 text-sm text-muted-foreground">
-                  <li>Fonctionnalités de chat et commentaires intégrées directement dans les tâches.</li>
-                  <li>Journalisation exhaustive et immuable des actions et décisions prises.</li>
-                </ul>
-              </div>
-              <div className="space-y-2">
-                <h4 className="font-semibold text-lg flex items-center gap-2"><GitMerge className="w-5 h-5 text-primary"/> Intégrations Puissantes</h4>
-                <ul className="list-disc pl-5 space-y-1 text-sm text-muted-foreground">
-                  <li>Connexion native à des outils externes (Cortex, MISP, VirusTotal, Shuffle).</li>
-                  <li>Automatisation de l'enrichissement des observables via des analyseurs.</li>
-                </ul>
-              </div>
-              <div className="space-y-2">
-                <h4 className="font-semibold text-lg flex items-center gap-2"><PieChart className="w-5 h-5 text-primary"/> Reporting & Statistiques</h4>
-                <ul className="list-disc pl-5 space-y-1 text-sm text-muted-foreground">
-                  <li>Génération de rapports détaillés sur les incidents résolus.</li>
-                  <li>Tableaux de bord sur la performance du SOC (MTTD - Mean Time to Detect, MTTR).</li>
-                </ul>
-              </div>
-            </div>
-          </Card>
-        </TabsContent>
 
         <TabsContent value="kanban" className="space-y-4">
 
@@ -284,7 +232,7 @@ export function TheHiveToolTab() {
                 { source: "Wazuh", status: "active", alerts: 152 },
                 { source: "Elastic SIEM", status: "active", alerts: 87 },
                 { source: "CrowdStrike EDR", status: "degraded", alerts: 23 },
-                { source: "Suricata IDS", status: "active", alerts: 45 },
+                { source: "Wazuh XDR", status: "active", alerts: 45 },
               ].map((conn) => (
                 <div key={conn.source} className="flex items-center justify-between rounded-lg border border-border/60 p-3">
                   <div>

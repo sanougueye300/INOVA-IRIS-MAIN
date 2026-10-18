@@ -14,6 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { RequireAuth } from "@/components/RequireAuth";
 import { toast } from "sonner";
+import { recordAuditEvent } from "@/lib/audit-log";
 import type { AppRole } from "@/lib/auth-context";
 import {
   Shield, CheckCircle, XCircle, Mail, Building, ArrowLeft,
@@ -251,8 +252,10 @@ function UserCockpit360() {
         if (error) throw error;
 
         // 2. Update Role in Supabase
-        await supabase.from("user_roles").delete().eq("user_id", userId);
-        await supabase.from("user_roles").insert({ user_id: userId, role });
+        const { error: deleteRoleError } = await supabase.from("user_roles").delete().eq("user_id", userId);
+        if (deleteRoleError) throw deleteRoleError;
+        const { error: insertRoleError } = await supabase.from("user_roles").insert({ user_id: userId, role });
+        if (insertRoleError) throw insertRoleError;
       }
 
       // 3. Update password if provided (via Edge Function with service role)
@@ -270,6 +273,11 @@ function UserCockpit360() {
       }
 
       setProfile(updatedProfile);
+      void recordAuditEvent("USER_UPDATE", mergedFullName, {
+        user_id: userId,
+        updated_fields: ["full_name", "organization", "phone", "profile_details", "permissions", "role"],
+        password_updated: Boolean(form.newPassword),
+      }, form.organization, "staff");
       toast.success("Profil et préférences mis à jour avec succès");
       
       // Simulate Technical Onboarding console
@@ -293,6 +301,10 @@ function UserCockpit360() {
         if (error) throw error;
       }
       setProfile(updatedProfile);
+      void recordAuditEvent("USER_STATUS_UPDATE", profile.email || userId, {
+        user_id: userId,
+        is_active: updatedProfile.is_active,
+      }, profile.organization, "staff");
       toast.success(`Utilisateur ${profile.is_active ? "désactivé" : "activé"}`, { id: toastId });
     } catch (e: any) {
       toast.error("Erreur", { description: e.message, id: toastId });

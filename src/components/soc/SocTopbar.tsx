@@ -213,8 +213,8 @@ export function SocTopbar() {
                 { to: "/alertes", label: "Alertes", icon: Bell },
                 { to: "/iocs", label: "IOC", icon: Globe2 },
                 { to: "/assistant", label: "IA", icon: Brain },
-                { to: "/threat-map", label: "Map", icon: Globe2 },
-                { to: "/iris", label: "IRIS", icon: LayoutGrid },
+                { to: "/clients", label: "Clients", icon: LayoutGrid },
+                { to: "/facturation", label: "Factures", icon: LayoutGrid },
                 { to: "/outils", hash: "orchestrator", label: "SOC", icon: LayoutGrid },
                 { to: "/admin", label: "Admin", icon: LayoutGrid },
               ].map((m) => (

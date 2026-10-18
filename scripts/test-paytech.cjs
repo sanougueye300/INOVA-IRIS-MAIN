@@ -13,7 +13,7 @@ const postData = JSON.stringify({
   success_url: "https://inova-iris-main2.vercel.app/?payment_status=success",
   cancel_url: "https://inova-iris-main2.vercel.app/?payment_status=cancel",
   ipn_url: "https://inova-iris-main2.vercel.app/api/paytech-ipn",
-  env: "test"
+  env: "prod"
 });
 
 const options = {

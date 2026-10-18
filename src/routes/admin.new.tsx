@@ -11,7 +11,8 @@ import orangeLogo from "@/assets/orange-logo.png";
 import {
   User, Mail, Phone, Building, MapPin, Shield, Loader2, ArrowLeft, Info, Lock,
   Check, ChevronRight, ChevronLeft, CheckCircle2, ChevronDown,
-  Sliders, Key, Users, Fingerprint, Zap, Globe2, AlertTriangle
+  Sliders, Key, Users, Fingerprint, Zap, Globe2, AlertTriangle,
+  Eye, EyeOff, Briefcase, RefreshCw, KeyRound, ShieldCheck, UserPlus
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -20,6 +21,7 @@ import type { AppRole } from "@/lib/auth-context";
 import { useAuth } from "@/lib/auth-context";
 import { Separator } from "@/components/ui/separator";
 import { invokeAuthSecurity } from "@/lib/auth-security";
+import { recordAuditEvent } from "@/lib/audit-log";
 
 export const Route = createFileRoute("/admin/new")({
   head: () => ({ meta: [{ title: "Nouveau Agent RH — SOC Platform" }] }),
@@ -66,11 +68,453 @@ const STEPS = [
   { num: 4, label: "Validation",         icon: <CheckCircle2 className="h-4 w-4" /> },
 ];
 
+/* ─── Modèle Simplifié Nouveau RH pour Espace Client ─────────────── */
+function ClientNewRHView({
+  organization,
+  clientUserCount,
+  setClientUserCount,
+  CLIENT_MAX_USERS,
+}: {
+  organization: string | null;
+  clientUserCount: number;
+  setClientUserCount: (n: number) => void;
+  CLIENT_MAX_USERS: number;
+}) {
+  const navigate = useNavigate();
+  const [busy, setBusy] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [sendWelcomeEmail, setSendWelcomeEmail] = useState(true);
+  const clientQuotaReached = clientUserCount >= CLIENT_MAX_USERS;
+
+  const [form, setForm] = useState({
+    prenom: "",
+    nom: "",
+    email: "",
+    phone: "",
+    fonction: "Responsable Ressources Humaines",
+    password: "",
+    confirmPassword: "",
+  });
+
+  const generateRandomPassword = () => {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%";
+    let pwd = "";
+    for (let i = 0; i < 10; i++) {
+      pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setForm((f) => ({ ...f, password: pwd, confirmPassword: pwd }));
+    setShowPassword(true);
+    toast.info("Mot de passe sécurisé généré !");
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (clientQuotaReached) {
+      toast.error("Quota maximal atteint", {
+        description: `Votre abonnement client permet jusqu'à ${CLIENT_MAX_USERS} comptes. Contactez le support pour augmenter votre quota.`,
+      });
+      return;
+    }
+
+    if (!form.prenom.trim()) {
+      toast.error("Le prénom est obligatoire");
+      return;
+    }
+    if (!form.nom.trim()) {
+      toast.error("Le nom est obligatoire");
+      return;
+    }
+    if (!form.email.trim() || !/\S+@\S+\.\S+/.test(form.email)) {
+      toast.error("Une adresse e-mail professionnelle valide est requise");
+      return;
+    }
+    if (!form.phone.trim()) {
+      toast.error("Le numéro de téléphone est requis");
+      return;
+    }
+    if (!form.password || form.password.length < 6) {
+      toast.error("Le mot de passe doit comporter au moins 6 caractères");
+      return;
+    }
+    if (form.password !== form.confirmPassword) {
+      toast.error("Les mots de passe ne correspondent pas");
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const fullName = `${form.prenom.trim()} ${form.nom.trim()}`;
+      const orgName = organization || "Organisation Client";
+      const body = {
+        email: form.email.trim(),
+        fullName,
+        organization: orgName,
+        role: "client",
+        generation: "v2",
+        phone: form.phone.trim(),
+        matricule: `RH-${Date.now().toString().slice(-4)}`,
+        physicalAddress: "",
+        city: "",
+        info: `Poste / Fonction : ${form.fonction || "Collaborateur RH"}`,
+        tagPolicy: "group",
+        isActive: true,
+        permissions: { dispatching: false, showExperiences: false, showFollowers: true },
+        password: form.password,
+        securityAnswers: [],
+        redirectOrigin: window.location.origin,
+      };
+
+      const { error } = await supabase.functions.invoke("admin-create-user", { body });
+      if (error) {
+        let errMsg = error.message;
+        if (error.context && typeof error.context.json === "function") {
+          try {
+            const errBody = await error.context.json();
+            if (errBody?.error) errMsg = errBody.error;
+          } catch (_) {}
+        }
+        throw new Error(errMsg);
+      }
+
+      const newCount = clientUserCount + 1;
+      setClientUserCount(newCount);
+      localStorage.setItem("client_user_count", String(newCount));
+
+      toast.success("Nouveau compte RH créé avec succès !", {
+        description: `Le collaborateur ${fullName} (${form.email}) a été ajouté à votre organisation.`,
+      });
+
+      // Clear form
+      setForm({
+        prenom: "",
+        nom: "",
+        email: "",
+        phone: "",
+        fonction: "Responsable Ressources Humaines",
+        password: "",
+        confirmPassword: "",
+      });
+    } catch (err: any) {
+      toast.error("Erreur de création", {
+        description: err?.message || "Impossible de créer le compte collaborateur",
+      });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50/60 dark:bg-zinc-950 text-foreground transition-colors py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-3xl mx-auto space-y-6">
+
+        {/* Back and Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="space-y-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate({ to: "/dashboard" })}
+              className="text-xs text-muted-foreground hover:text-foreground pl-0 -ml-2 mb-1"
+            >
+              <ArrowLeft className="h-4 w-4 mr-1.5" /> Retour au Tableau de bord
+            </Button>
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20 inline-flex items-center gap-1.5">
+                <Users className="h-3 w-3" /> Espace Client · Gestion des Équipes
+              </span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+              Nouveau Collaborateur RH
+            </h1>
+            <p className="text-xs sm:text-sm text-muted-foreground">
+              Ajoutez simplement un compte d'accès RH pour un membre de votre organisation.
+            </p>
+          </div>
+
+          <Link
+            to="/admin"
+            className="self-start sm:self-auto inline-flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-xl bg-secondary/80 hover:bg-secondary text-secondary-foreground border border-border transition-colors shadow-xs"
+          >
+            <Users className="h-3.5 w-3.5 text-muted-foreground" />
+            Voir la liste des comptes
+          </Link>
+        </div>
+
+        {/* Quota Banner */}
+        <div className={`p-4 rounded-2xl border transition-all ${
+          clientQuotaReached
+            ? "bg-red-500/10 border-red-500/30 text-red-700 dark:text-red-400"
+            : "bg-card border-border shadow-xs"
+        }`}>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${
+                clientQuotaReached ? "bg-red-500/20 text-red-600 dark:text-red-400" : "bg-sky-500/10 text-sky-600 dark:text-sky-400"
+              }`}>
+                {clientQuotaReached ? <AlertTriangle className="h-5 w-5" /> : <Users className="h-5 w-5" />}
+              </div>
+              <div>
+                <p className="text-xs font-black uppercase tracking-wider">
+                  {clientQuotaReached ? "Quota d'utilisateurs atteint" : "Comptes collaborateurs de votre entreprise"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {clientQuotaReached
+                    ? "Limite de 3 utilisateurs atteinte pour votre forfait. Contactez le SOC Sonatel pour une extension."
+                    : `Organisation : ${organization || "Votre Entreprise"} · ${CLIENT_MAX_USERS - clientUserCount} compte(s) disponible(s)`}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 sm:self-center">
+              <div className="w-28 sm:w-36">
+                <div className="h-2 rounded-full bg-secondary overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      clientQuotaReached ? "bg-red-500" : clientUserCount >= 2 ? "bg-amber-500" : "bg-sky-500"
+                    }`}
+                    style={{ width: `${Math.min((clientUserCount / CLIENT_MAX_USERS) * 100, 100)}%` }}
+                  />
+                </div>
+              </div>
+              <span className="text-xs font-black font-mono shrink-0">
+                {clientUserCount} / {CLIENT_MAX_USERS}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Form Container — Modèle Moderne & Épuré */}
+        <form onSubmit={handleSubmit} className="bg-card border border-border rounded-2xl p-6 sm:p-8 shadow-xs space-y-6">
+
+          {/* Section 1: Informations Personnelles & Poste */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 pb-2 border-b border-border">
+              <div className="h-7 w-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold text-xs">
+                1
+              </div>
+              <div>
+                <h2 className="text-sm font-bold text-slate-900 dark:text-white">Informations du collaborateur</h2>
+                <p className="text-[11px] text-muted-foreground">Coordonnées professionnelles et intitulé du poste</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Prénom <span className="text-red-500">*</span>
+                </Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <input
+                    type="text"
+                    required
+                    value={form.prenom}
+                    onChange={(e) => setForm({ ...form, prenom: e.target.value })}
+                    placeholder="Ex: Aminata"
+                    className="w-full pl-9 pr-3 py-2 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all font-medium"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Nom <span className="text-red-500">*</span>
+                </Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <input
+                    type="text"
+                    required
+                    value={form.nom}
+                    onChange={(e) => setForm({ ...form, nom: e.target.value })}
+                    placeholder="Ex: Diop"
+                    className="w-full pl-9 pr-3 py-2 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all font-medium"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  E-mail professionnel <span className="text-red-500">*</span>
+                </Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <input
+                    type="email"
+                    required
+                    value={form.email}
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    placeholder="aminata.diop@entreprise.sn"
+                    className="w-full pl-9 pr-3 py-2 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all font-medium"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Numéro de téléphone <span className="text-red-500">*</span>
+                </Label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <input
+                    type="tel"
+                    required
+                    value={form.phone}
+                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                    placeholder="+221 77 000 00 00"
+                    className="w-full pl-9 pr-3 py-2 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all font-medium"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Fonction / Poste au sein de l'entreprise
+                </Label>
+                <div className="relative">
+                  <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <input
+                    type="text"
+                    value={form.fonction}
+                    onChange={(e) => setForm({ ...form, fonction: e.target.value })}
+                    placeholder="Ex: Responsable Ressources Humaines, Chargé RH, Directeur..."
+                    className="w-full pl-9 pr-3 py-2 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all font-medium"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 2: Sécurité & Mot de Passe */}
+          <div className="space-y-4 pt-2">
+            <div className="flex items-center justify-between pb-2 border-b border-border">
+              <div className="flex items-center gap-2">
+                <div className="h-7 w-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold text-xs">
+                  2
+                </div>
+                <div>
+                  <h2 className="text-sm font-bold text-slate-900 dark:text-white">Sécurité & Accès</h2>
+                  <p className="text-[11px] text-muted-foreground">Mot de passe temporaire pour la première connexion</p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={generateRandomPassword}
+                className="text-xs h-8 rounded-lg gap-1.5"
+              >
+                <RefreshCw className="h-3.5 w-3.5 text-primary" /> Générer un mot de passe
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Mot de passe temporaire <span className="text-red-500">*</span>
+                </Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    required
+                    minLength={6}
+                    value={form.password}
+                    onChange={(e) => setForm({ ...form, password: e.target.value })}
+                    placeholder="Minimum 6 caractères"
+                    className="w-full pl-9 pr-10 py-2 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all font-medium"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Confirmer le mot de passe <span className="text-red-500">*</span>
+                </Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    required
+                    minLength={6}
+                    value={form.confirmPassword}
+                    onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
+                    placeholder="Répétez le mot de passe"
+                    className="w-full pl-9 pr-10 py-2 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all font-medium"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-2">
+              <label className="flex items-center gap-2.5 text-xs text-muted-foreground cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={sendWelcomeEmail}
+                  onChange={(e) => setSendWelcomeEmail(e.target.checked)}
+                  className="rounded border-input text-primary focus:ring-primary h-4 w-4"
+                />
+                <span>Envoyer une notification par email avec le lien d'accès à l'espace</span>
+              </label>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-sky-500/5 border border-sky-500/20 text-xs text-sky-700 dark:text-sky-300 flex items-start gap-2.5">
+              <ShieldCheck className="h-4 w-4 text-sky-500 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-bold">Espace sécurisé :</span> Ce compte aura un rôle <strong>Client</strong> avec accès aux données de <strong>{organization || "votre organisation"}</strong> uniquement.
+              </div>
+            </div>
+          </div>
+
+          {/* Submit Actions */}
+          <div className="pt-4 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-3">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => navigate({ to: "/dashboard" })}
+              className="text-xs w-full sm:w-auto"
+            >
+              Annuler
+            </Button>
+
+            <Button
+              type="submit"
+              disabled={busy || clientQuotaReached}
+              className="w-full sm:w-auto px-6 py-2.5 rounded-xl font-bold text-sm bg-primary text-primary-foreground hover:bg-primary/90 shadow-md shadow-primary/20 gap-2"
+            >
+              {busy ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Création du compte en cours...
+                </>
+              ) : (
+                <>
+                  <UserPlus className="h-4 w-4" />
+                  Créer le compte RH
+                </>
+              )}
+            </Button>
+          </div>
+
+        </form>
+
+      </div>
+    </div>
+  );
+}
+
 /* ─── Component ──────────────────────────────────────────────────── */
 
 function NewUserPage() {
   const navigate = useNavigate();
-  const { roles, organization } = useAuth();
+  const { roles, organization, user } = useAuth();
   const isClientOnly = roles.includes("client") && !roles.includes("admin") && !roles.includes("analyste") && !roles.includes("manager");
 
   // Track user quota for client role (max 3)
@@ -82,6 +526,17 @@ function NewUserPage() {
     return 0;
   });
   const clientQuotaReached = isClientOnly && clientUserCount >= CLIENT_MAX_USERS;
+
+  if (isClientOnly) {
+    return (
+      <ClientNewRHView
+        organization={organization}
+        clientUserCount={clientUserCount}
+        setClientUserCount={setClientUserCount}
+        CLIENT_MAX_USERS={CLIENT_MAX_USERS}
+      />
+    );
+  }
 
   const [busy, setBusy]           = useState(false);
   const [activeStep, setActiveStep] = useState<number>(1);
@@ -221,6 +676,11 @@ function NewUserPage() {
         throw new Error(errMsg);
       }
       const securityInfo = data?.security;
+      void recordAuditEvent("USER_CREATE", fullName, {
+        email: form.email,
+        role: body.role,
+        generation: body.generation,
+      }, org?.label ?? form.organization, isClientOnly ? "client" : "staff", isClientOnly ? user?.id : null);
       const otpDesc = securityInfo?.otpSentVia === "sms" && securityInfo?.maskedPhone
         ? `OTP SMS envoyé au ${securityInfo.maskedPhone}`
         : securityInfo?.otpSentVia === "email"

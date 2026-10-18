@@ -127,12 +127,27 @@ function Abonnements() {
       .select("*")
       .order("created_at", { ascending: false });
 
-    if (error) {
-      console.error("Error loading subscriptions:", error);
-      toast.error("Erreur lors du chargement des abonnements");
-    } else {
-      setSubscriptions((data as unknown as Subscription[]) ?? []);
+    let subsList: Subscription[] = [];
+    if (!error && data) {
+      subsList = (data as unknown as Subscription[]) ?? [];
     }
+
+    // Merge paid subscriptions saved locally (from PayTech webhook/success returns)
+    try {
+      const localStored = localStorage.getItem("inova_paid_subscriptions");
+      if (localStored) {
+        const localList: Subscription[] = JSON.parse(localStored);
+        for (const item of localList) {
+          if (!subsList.some((s) => s.id === item.id || (s.stripe_subscription_id && s.stripe_subscription_id === item.stripe_subscription_id))) {
+            subsList.unshift(item);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to merge local subscriptions", e);
+    }
+
+    setSubscriptions(subsList);
     setLoading(false);
     setRefreshing(false);
   }, []);
@@ -435,20 +450,34 @@ function Abonnements() {
                         <TableCell className="py-4 px-4">
                           <div className="flex gap-2">
                             {sub.stripe_subscription_id && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 text-[10px] font-black uppercase hover:bg-violet-500/10 hover:text-violet-600 rounded-lg"
-                                onClick={() =>
-                                  window.open(
-                                    `https://dashboard.stripe.com/subscriptions/${sub.stripe_subscription_id}`,
-                                    "_blank"
-                                  )
-                                }
-                              >
-                                <ArrowUpRight className="h-3 w-3 mr-1" />
-                                Stripe
-                              </Button>
+                              sub.stripe_subscription_id.startsWith("paytech_") ? (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 text-[10px] font-black uppercase hover:bg-emerald-500/10 hover:text-emerald-600 text-emerald-600 rounded-lg"
+                                  onClick={() =>
+                                    window.open("https://paytech.sn/dashboard", "_blank")
+                                  }
+                                >
+                                  <ArrowUpRight className="h-3 w-3 mr-1" />
+                                  PayTech
+                                </Button>
+                              ) : (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 text-[10px] font-black uppercase hover:bg-violet-500/10 hover:text-violet-600 rounded-lg"
+                                  onClick={() =>
+                                    window.open(
+                                      `https://dashboard.stripe.com/subscriptions/${sub.stripe_subscription_id}`,
+                                      "_blank"
+                                    )
+                                  }
+                                >
+                                  <ArrowUpRight className="h-3 w-3 mr-1" />
+                                  Stripe
+                                </Button>
+                              )
                             )}
                           </div>
                         </TableCell>

@@ -43,18 +43,15 @@ const mainItems: Item[] = [
   { to: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
   { to: "/alertes", label: "Alertes", icon: AlertTriangle },
   { to: "/iocs", label: "IOC", icon: Database },
-  { to: "/threat-map", label: "Threat Map", icon: Globe2 },
   { to: "/assistant", label: "Assistant IA", icon: Brain },
-  { to: "/iris", label: "DFIR-IRIS", icon: Fingerprint },
 ];
 
 const toolItems: Item[] = [
-  { to: "/outils", label: "Orchestrateur", icon: Layers, hash: "orchestrator" },
-  { to: "/outils", label: "Wazuh", icon: Shield, hash: "wazuh" },
-  { to: "/outils", label: "TheHive", icon: Bug, hash: "thehive" },
-  { to: "/outils", label: "MISP", icon: ServerCog, hash: "misp" },
-  { to: "/outils", label: "VirusTotal", icon: ScanSearch, hash: "virustotal" },
-  { to: "/outils", label: "Shuffle", icon: Workflow, hash: "shuffle" },
+  { to: "/outils/wazuh", label: "Wazuh", icon: Shield },
+  { to: "/outils/thehive", label: "TheHive", icon: Bug },
+  { to: "/outils/misp", label: "MISP", icon: ServerCog },
+  { to: "/outils/virustotal", label: "VirusTotal", icon: ScanSearch },
+  { to: "/outils/shuffle", label: "Shuffle", icon: Workflow },
 ];
 
 export function SocSidebar({ onNavigate }: { onNavigate?: () => void }) {
@@ -71,7 +68,7 @@ export function SocSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const [authOpen, setAuthOpen] = useState(pathname.startsWith("/auth"));
   const [splitOpen, setSplitOpen] = useState(pathname.startsWith("/auth"));
   const [navOpen, setNavOpen] = useState(true);
-  const [outilsOpen, setOutilsOpen] = useState(pathname === "/outils");
+  const [outilsOpen, setOutilsOpen] = useState(pathname.startsWith("/outils"));
   const [adminOpen, setAdminOpen] = useState(
     pathname.startsWith("/admin") || pathname === "/settings" || pathname === "/integrations" || pathname === "/audit"
   );
@@ -92,7 +89,6 @@ export function SocSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const isActive = (it: Item) => {
     if (pathname !== it.to) return false;
     if (!it.hash) return true;
-    if (it.hash === "orchestrator") return !hash || hash === "orchestrator";
     return hash === it.hash;
   };
 
@@ -231,10 +227,10 @@ export function SocSidebar({ onNavigate }: { onNavigate?: () => void }) {
                     <div className="ml-3 space-y-0.5 border-l pl-2 border-dashed" style={{ borderColor: isDarker ? "#27272a" : "hsl(var(--border))" }}>
                       {[
                         { to: "/auth/login", label: "Sign in" },
+                        { to: "/auth/2fa", label: "2FA" },
                         { to: "/auth/forgot-password", label: "Forgot password" },
                         { to: "/auth/reset-password", label: "Reset password" },
                         { to: "/auth/lock", label: "Lock screen" },
-                        { to: "/auth/2fa", label: "2FA" },
                         { to: "/auth/logout", label: "Sign out" },
                       ].map((sub) => (
                         <Link
@@ -282,7 +278,6 @@ export function SocSidebar({ onNavigate }: { onNavigate?: () => void }) {
                 {renderItem({ to: "/admin/new", label: "Nouveau RH", icon: UserPlus })}
                 {renderItem({ to: "/admin/profiles", label: "Gestion des profils", icon: Shield })}
                 {renderItem({ to: "/admin/offres", label: "Catalogues Offres", icon: CreditCard })}
-                {renderItem({ to: "/abonnements", label: "Abonnements Stripe", icon: CreditCard })}
                 {renderItem({ to: "/settings", label: "Paramètres Globaux", icon: Sliders })}
                 {renderItem({ to: "/integrations", label: "Connecteurs & API", icon: Plug })}
                 {renderItem({ to: "/audit", label: "Journaux d'Audit", icon: FileText })}
@@ -403,7 +398,6 @@ export function SocSidebar({ onNavigate }: { onNavigate?: () => void }) {
         <div className="px-3">
           <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("Module Facturation")}</p>
           <nav className="space-y-1">
-            {renderItem({ to: "/abonnements", label: "Abonnements Stripe", icon: CreditCard })}
             {/* ── Facturation dropdown ── */}
             <button
               onClick={() => setFacturationOpen(o => !o)}
@@ -469,6 +463,18 @@ export function SocSidebar({ onNavigate }: { onNavigate?: () => void }) {
                   <BellRing className="h-3.5 w-3.5" />
                   {t("Relances & Rappels")}
                 </Link>
+                <Link
+                  to="/facturation"
+                  hash="abonnements"
+                  onClick={onNavigate}
+                  className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors ${pathname === "/facturation" && hash === "abonnements"
+                    ? "bg-accent font-semibold text-accent-foreground"
+                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                    }`}
+                >
+                  <CreditCard className="h-3.5 w-3.5" />
+                  {t("Abonnements PayTech")}
+                </Link>
               </div>
             )}
           </nav>
@@ -500,9 +506,10 @@ export function SocSidebar({ onNavigate }: { onNavigate?: () => void }) {
 
 
       </div>
-      <div className={`border-t p-3 text-[10px] uppercase tracking-wider ${sidebarAppearance === "darker" ? "border-zinc-800 text-zinc-500" : "border-border text-muted-foreground"
+      <div className={`border-t p-3 text-[10px] tracking-wider ${sidebarAppearance === "darker" ? "border-zinc-800 text-zinc-500" : "border-border text-muted-foreground"
         }`}>
-        © Sonatel · Inova-Iris
+        <div>© Sonatel · Inova-Iris</div>
+        <div className="text-[9px] font-medium text-primary lowercase mt-0.5">Djibril Sanou Gueye · djibrilsanougueye@esp.sn</div>
       </div>
     </aside>
   );

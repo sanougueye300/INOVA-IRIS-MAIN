@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Shield, Save, Key, LayoutDashboard, Bell, Users, ServerCog } from "lucide-react";
 import { toast } from "sonner";
+import { recordAuditEvent } from "@/lib/audit-log";
 
 export const Route = createFileRoute("/admin/profiles")({
   head: () => ({ meta: [{ title: "Gestion des profils — SOC Platform" }] }),
@@ -90,6 +91,9 @@ function AdminProfiles() {
     setSaving(true);
     setTimeout(() => {
       localStorage.setItem("soc_profiles_permissions", JSON.stringify(permissionsMap));
+      void recordAuditEvent("PROFILE_PERMISSIONS_UPDATE", selectedProfile, {
+        changed_permissions: Object.keys(permissionsMap[selectedProfile] ?? {}),
+      }, null, "staff");
       toast.success("Droits sauvegardés", {
         description: `Les permissions pour le profil ont été mises à jour avec succès.`
       });

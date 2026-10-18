@@ -15,22 +15,24 @@ import {
   Globe2,
   Layers,
   Fingerprint,
+  Users,
 } from "lucide-react";
 
 const ITEMS = [
   { label: "Tableau de bord", to: "/dashboard", icon: LayoutDashboard },
   { label: "Alertes", to: "/alertes", icon: AlertTriangle },
-  { label: "IOC", to: "/iocs", icon: Database },
-  { label: "Threat Map", to: "/threat-map", icon: Globe2 },
+  { label: "IOC & CTI", to: "/iocs", icon: Database },
   { label: "Djib'son IA", to: "/assistant", icon: Brain },
-  { label: "DFIR-IRIS", to: "/iris", icon: Fingerprint },
   { label: "Outils SOC — Orchestrateur", to: "/outils", hash: "orchestrator", icon: Layers },
-  { label: "Wazuh", to: "/outils", hash: "wazuh", icon: Shield },
-  { label: "TheHive", to: "/outils", hash: "thehive", icon: Bug },
-  { label: "MISP", to: "/outils", hash: "misp", icon: ServerCog },
+  { label: "Wazuh EDR", to: "/outils", hash: "wazuh", icon: Shield },
+  { label: "TheHive SIRP", to: "/outils", hash: "thehive", icon: Bug },
+  { label: "MISP CTI", to: "/outils", hash: "misp", icon: ServerCog },
   { label: "VirusTotal", to: "/outils", hash: "virustotal", icon: ScanSearch },
-  { label: "Shuffle", to: "/outils", hash: "shuffle", icon: Workflow },
-  { label: "Administration", to: "/admin", icon: Settings },
+  { label: "Shuffle SOAR", to: "/outils", hash: "shuffle", icon: Workflow },
+  { label: "Gestion Clients", to: "/clients", icon: Users },
+  { label: "Inventaire Parc EDR", to: "/clients/inventory", icon: Shield },
+  { label: "Module Facturation", to: "/facturation", icon: Layers },
+  { label: "Administration & Rôles", to: "/admin", icon: Settings },
 ];
 
 export function CommandPalette() {

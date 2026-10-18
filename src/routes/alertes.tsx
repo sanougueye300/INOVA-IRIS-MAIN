@@ -14,6 +14,7 @@ import { RequireAuth } from "@/components/RequireAuth";
 import { useAuth } from "@/lib/auth-context";
 import { ClientEndpointTopology } from "@/components/soc/ClientEndpointTopology";
 import { toast } from "sonner";
+import { recordAuditEvent } from "@/lib/audit-log";
 import { SocAlertCorrelationGraph } from "@/components/soc/SocAlertCorrelationGraph";
 import { SocAttackTimeline } from "@/components/soc/SocAttackTimeline";
 import { useSocSimulation } from "@/lib/soc-simulation";
@@ -125,7 +126,7 @@ function Alertes() {
   const [syncing, setSyncing] = useState(false);
   const [sel, setSel] = useState<Set<string>>(new Set());
   const { t } = useSocPreferences();
-  const { roles } = useAuth();
+  const { roles, user, organization } = useAuth();
   const isClientOnly = roles.includes("client") && !roles.includes("admin") && !roles.includes("analyste") && !roles.includes("manager");
   const [fpFeedback, setFpFeedback] = useState<Record<string, "up" | "down" | undefined>>({});
 
@@ -206,6 +207,11 @@ function Alertes() {
       success: "Playbook « Enrichissement + ticket » lancé (démo).",
       error: "Échec",
     });
+    void recordAuditEvent("SOAR_PLAYBOOK_TRIGGER", primarySelected, {
+      alert_id: primarySelected,
+      playbook: "Enrichissement + ticket",
+      simulated: true,
+    }, organization, isClientOnly ? "client" : "staff", isClientOnly ? user?.id : null);
   };
 
   const pivotTheHive = () => {
@@ -214,6 +220,11 @@ function Alertes() {
       return;
     }
     toast.success("TheHive", { description: `Brouillon de cas créé pour l'alerte ${primarySelected} (API à brancher).` });
+    void recordAuditEvent("INCIDENT_CREATE", primarySelected, {
+      alert_id: primarySelected,
+      target: "TheHive",
+      simulated: true,
+    }, organization, isClientOnly ? "client" : "staff", isClientOnly ? user?.id : null);
   };
 
   const suggestFp = (id: string) => {
