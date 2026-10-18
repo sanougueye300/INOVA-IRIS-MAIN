@@ -9,133 +9,53 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as WorkflowRouteImport } from './routes/workflow'
-import { Route as ThreatMapRouteImport } from './routes/threat-map'
-import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as OutilsRouteImport } from './routes/outils'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as IrisRouteImport } from './routes/iris'
-import { Route as IocsRouteImport } from './routes/iocs'
-import { Route as IntegrationsRouteImport } from './routes/integrations'
-import { Route as FacturationRouteImport } from './routes/facturation'
-import { Route as DeploiementRouteImport } from './routes/deploiement'
-import { Route as DashboardRouteImport } from './routes/dashboard'
-import { Route as AuthRouteImport } from './routes/auth'
-import { Route as AuditRouteImport } from './routes/audit'
-import { Route as AssistantRouteImport } from './routes/assistant'
-import { Route as ArchitectureRouteImport } from './routes/architecture'
-import { Route as AlertesRouteImport } from './routes/alertes'
-import { Route as AdminRouteImport } from './routes/admin'
-import { Route as AbonnementsRouteImport } from './routes/abonnements'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as OutilsIndexRouteImport } from './routes/outils.index'
-import { Route as ClientsIndexRouteImport } from './routes/clients.index'
-import { Route as AdminIndexRouteImport } from './routes/admin.index'
-import { Route as OutilsWazuhRouteImport } from './routes/outils.wazuh'
-import { Route as OutilsVirustotalRouteImport } from './routes/outils.virustotal'
-import { Route as OutilsThehiveRouteImport } from './routes/outils.thehive'
-import { Route as OutilsShuffleRouteImport } from './routes/outils.shuffle'
-import { Route as OutilsMispRouteImport } from './routes/outils.misp'
-import { Route as ClientsSlaRouteImport } from './routes/clients.sla'
-import { Route as ClientsSatisfactionRouteImport } from './routes/clients.satisfaction'
-import { Route as ClientsNewRouteImport } from './routes/clients.new'
-import { Route as ClientsInventoryRouteImport } from './routes/clients.inventory'
-import { Route as ClientsClientIdRouteImport } from './routes/clients.$clientId'
-import { Route as AuthResetPasswordRouteImport } from './routes/auth.reset-password'
-import { Route as AuthLogoutRouteImport } from './routes/auth.logout'
-import { Route as AuthLoginRouteImport } from './routes/auth.login'
-import { Route as AuthLockRouteImport } from './routes/auth.lock'
-import { Route as AuthForgotPasswordRouteImport } from './routes/auth.forgot-password'
-import { Route as Auth2faRouteImport } from './routes/auth.2fa'
-import { Route as AdminProfilesRouteImport } from './routes/admin.profiles'
-import { Route as AdminOffresRouteImport } from './routes/admin.offres'
-import { Route as AdminNewRouteImport } from './routes/admin.new'
-import { Route as AdminUserIdRouteImport } from './routes/admin.$userId'
+import { Route as AbonnementsRouteImport } from './routes/abonnements'
+import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AlertesRouteImport } from './routes/alertes'
+import { Route as ArchitectureRouteImport } from './routes/architecture'
+import { Route as AssistantRouteImport } from './routes/assistant'
+import { Route as AuditRouteImport } from './routes/audit'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as DeploiementRouteImport } from './routes/deploiement'
+import { Route as FacturationRouteImport } from './routes/facturation'
+import { Route as IntegrationsRouteImport } from './routes/integrations'
+import { Route as IocsRouteImport } from './routes/iocs'
+import { Route as IrisRouteImport } from './routes/iris'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as OutilsRouteImport } from './routes/outils'
+import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as ThreatMapRouteImport } from './routes/threat-map'
+import { Route as WorkflowRouteImport } from './routes/workflow'
 import { Route as AccountSecurityRouteImport } from './routes/account.security'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as AdminUserIdRouteImport } from './routes/admin.$userId'
+import { Route as AdminNewRouteImport } from './routes/admin.new'
+import { Route as AdminOffresRouteImport } from './routes/admin.offres'
+import { Route as AdminProfilesRouteImport } from './routes/admin.profiles'
+import { Route as Auth2faRouteImport } from './routes/auth.2fa'
+import { Route as AuthForgotPasswordRouteImport } from './routes/auth.forgot-password'
+import { Route as AuthLockRouteImport } from './routes/auth.lock'
+import { Route as AuthLoginRouteImport } from './routes/auth.login'
+import { Route as AuthLogoutRouteImport } from './routes/auth.logout'
+import { Route as AuthResetPasswordRouteImport } from './routes/auth.reset-password'
+import { Route as ClientsIndexRouteImport } from './routes/clients.index'
+import { Route as ClientsClientIdRouteImport } from './routes/clients.$clientId'
+import { Route as ClientsInventoryRouteImport } from './routes/clients.inventory'
+import { Route as ClientsNewRouteImport } from './routes/clients.new'
+import { Route as ClientsSatisfactionRouteImport } from './routes/clients.satisfaction'
+import { Route as ClientsSlaRouteImport } from './routes/clients.sla'
+import { Route as OutilsIndexRouteImport } from './routes/outils.index'
+import { Route as OutilsMispRouteImport } from './routes/outils.misp'
+import { Route as OutilsShuffleRouteImport } from './routes/outils.shuffle'
+import { Route as OutilsThehiveRouteImport } from './routes/outils.thehive'
+import { Route as OutilsVirustotalRouteImport } from './routes/outils.virustotal'
+import { Route as OutilsWazuhRouteImport } from './routes/outils.wazuh'
 
-const WorkflowRoute = WorkflowRouteImport.update({
-  id: '/workflow',
-  path: '/workflow',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ThreatMapRoute = ThreatMapRouteImport.update({
-  id: '/threat-map',
-  path: '/threat-map',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SettingsRoute = SettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OutilsRoute = OutilsRouteImport.update({
-  id: '/outils',
-  path: '/outils',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const IrisRoute = IrisRouteImport.update({
-  id: '/iris',
-  path: '/iris',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const IocsRoute = IocsRouteImport.update({
-  id: '/iocs',
-  path: '/iocs',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const IntegrationsRoute = IntegrationsRouteImport.update({
-  id: '/integrations',
-  path: '/integrations',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FacturationRoute = FacturationRouteImport.update({
-  id: '/facturation',
-  path: '/facturation',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DeploiementRoute = DeploiementRouteImport.update({
-  id: '/deploiement',
-  path: '/deploiement',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DashboardRoute = DashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthRoute = AuthRouteImport.update({
-  id: '/auth',
-  path: '/auth',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuditRoute = AuditRouteImport.update({
-  id: '/audit',
-  path: '/audit',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AssistantRoute = AssistantRouteImport.update({
-  id: '/assistant',
-  path: '/assistant',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ArchitectureRoute = ArchitectureRouteImport.update({
-  id: '/architecture',
-  path: '/architecture',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AlertesRoute = AlertesRouteImport.update({
-  id: '/alertes',
-  path: '/alertes',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminRoute = AdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AbonnementsRoute = AbonnementsRouteImport.update({
@@ -143,19 +63,94 @@ const AbonnementsRoute = AbonnementsRouteImport.update({
   path: '/abonnements',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
-const OutilsIndexRoute = OutilsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => OutilsRoute,
+const AlertesRoute = AlertesRouteImport.update({
+  id: '/alertes',
+  path: '/alertes',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const ClientsIndexRoute = ClientsIndexRouteImport.update({
-  id: '/clients/',
-  path: '/clients/',
+const ArchitectureRoute = ArchitectureRouteImport.update({
+  id: '/architecture',
+  path: '/architecture',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AssistantRoute = AssistantRouteImport.update({
+  id: '/assistant',
+  path: '/assistant',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuditRoute = AuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DeploiementRoute = DeploiementRouteImport.update({
+  id: '/deploiement',
+  path: '/deploiement',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FacturationRoute = FacturationRouteImport.update({
+  id: '/facturation',
+  path: '/facturation',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IntegrationsRoute = IntegrationsRouteImport.update({
+  id: '/integrations',
+  path: '/integrations',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IocsRoute = IocsRouteImport.update({
+  id: '/iocs',
+  path: '/iocs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IrisRoute = IrisRouteImport.update({
+  id: '/iris',
+  path: '/iris',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OutilsRoute = OutilsRouteImport.update({
+  id: '/outils',
+  path: '/outils',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ThreatMapRoute = ThreatMapRouteImport.update({
+  id: '/threat-map',
+  path: '/threat-map',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WorkflowRoute = WorkflowRouteImport.update({
+  id: '/workflow',
+  path: '/workflow',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AccountSecurityRoute = AccountSecurityRouteImport.update({
+  id: '/account/security',
+  path: '/account/security',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
@@ -163,94 +158,9 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminRoute,
 } as any)
-const OutilsWazuhRoute = OutilsWazuhRouteImport.update({
-  id: '/wazuh',
-  path: '/wazuh',
-  getParentRoute: () => OutilsRoute,
-} as any)
-const OutilsVirustotalRoute = OutilsVirustotalRouteImport.update({
-  id: '/virustotal',
-  path: '/virustotal',
-  getParentRoute: () => OutilsRoute,
-} as any)
-const OutilsThehiveRoute = OutilsThehiveRouteImport.update({
-  id: '/thehive',
-  path: '/thehive',
-  getParentRoute: () => OutilsRoute,
-} as any)
-const OutilsShuffleRoute = OutilsShuffleRouteImport.update({
-  id: '/shuffle',
-  path: '/shuffle',
-  getParentRoute: () => OutilsRoute,
-} as any)
-const OutilsMispRoute = OutilsMispRouteImport.update({
-  id: '/misp',
-  path: '/misp',
-  getParentRoute: () => OutilsRoute,
-} as any)
-const ClientsSlaRoute = ClientsSlaRouteImport.update({
-  id: '/clients/sla',
-  path: '/clients/sla',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ClientsSatisfactionRoute = ClientsSatisfactionRouteImport.update({
-  id: '/clients/satisfaction',
-  path: '/clients/satisfaction',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ClientsNewRoute = ClientsNewRouteImport.update({
-  id: '/clients/new',
-  path: '/clients/new',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ClientsInventoryRoute = ClientsInventoryRouteImport.update({
-  id: '/clients/inventory',
-  path: '/clients/inventory',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ClientsClientIdRoute = ClientsClientIdRouteImport.update({
-  id: '/clients/$clientId',
-  path: '/clients/$clientId',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthResetPasswordRoute = AuthResetPasswordRouteImport.update({
-  id: '/reset-password',
-  path: '/reset-password',
-  getParentRoute: () => AuthRoute,
-} as any)
-const AuthLogoutRoute = AuthLogoutRouteImport.update({
-  id: '/logout',
-  path: '/logout',
-  getParentRoute: () => AuthRoute,
-} as any)
-const AuthLoginRoute = AuthLoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => AuthRoute,
-} as any)
-const AuthLockRoute = AuthLockRouteImport.update({
-  id: '/lock',
-  path: '/lock',
-  getParentRoute: () => AuthRoute,
-} as any)
-const AuthForgotPasswordRoute = AuthForgotPasswordRouteImport.update({
-  id: '/forgot-password',
-  path: '/forgot-password',
-  getParentRoute: () => AuthRoute,
-} as any)
-const Auth2faRoute = Auth2faRouteImport.update({
-  id: '/2fa',
-  path: '/2fa',
-  getParentRoute: () => AuthRoute,
-} as any)
-const AdminProfilesRoute = AdminProfilesRouteImport.update({
-  id: '/profiles',
-  path: '/profiles',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminOffresRoute = AdminOffresRouteImport.update({
-  id: '/offres',
-  path: '/offres',
+const AdminUserIdRoute = AdminUserIdRouteImport.update({
+  id: '/$userId',
+  path: '/$userId',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminNewRoute = AdminNewRouteImport.update({
@@ -258,15 +168,105 @@ const AdminNewRoute = AdminNewRouteImport.update({
   path: '/new',
   getParentRoute: () => AdminRoute,
 } as any)
-const AdminUserIdRoute = AdminUserIdRouteImport.update({
-  id: '/$userId',
-  path: '/$userId',
+const AdminOffresRoute = AdminOffresRouteImport.update({
+  id: '/offres',
+  path: '/offres',
   getParentRoute: () => AdminRoute,
 } as any)
-const AccountSecurityRoute = AccountSecurityRouteImport.update({
-  id: '/account/security',
-  path: '/account/security',
+const AdminProfilesRoute = AdminProfilesRouteImport.update({
+  id: '/profiles',
+  path: '/profiles',
+  getParentRoute: () => AdminRoute,
+} as any)
+const Auth2faRoute = Auth2faRouteImport.update({
+  id: '/2fa',
+  path: '/2fa',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthForgotPasswordRoute = AuthForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthLockRoute = AuthLockRouteImport.update({
+  id: '/lock',
+  path: '/lock',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthLoginRoute = AuthLoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthLogoutRoute = AuthLogoutRouteImport.update({
+  id: '/logout',
+  path: '/logout',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthResetPasswordRoute = AuthResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => AuthRoute,
+} as any)
+const ClientsIndexRoute = ClientsIndexRouteImport.update({
+  id: '/clients/',
+  path: '/clients/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ClientsClientIdRoute = ClientsClientIdRouteImport.update({
+  id: '/clients/$clientId',
+  path: '/clients/$clientId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClientsInventoryRoute = ClientsInventoryRouteImport.update({
+  id: '/clients/inventory',
+  path: '/clients/inventory',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClientsNewRoute = ClientsNewRouteImport.update({
+  id: '/clients/new',
+  path: '/clients/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClientsSatisfactionRoute = ClientsSatisfactionRouteImport.update({
+  id: '/clients/satisfaction',
+  path: '/clients/satisfaction',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClientsSlaRoute = ClientsSlaRouteImport.update({
+  id: '/clients/sla',
+  path: '/clients/sla',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OutilsIndexRoute = OutilsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => OutilsRoute,
+} as any)
+const OutilsMispRoute = OutilsMispRouteImport.update({
+  id: '/misp',
+  path: '/misp',
+  getParentRoute: () => OutilsRoute,
+} as any)
+const OutilsShuffleRoute = OutilsShuffleRouteImport.update({
+  id: '/shuffle',
+  path: '/shuffle',
+  getParentRoute: () => OutilsRoute,
+} as any)
+const OutilsThehiveRoute = OutilsThehiveRouteImport.update({
+  id: '/thehive',
+  path: '/thehive',
+  getParentRoute: () => OutilsRoute,
+} as any)
+const OutilsVirustotalRoute = OutilsVirustotalRouteImport.update({
+  id: '/virustotal',
+  path: '/virustotal',
+  getParentRoute: () => OutilsRoute,
+} as any)
+const OutilsWazuhRoute = OutilsWazuhRouteImport.update({
+  id: '/wazuh',
+  path: '/wazuh',
+  getParentRoute: () => OutilsRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -570,123 +570,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/workflow': {
-      id: '/workflow'
-      path: '/workflow'
-      fullPath: '/workflow'
-      preLoaderRoute: typeof WorkflowRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/threat-map': {
-      id: '/threat-map'
-      path: '/threat-map'
-      fullPath: '/threat-map'
-      preLoaderRoute: typeof ThreatMapRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/settings': {
-      id: '/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof SettingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/outils': {
-      id: '/outils'
-      path: '/outils'
-      fullPath: '/outils'
-      preLoaderRoute: typeof OutilsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/iris': {
-      id: '/iris'
-      path: '/iris'
-      fullPath: '/iris'
-      preLoaderRoute: typeof IrisRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/iocs': {
-      id: '/iocs'
-      path: '/iocs'
-      fullPath: '/iocs'
-      preLoaderRoute: typeof IocsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/integrations': {
-      id: '/integrations'
-      path: '/integrations'
-      fullPath: '/integrations'
-      preLoaderRoute: typeof IntegrationsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/facturation': {
-      id: '/facturation'
-      path: '/facturation'
-      fullPath: '/facturation'
-      preLoaderRoute: typeof FacturationRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/deploiement': {
-      id: '/deploiement'
-      path: '/deploiement'
-      fullPath: '/deploiement'
-      preLoaderRoute: typeof DeploiementRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dashboard': {
-      id: '/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth': {
-      id: '/auth'
-      path: '/auth'
-      fullPath: '/auth'
-      preLoaderRoute: typeof AuthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/audit': {
-      id: '/audit'
-      path: '/audit'
-      fullPath: '/audit'
-      preLoaderRoute: typeof AuditRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/assistant': {
-      id: '/assistant'
-      path: '/assistant'
-      fullPath: '/assistant'
-      preLoaderRoute: typeof AssistantRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/architecture': {
-      id: '/architecture'
-      path: '/architecture'
-      fullPath: '/architecture'
-      preLoaderRoute: typeof ArchitectureRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/alertes': {
-      id: '/alertes'
-      path: '/alertes'
-      fullPath: '/alertes'
-      preLoaderRoute: typeof AlertesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin': {
-      id: '/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AdminRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/abonnements': {
@@ -696,25 +584,130 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AbonnementsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/outils/': {
-      id: '/outils/'
-      path: '/'
-      fullPath: '/outils/'
-      preLoaderRoute: typeof OutilsIndexRouteImport
-      parentRoute: typeof OutilsRoute
+    '/alertes': {
+      id: '/alertes'
+      path: '/alertes'
+      fullPath: '/alertes'
+      preLoaderRoute: typeof AlertesRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/clients/': {
-      id: '/clients/'
-      path: '/clients'
-      fullPath: '/clients/'
-      preLoaderRoute: typeof ClientsIndexRouteImport
+    '/architecture': {
+      id: '/architecture'
+      path: '/architecture'
+      fullPath: '/architecture'
+      preLoaderRoute: typeof ArchitectureRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/assistant': {
+      id: '/assistant'
+      path: '/assistant'
+      fullPath: '/assistant'
+      preLoaderRoute: typeof AssistantRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/audit': {
+      id: '/audit'
+      path: '/audit'
+      fullPath: '/audit'
+      preLoaderRoute: typeof AuditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/deploiement': {
+      id: '/deploiement'
+      path: '/deploiement'
+      fullPath: '/deploiement'
+      preLoaderRoute: typeof DeploiementRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/facturation': {
+      id: '/facturation'
+      path: '/facturation'
+      fullPath: '/facturation'
+      preLoaderRoute: typeof FacturationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/integrations': {
+      id: '/integrations'
+      path: '/integrations'
+      fullPath: '/integrations'
+      preLoaderRoute: typeof IntegrationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/iocs': {
+      id: '/iocs'
+      path: '/iocs'
+      fullPath: '/iocs'
+      preLoaderRoute: typeof IocsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/iris': {
+      id: '/iris'
+      path: '/iris'
+      fullPath: '/iris'
+      preLoaderRoute: typeof IrisRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/outils': {
+      id: '/outils'
+      path: '/outils'
+      fullPath: '/outils'
+      preLoaderRoute: typeof OutilsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/threat-map': {
+      id: '/threat-map'
+      path: '/threat-map'
+      fullPath: '/threat-map'
+      preLoaderRoute: typeof ThreatMapRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/workflow': {
+      id: '/workflow'
+      path: '/workflow'
+      fullPath: '/workflow'
+      preLoaderRoute: typeof WorkflowRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/account/security': {
+      id: '/account/security'
+      path: '/account/security'
+      fullPath: '/account/security'
+      preLoaderRoute: typeof AccountSecurityRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/': {
@@ -724,130 +717,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
     }
-    '/outils/wazuh': {
-      id: '/outils/wazuh'
-      path: '/wazuh'
-      fullPath: '/outils/wazuh'
-      preLoaderRoute: typeof OutilsWazuhRouteImport
-      parentRoute: typeof OutilsRoute
-    }
-    '/outils/virustotal': {
-      id: '/outils/virustotal'
-      path: '/virustotal'
-      fullPath: '/outils/virustotal'
-      preLoaderRoute: typeof OutilsVirustotalRouteImport
-      parentRoute: typeof OutilsRoute
-    }
-    '/outils/thehive': {
-      id: '/outils/thehive'
-      path: '/thehive'
-      fullPath: '/outils/thehive'
-      preLoaderRoute: typeof OutilsThehiveRouteImport
-      parentRoute: typeof OutilsRoute
-    }
-    '/outils/shuffle': {
-      id: '/outils/shuffle'
-      path: '/shuffle'
-      fullPath: '/outils/shuffle'
-      preLoaderRoute: typeof OutilsShuffleRouteImport
-      parentRoute: typeof OutilsRoute
-    }
-    '/outils/misp': {
-      id: '/outils/misp'
-      path: '/misp'
-      fullPath: '/outils/misp'
-      preLoaderRoute: typeof OutilsMispRouteImport
-      parentRoute: typeof OutilsRoute
-    }
-    '/clients/sla': {
-      id: '/clients/sla'
-      path: '/clients/sla'
-      fullPath: '/clients/sla'
-      preLoaderRoute: typeof ClientsSlaRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/clients/satisfaction': {
-      id: '/clients/satisfaction'
-      path: '/clients/satisfaction'
-      fullPath: '/clients/satisfaction'
-      preLoaderRoute: typeof ClientsSatisfactionRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/clients/new': {
-      id: '/clients/new'
-      path: '/clients/new'
-      fullPath: '/clients/new'
-      preLoaderRoute: typeof ClientsNewRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/clients/inventory': {
-      id: '/clients/inventory'
-      path: '/clients/inventory'
-      fullPath: '/clients/inventory'
-      preLoaderRoute: typeof ClientsInventoryRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/clients/$clientId': {
-      id: '/clients/$clientId'
-      path: '/clients/$clientId'
-      fullPath: '/clients/$clientId'
-      preLoaderRoute: typeof ClientsClientIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth/reset-password': {
-      id: '/auth/reset-password'
-      path: '/reset-password'
-      fullPath: '/auth/reset-password'
-      preLoaderRoute: typeof AuthResetPasswordRouteImport
-      parentRoute: typeof AuthRoute
-    }
-    '/auth/logout': {
-      id: '/auth/logout'
-      path: '/logout'
-      fullPath: '/auth/logout'
-      preLoaderRoute: typeof AuthLogoutRouteImport
-      parentRoute: typeof AuthRoute
-    }
-    '/auth/login': {
-      id: '/auth/login'
-      path: '/login'
-      fullPath: '/auth/login'
-      preLoaderRoute: typeof AuthLoginRouteImport
-      parentRoute: typeof AuthRoute
-    }
-    '/auth/lock': {
-      id: '/auth/lock'
-      path: '/lock'
-      fullPath: '/auth/lock'
-      preLoaderRoute: typeof AuthLockRouteImport
-      parentRoute: typeof AuthRoute
-    }
-    '/auth/forgot-password': {
-      id: '/auth/forgot-password'
-      path: '/forgot-password'
-      fullPath: '/auth/forgot-password'
-      preLoaderRoute: typeof AuthForgotPasswordRouteImport
-      parentRoute: typeof AuthRoute
-    }
-    '/auth/2fa': {
-      id: '/auth/2fa'
-      path: '/2fa'
-      fullPath: '/auth/2fa'
-      preLoaderRoute: typeof Auth2faRouteImport
-      parentRoute: typeof AuthRoute
-    }
-    '/admin/profiles': {
-      id: '/admin/profiles'
-      path: '/profiles'
-      fullPath: '/admin/profiles'
-      preLoaderRoute: typeof AdminProfilesRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/offres': {
-      id: '/admin/offres'
-      path: '/offres'
-      fullPath: '/admin/offres'
-      preLoaderRoute: typeof AdminOffresRouteImport
+    '/admin/$userId': {
+      id: '/admin/$userId'
+      path: '/$userId'
+      fullPath: '/admin/$userId'
+      preLoaderRoute: typeof AdminUserIdRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/new': {
@@ -857,19 +731,145 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminNewRouteImport
       parentRoute: typeof AdminRoute
     }
-    '/admin/$userId': {
-      id: '/admin/$userId'
-      path: '/$userId'
-      fullPath: '/admin/$userId'
-      preLoaderRoute: typeof AdminUserIdRouteImport
+    '/admin/offres': {
+      id: '/admin/offres'
+      path: '/offres'
+      fullPath: '/admin/offres'
+      preLoaderRoute: typeof AdminOffresRouteImport
       parentRoute: typeof AdminRoute
     }
-    '/account/security': {
-      id: '/account/security'
-      path: '/account/security'
-      fullPath: '/account/security'
-      preLoaderRoute: typeof AccountSecurityRouteImport
+    '/admin/profiles': {
+      id: '/admin/profiles'
+      path: '/profiles'
+      fullPath: '/admin/profiles'
+      preLoaderRoute: typeof AdminProfilesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/auth/2fa': {
+      id: '/auth/2fa'
+      path: '/2fa'
+      fullPath: '/auth/2fa'
+      preLoaderRoute: typeof Auth2faRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/auth/forgot-password': {
+      id: '/auth/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/auth/forgot-password'
+      preLoaderRoute: typeof AuthForgotPasswordRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/auth/lock': {
+      id: '/auth/lock'
+      path: '/lock'
+      fullPath: '/auth/lock'
+      preLoaderRoute: typeof AuthLockRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/auth/login': {
+      id: '/auth/login'
+      path: '/login'
+      fullPath: '/auth/login'
+      preLoaderRoute: typeof AuthLoginRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/auth/logout': {
+      id: '/auth/logout'
+      path: '/logout'
+      fullPath: '/auth/logout'
+      preLoaderRoute: typeof AuthLogoutRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/auth/reset-password': {
+      id: '/auth/reset-password'
+      path: '/reset-password'
+      fullPath: '/auth/reset-password'
+      preLoaderRoute: typeof AuthResetPasswordRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/clients/': {
+      id: '/clients/'
+      path: '/clients'
+      fullPath: '/clients/'
+      preLoaderRoute: typeof ClientsIndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/clients/$clientId': {
+      id: '/clients/$clientId'
+      path: '/clients/$clientId'
+      fullPath: '/clients/$clientId'
+      preLoaderRoute: typeof ClientsClientIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/clients/inventory': {
+      id: '/clients/inventory'
+      path: '/clients/inventory'
+      fullPath: '/clients/inventory'
+      preLoaderRoute: typeof ClientsInventoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/clients/new': {
+      id: '/clients/new'
+      path: '/clients/new'
+      fullPath: '/clients/new'
+      preLoaderRoute: typeof ClientsNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/clients/satisfaction': {
+      id: '/clients/satisfaction'
+      path: '/clients/satisfaction'
+      fullPath: '/clients/satisfaction'
+      preLoaderRoute: typeof ClientsSatisfactionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/clients/sla': {
+      id: '/clients/sla'
+      path: '/clients/sla'
+      fullPath: '/clients/sla'
+      preLoaderRoute: typeof ClientsSlaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/outils/': {
+      id: '/outils/'
+      path: '/'
+      fullPath: '/outils/'
+      preLoaderRoute: typeof OutilsIndexRouteImport
+      parentRoute: typeof OutilsRoute
+    }
+    '/outils/misp': {
+      id: '/outils/misp'
+      path: '/misp'
+      fullPath: '/outils/misp'
+      preLoaderRoute: typeof OutilsMispRouteImport
+      parentRoute: typeof OutilsRoute
+    }
+    '/outils/shuffle': {
+      id: '/outils/shuffle'
+      path: '/shuffle'
+      fullPath: '/outils/shuffle'
+      preLoaderRoute: typeof OutilsShuffleRouteImport
+      parentRoute: typeof OutilsRoute
+    }
+    '/outils/thehive': {
+      id: '/outils/thehive'
+      path: '/thehive'
+      fullPath: '/outils/thehive'
+      preLoaderRoute: typeof OutilsThehiveRouteImport
+      parentRoute: typeof OutilsRoute
+    }
+    '/outils/virustotal': {
+      id: '/outils/virustotal'
+      path: '/virustotal'
+      fullPath: '/outils/virustotal'
+      preLoaderRoute: typeof OutilsVirustotalRouteImport
+      parentRoute: typeof OutilsRoute
+    }
+    '/outils/wazuh': {
+      id: '/outils/wazuh'
+      path: '/wazuh'
+      fullPath: '/outils/wazuh'
+      preLoaderRoute: typeof OutilsWazuhRouteImport
+      parentRoute: typeof OutilsRoute
     }
   }
 }
