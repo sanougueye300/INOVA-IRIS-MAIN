@@ -351,6 +351,93 @@ async function handlePaytechIpnRequest(request: Request): Promise<Response> {
   }
 }
 
+
+/**
+ * Endpoint de notification / callback DLR (Delivery Report) pour Orange SMS Pro Sénégal.
+ * Reçoit les accusés de réception et mises à jour de statut (message_id, recipient, messageStatus...)
+ * et renvoie la réponse attendue par Orange : {"STATUS":0}.
+ */
+async function handleOrangeSmsCallbackRequest(request: Request): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: AI_API_CORS });
+  }
+
+  try {
+    const url = new URL(request.url);
+    const params: Record<string, string> = {};
+
+    // 1. Lecture des paramètres d'URL (GET)
+    url.searchParams.forEach((val, key) => {
+      params[key] = val;
+    });
+
+    // 2. Lecture du corps de requête (POST : application/x-www-form-urlencoded ou JSON)
+    if (request.method === "POST") {
+      const contentType = request.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        const json = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+        Object.entries(json).forEach(([k, v]) => {
+          if (v !== undefined && v !== null) params[k] = String(v);
+        });
+      } else if (
+        contentType.includes("application/x-www-form-urlencoded") ||
+        contentType.includes("multipart/form-data")
+      ) {
+        const formData = await request.formData().catch(() => new FormData());
+        formData.forEach((val, key) => {
+          params[key] = val.toString();
+        });
+      } else {
+        const text = await request.text().catch(() => "");
+        try {
+          const json = JSON.parse(text) as Record<string, unknown>;
+          Object.entries(json).forEach(([k, v]) => {
+            if (v !== undefined && v !== null) params[k] = String(v);
+          });
+        } catch {
+          const searchParams = new URLSearchParams(text);
+          searchParams.forEach((val, key) => {
+            params[key] = val;
+          });
+        }
+      }
+    }
+
+    // Récupération des paramètres Orange SMS Pro
+    const message_id = params.message_id || params.messageId || null;
+    const messagedetail_id = params.messagedetail_id || params.messageDetailId || null;
+    const recipient = params.recipient || null;
+    const content = params.content || null;
+    const messageStatus = params.messageStatus || params.status || null;
+    const messageReason = params.messageReason || params.reason || null;
+    const messageCreatedDate = params.messageCreatedDate || null;
+    const messageUpdated = params.messageUpdated || null;
+
+    console.log("📲 [Orange SMS Pro DLR Callback]", {
+      message_id,
+      messagedetail_id,
+      recipient,
+      content,
+      messageStatus,
+      messageReason,
+      messageCreatedDate,
+      messageUpdated,
+    });
+
+    // Format officiel de réponse attendu par Orange SMS Pro : {"STATUS":0}
+    return new Response(JSON.stringify({ STATUS: 0 }), {
+      status: 200,
+      headers: { ...AI_API_CORS, "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    console.error("[Orange SMS Pro DLR Error]:", error);
+    return new Response(JSON.stringify({ STATUS: 0 }), {
+      status: 200,
+      headers: { ...AI_API_CORS, "Content-Type": "application/json" },
+    });
+  }
+}
+
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     const { pathname } = new URL(request.url);
@@ -363,8 +450,15 @@ export default {
     if (pathname === "/api/paytech-checkout") {
       return handlePaytechCheckoutRequest(request);
     }
-    if (pathname === "/api/paytech-ipn") {
+        if (pathname === "/api/paytech-ipn") {
       return handlePaytechIpnRequest(request);
+    }
+    if (
+      pathname === "/api/orange-sms-callback" ||
+      pathname === "/api/orange-sms-webhook" ||
+      pathname === "/api/orange-sms-dlr"
+    ) {
+      return handleOrangeSmsCallbackRequest(request);
     }
 
     try {

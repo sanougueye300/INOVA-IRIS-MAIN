@@ -948,6 +948,7 @@ UDP   0.0.0.0:123            *:*
       });
 
       let cloudSaved = true;
+      let saveError: unknown = null;
       try {
         await saveClientPcToCloud(registeredPc);
         void recordAuditEvent("EDR_PC_CREATE", registeredPc.name, {
@@ -958,6 +959,7 @@ UDP   0.0.0.0:123            *:*
         }, profile?.organization);
       } catch (error) {
         cloudSaved = false;
+        saveError = error;
         console.error("Erreur d'enregistrement du poste dans Supabase:", error);
       }
 
@@ -974,7 +976,7 @@ UDP   0.0.0.0:123            *:*
           error: "Supabase n'a pas confirmé l'enregistrement du poste.",
         }, profile?.organization);
         toast.error("Machine conservée sur cet appareil, mais non synchronisée", {
-          description: getClientPcSyncErrorMessage(error),
+          description: getClientPcSyncErrorMessage(saveError),
         });
       }
       setAddMachineOpen(false);

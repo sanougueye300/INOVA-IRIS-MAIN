@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { checkRateLimit } from "../_shared/rate-limit.ts";
+import { sendSms } from "../_shared/user-provisioning.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -43,6 +44,10 @@ Deno.serve(async (req) => {
       });
     }
 
+    if (typeof phone !== "string" || !phone.trim()) {
+      throw new Error("Un numéro de téléphone est requis pour envoyer le code OTP.");
+    }
+
     // 2. Générer le code OTP (6 chiffres)
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpHash = await hashSecret(otp);
@@ -65,44 +70,25 @@ Deno.serve(async (req) => {
       metadata: { phone, expires_at: expiresAt.toISOString() }
     });
 
-    // 5. Envoyer le SMS via Twilio
+    // 5. Envoyer le SMS via le fournisseur configuré.
     const smsBody = `[INOVA-IRIS] Votre code de vérification SOC est : ${otp}. Valable 2 minutes. Ne le partagez jamais.`;
-    const twilioSid = Deno.env.get("TWILIO_ACCOUNT_SID");
-    const twilioToken = Deno.env.get("TWILIO_AUTH_TOKEN");
-    const twilioFrom = Deno.env.get("TWILIO_PHONE_FROM");
-
-    let smsSent = false;
-    let otpChannel = "screen";
-
-    if (twilioSid && twilioToken && twilioFrom && phone) {
-      try {
-        const twilioRes = await fetch(
-          `https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages.json`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: "Basic " + btoa(`${twilioSid}:${twilioToken}`),
-              "Content-Type": "application/x-www-form-urlencoded",
-            },
-            body: new URLSearchParams({ To: phone, From: twilioFrom, Body: smsBody }),
-          }
-        );
-        if (twilioRes.ok) {
-          smsSent = true;
-          otpChannel = "sms";
-        } else {
-          const errText = await twilioRes.text();
-          console.error("Twilio error response:", errText);
-        }
-      } catch (err) {
-        console.error("Failed to send Twilio SMS:", err);
+    try {
+      const delivery = await sendSms(phone, smsBody, supabase);
+      if (!delivery.sent || delivery.dev) {
+        throw new Error("Le fournisseur SMS n'a pas confirmé l'envoi.");
       }
+    } catch (err) {
+      console.error("Failed to send OTP SMS:", err instanceof Error ? err.message : err);
+      return new Response(JSON.stringify({ error: "Échec de l'envoi du SMS OTP." }), {
+        status: 502,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        otpChannel,
+        otpChannel: "sms",
         maskedPhone: phone ? `***${phone.slice(-4)}` : undefined,
         expiresInSeconds: 120
       }),

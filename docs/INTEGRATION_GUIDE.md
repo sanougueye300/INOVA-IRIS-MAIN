@@ -206,6 +206,27 @@ detection:
 
 ---
 
+## 5. SMS ORANGE — OTP de connexion
+
+Orange SMS Pro est utilisé en priorité pour les codes OTP du parcours 2FA. Les identifiants sont lus côté serveur depuis Supabase Vault; ils ne doivent jamais être ajoutés au code source, aux migrations ou au navigateur.
+
+1. Appliquer la migration `supabase/migrations/20261107000000_orange_sms_vault.sql` avec `supabase db push`.
+2. Dans l'éditeur SQL Supabase, enregistrer les valeurs fournies par Orange dans Vault (remplacer les espaces réservés localement; ne pas les committer) :
+
+```sql
+SELECT vault.create_secret('<LOGIN_ORANGE>', 'orange_smspro_login', 'Orange SMS Pro login');
+SELECT vault.create_secret('<CLE_API_ORANGE>', 'orange_smspro_api_key', 'Orange SMS Pro API key');
+SELECT vault.create_secret('<TOKEN_ORANGE>', 'orange_smspro_token', 'Orange SMS Pro token');
+SELECT vault.create_secret('<SUJET_ORANGE>', 'orange_smspro_subject', 'Orange SMS Pro subject');
+SELECT vault.create_secret('<SIGNATURE_SMS>', 'orange_smspro_signature', 'Orange SMS Pro signature');
+```
+
+L'URL par défaut est `https://api.orangesmspro.sn:8443/api`. Pour la remplacer, créer aussi le secret Vault `orange_smspro_base_url`. Seul le rôle serveur `service_role` peut lire la configuration. Twilio reste le secours si aucune configuration Orange n'existe; en cas d'échec Orange, le parcours OTP conserve son secours e-mail.
+
+Après l'application de la migration, déployer les fonctions Edge concernées (`auth-security` et `admin-create-user`) ainsi que l'application serveur. Les mises à jour ultérieures des secrets Vault sont prises en compte sans redéploiement. Le fournisseur est nommé **SMS ORANGE** dans la logique d'envoi OTP.
+
+---
+
 ## Brancher les API Réelles
 
 ### Fichiers à Modifier

@@ -1,8 +1,33 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { getClientExtendedData, ClientExtendedData } from "@/routes/clients.index";
-import { Network, Laptop, Cpu, HardDrive, Wifi, ShieldCheck, ShieldAlert, AlertTriangle } from "lucide-react";
+import {
+  Network,
+  Laptop,
+  Cpu,
+  HardDrive,
+  Wifi,
+  ShieldCheck,
+  ShieldAlert,
+  AlertTriangle,
+  Trash2,
+  Loader2,
+  Flame,
+} from "lucide-react";
 import { toast } from "sonner";
+import { deleteClientPcFromCloud } from "@/lib/pcs-sync";
+import { recordAuditEvent } from "@/lib/audit-log";
+import { useSocSimulation } from "@/lib/soc-simulation";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const OFFER_BY_TIER: Record<string, { name: string; color: string; maxPcs: number }> = {
   Bronze:  { name: "Inova Secure",         color: "#f97316", maxPcs: 10  },
@@ -17,43 +42,107 @@ interface Telemetry {
   procCount: number; packetsTotal: number; wazuhStatus: PcStatus;
 }
 
+const DEFAULT_THREE_PCS: ClientExtendedData["pcs"] = [
+  {
+    id: "pc-directeur",
+    name: "PC DIRECTEUR",
+    os: "windows",
+    ip: "192.168.1.10",
+    status: "alert",
+    cpu: 98,
+    ram: 94,
+    lastSeen: "À l'instant",
+    wazuhId: "740",
+  },
+  {
+    id: "pc-drh",
+    name: "PC DRH",
+    os: "windows",
+    ip: "192.168.1.12",
+    status: "active",
+    cpu: 15,
+    ram: 28,
+    lastSeen: "À l'instant",
+    wazuhId: "741",
+  },
+  {
+    id: "pc-rssi",
+    name: "PC RSSI",
+    os: "linux",
+    ip: "192.168.1.11",
+    status: "active",
+    cpu: 18,
+    ram: 26,
+    lastSeen: "À l'instant",
+    wazuhId: "742",
+  },
+];
+
 /**
  * Topologie de Protection Endpoint propre au client connecté.
  * Charge les machines depuis client_ext_${user.id} (même source que la vue admin).
  */
 export function ClientEndpointTopology() {
   const { user, organization } = useAuth();
+  const { injectAttackOnTarget } = useSocSimulation();
   const [extData, setExtData] = useState<ClientExtendedData | null>(null);
   const [selectedPcId, setSelectedPcId] = useState<string | null>(null);
   const [telemetry, setTelemetry] = useState<Record<string, Telemetry>>({});
+  const [deletingPcId, setDeletingPcId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string; ip: string } | null>(null);
 
+  // Initialisation par défaut : 3 machines avec PC DIRECTEUR sous attaque DDoS
   useEffect(() => {
     if (!user) return;
-    setExtData(getClientExtendedData(user.id, organization || "Client"));
-  }, [user, organization]);
+    const data = getClientExtendedData(user.id, organization || "Client");
+    let currentPcs = data?.pcs || [];
+    
+    // S'assurer que les 3 machines sont présentes avec PC DIRECTEUR sous attaque DDoS
+    if (currentPcs.length < 3) {
+      currentPcs = DEFAULT_THREE_PCS;
+    } else {
+      currentPcs = currentPcs.map(p => {
+        if (p.id === "pc-directeur" || p.name.toUpperCase().includes("DIRECTEUR")) {
+          return p.status === "isolated" ? p : { ...p, status: "alert" as const, cpu: 98, ram: 94 };
+        }
+        return p.status === "isolated" ? p : { ...p, status: "active" as const };
+      });
+    }
 
-  // Initialise la télémétrie à partir des PC chargés
+    const updated = { ...data, pcs: currentPcs };
+    localStorage.setItem(`client_ext_${user.id}`, JSON.stringify({ ...updated, _v: 2 }));
+    setExtData(updated);
+
+    // Déclencher par défaut l'alerte SOC DDoS sur la machine du directeur
+    injectAttackOnTarget(
+      "PC DIRECTEUR",
+      "192.168.1.10",
+      "[CRITIQUE] Attaque DDoS volumétrique (SYN Flood) en cours sur PC DIRECTEUR (192.168.1.10)"
+    );
+  }, [user, organization, injectAttackOnTarget]);
+
+  // Initialise la télémétrie (forte saturation DDoS pour PC DIRECTEUR, régime nominal pour DRH & RSSI)
   useEffect(() => {
     if (!extData) return;
     setTelemetry(prev => {
       const next = { ...prev };
       extData.pcs.forEach(pc => {
-        if (!next[pc.id]) {
-          next[pc.id] = {
-            cpu: pc.cpu, ram: pc.ram,
-            rxSpeed: pc.status === "active" || pc.status === "alert" ? 8 + Math.floor(Math.random() * 30) : 0,
-            txSpeed: pc.status === "active" || pc.status === "alert" ? 2 + Math.floor(Math.random() * 8) : 0,
-            procCount: pc.status === "disconnected" ? 0 : 40 + Math.floor(Math.random() * 80),
-            packetsTotal: 1000 + Math.floor(Math.random() * 6000),
-            wazuhStatus: pc.status,
-          };
-        }
+        const isDdos = (pc.status === "alert" || pc.id === "pc-directeur" || pc.name.toUpperCase().includes("DIRECTEUR")) && pc.status !== "isolated";
+        next[pc.id] = {
+          cpu: isDdos ? 98 : (pc.cpu || 20),
+          ram: isDdos ? 94 : (pc.ram || 30),
+          rxSpeed: isDdos ? 52400 + Math.floor(Math.random() * 2500) : (4 + Math.floor(Math.random() * 8)),
+          txSpeed: isDdos ? 1280 + Math.floor(Math.random() * 300) : (1 + Math.floor(Math.random() * 4)),
+          procCount: isDdos ? 184 : (45 + Math.floor(Math.random() * 45)),
+          packetsTotal: isDdos ? 1845000 + Math.floor(Math.random() * 10000) : (4500 + Math.floor(Math.random() * 2500)),
+          wazuhStatus: pc.status,
+        };
       });
       return next;
     });
   }, [extData]);
 
-  // Flux réseau / CPU en temps réel pour les agents en ligne
+  // Flux réseau / CPU en temps réel (inondation continue sur PC DIRECTEUR sous DDoS)
   useEffect(() => {
     if (!extData) return;
     const id = setInterval(() => {
@@ -61,17 +150,30 @@ export function ClientEndpointTopology() {
         const next = { ...prev };
         extData.pcs.forEach(pc => {
           const t = next[pc.id];
-          if (!t || (t.wazuhStatus !== "active" && t.wazuhStatus !== "alert")) return;
-          const jitter = (base: number, amp: number, min: number, max: number) =>
-            Math.max(min, Math.min(max, base + Math.round((Math.random() - 0.5) * amp)));
-          next[pc.id] = {
-            ...t,
-            cpu: jitter(t.cpu, 14, 2, t.wazuhStatus === "alert" ? 99 : 70),
-            ram: jitter(t.ram, 8, 10, 95),
-            rxSpeed: jitter(t.rxSpeed, 12, 1, 220),
-            txSpeed: jitter(t.txSpeed, 6, 1, 90),
-            packetsTotal: t.packetsTotal + Math.floor(Math.random() * 60),
-          };
+          if (!t || t.wazuhStatus === "isolated" || t.wazuhStatus === "disconnected") return;
+
+          if (t.wazuhStatus === "alert") {
+            // Télémétrie d'inondation DDoS SYN Flood en temps réel
+            next[pc.id] = {
+              ...t,
+              cpu: Math.min(99, Math.max(95, t.cpu + Math.round((Math.random() - 0.5) * 3))),
+              ram: Math.min(96, Math.max(92, t.ram + Math.round((Math.random() - 0.5) * 2))),
+              rxSpeed: 50000 + Math.floor(Math.random() * 4500),
+              txSpeed: 1100 + Math.floor(Math.random() * 400),
+              packetsTotal: t.packetsTotal + 2400 + Math.floor(Math.random() * 1800),
+            };
+          } else if (t.wazuhStatus === "active") {
+            const jitter = (base: number, amp: number, min: number, max: number) =>
+              Math.max(min, Math.min(max, base + Math.round((Math.random() - 0.5) * amp)));
+            next[pc.id] = {
+              ...t,
+              cpu: jitter(t.cpu, 4, 12, 35),
+              ram: jitter(t.ram, 3, 20, 38),
+              rxSpeed: jitter(t.rxSpeed, 3, 1, 18),
+              txSpeed: jitter(t.txSpeed, 2, 1, 8),
+              packetsTotal: t.packetsTotal + Math.floor(Math.random() * 15),
+            };
+          }
         });
         return next;
       });
@@ -88,6 +190,55 @@ export function ClientEndpointTopology() {
       if (user) localStorage.setItem(`client_ext_${user.id}`, JSON.stringify({ ...updated, _v: 2 }));
       return updated;
     });
+  };
+
+  // Suppression d'un EDR
+  const handleDeleteMachine = async (pcId: string, pcName: string) => {
+    if (!user) return;
+    setDeletingPcId(pcId);
+    try {
+      const cloudSynced = await deleteClientPcFromCloud(user.id, pcId);
+      void recordAuditEvent("EDR_PC_DELETE", pcName, {
+        endpoint_id: pcId,
+        client_id: user.id,
+        sync_status: cloudSynced ? "synced" : "local_only",
+      }, organization || undefined);
+
+      setExtData(prev => {
+        if (!prev) return prev;
+        const updated = { ...prev, pcs: prev.pcs.filter(p => p.id !== pcId) };
+        localStorage.setItem(`client_ext_${user.id}`, JSON.stringify({ ...updated, _v: 2 }));
+        return updated;
+      });
+
+      setTelemetry(current => {
+        const next = { ...current };
+        delete next[pcId];
+        return next;
+      });
+
+      if (selectedPcId === pcId) {
+        setSelectedPcId(null);
+      }
+      setDeleteTarget(null);
+
+      if (cloudSynced) {
+        toast.success("Terminal EDR supprimé", {
+          description: `${pcName} a été retiré de votre console de supervision EDR.`
+        });
+      } else {
+        toast.warning("Terminal supprimé localement", {
+          description: `${pcName} a été retiré de l'affichage local.`
+        });
+      }
+    } catch (error) {
+      console.error("Erreur suppression EDR:", error);
+      toast.error("Suppression impossible", {
+        description: error instanceof Error ? error.message : "Erreur lors de la suppression de l'EDR."
+      });
+    } finally {
+      setDeletingPcId(null);
+    }
   };
 
   const offerInfo = extData ? (OFFER_BY_TIER[extData.contractTier] ?? OFFER_BY_TIER.Bronze) : OFFER_BY_TIER.Bronze;
@@ -381,8 +532,23 @@ export function ClientEndpointTopology() {
                   <p className="text-lg font-black text-slate-700">{selectedPc.ram}%</p>
                 </div>
               </div>
-              <div className="flex items-center gap-1.5 text-[10px] text-slate-400 pt-1">
-                <Wifi className="h-3 w-3" /> Agent Wazuh WZ-{selectedPc.wazuhId}
+              <div className="pt-2.5 border-t border-slate-100 mt-2 space-y-2">
+                <div className="flex items-center justify-between text-[10px] text-slate-400">
+                  <span className="flex items-center gap-1.5"><Wifi className="h-3 w-3" /> Agent Wazuh WZ-{selectedPc.wazuhId}</span>
+                  <span className="font-mono">{selectedPc.ip}</span>
+                </div>
+                <div className="pt-1">
+                  <button
+                    type="button"
+                    disabled={deletingPcId === selectedPc.id}
+                    onClick={() => setDeleteTarget({ id: selectedPc.id, name: selectedPc.name, ip: selectedPc.ip })}
+                    className="w-full py-2 px-3 rounded-xl text-xs font-bold text-rose-600 hover:text-white hover:bg-rose-600 border border-rose-200 hover:border-rose-600 transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                    title="Supprimer ce terminal EDR"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Supprimer ce terminal EDR
+                  </button>
+                </div>
               </div>
             </div>
           ) : (
@@ -393,6 +559,64 @@ export function ClientEndpointTopology() {
         </div>
       </div>
     </div>
+
+      {/* ── Bannière d'incident actif (Attaque DDoS sur le terminal) ── */}
+      {pcs.some(p => (telemetry[p.id]?.wazuhStatus || p.status) === "alert") && (() => {
+        const attackedPc = pcs.find(p => (telemetry[p.id]?.wazuhStatus || p.status) === "alert")!;
+        const attTelemetry = telemetry[attackedPc.id];
+        return (
+          <div className="rounded-2xl border-2 border-rose-500 bg-gradient-to-r from-rose-50 via-amber-50 to-rose-50 p-4 shadow-xl shadow-rose-500/10 flex items-center justify-between flex-wrap gap-4 relative overflow-hidden animate-in fade-in duration-300">
+            <div className="flex items-center gap-3.5 z-10">
+              <div className="w-11 h-11 rounded-xl bg-rose-600 text-white flex items-center justify-center font-bold shadow-lg shadow-rose-600/30 shrink-0 animate-bounce">
+                <Flame className="h-6 w-6 text-amber-200" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="bg-rose-600 text-white text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full shadow-sm animate-pulse">
+                    INCIDENT RÉSEAU CRITIQUE EN COURS
+                  </span>
+                  <span className="font-mono text-xs font-bold text-rose-800">
+                    Wazuh EDR Alert · Rule #92055 (MITRE ATT&CK T1498 - DDoS SYN Flood)
+                  </span>
+                </div>
+                <p className="text-sm font-black text-slate-900 mt-1">
+                  🚨 Le poste <span className="text-rose-600 underline font-extrabold">{attackedPc.name}</span> ({attackedPc.ip}) subit actuellement une attaque DDoS massive !
+                </p>
+                <p className="text-xs text-slate-500 mt-0.5 font-medium">
+                  Saturation réseau (SYN Flood) : Inondation réseau à ↓ {attTelemetry?.rxSpeed ? (attTelemetry.rxSpeed > 1000 ? `${(attTelemetry.rxSpeed / 1024).toFixed(1)} MB/s` : `${attTelemetry.rxSpeed} KB/s`) : "52.4 MB/s"} · Paquets : {attTelemetry?.packetsTotal?.toLocaleString() || "1 845 900"} pkts · CPU : {attTelemetry?.cpu || 98}%.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2.5 z-10">
+              <button
+                type="button"
+                onClick={() => {
+                  setPcStatus(attackedPc.id, "isolated");
+                  toast.warning("Quarantaine EDR immédiate activée", {
+                    description: `L'accès réseau de ${attackedPc.name} a été coupé pour endiguer l'attaque DDoS.`,
+                  });
+                }}
+                className="rounded-xl px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs shadow-lg shadow-rose-600/30 transition-all flex items-center gap-2 cursor-pointer"
+              >
+                <ShieldAlert className="h-4 w-4" />
+                Isoler {attackedPc.name} d'urgence
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setPcStatus(attackedPc.id, "active");
+                  toast.success("Mitigation Anti-DDoS appliquée", {
+                    description: `Le trafic malveillant a été filtré. Le terminal ${attackedPc.name} est rétabli en fonctionnement nominal.`,
+                  });
+                }}
+                className="rounded-xl px-3.5 py-2.5 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs border border-slate-300 shadow-sm transition-all cursor-pointer"
+              >
+                Activer Mitigation Anti-DDoS
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── Console de terminaux EDR connectés ── */}
       <div className="rounded-2xl overflow-hidden border border-slate-200/90 shadow-[0_2px_24px_0_rgba(0,0,0,0.06)] relative bg-white">
@@ -409,12 +633,14 @@ export function ClientEndpointTopology() {
               <p className="text-[11px] text-slate-400">Pilotez à distance la protection active de vos postes et exécutez des playbooks SOAR.</p>
             </div>
           </div>
-          {selectedPcId && (
-            <button onClick={() => setSelectedPcId(null)}
-              className="rounded-lg text-xs font-semibold px-3 py-1.5 border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all">
-              Désélectionner PC
-            </button>
-          )}
+          <div className="flex items-center gap-2 flex-wrap">
+            {selectedPcId && (
+              <button onClick={() => setSelectedPcId(null)}
+                className="rounded-lg text-xs font-semibold px-3 py-1.5 border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all cursor-pointer">
+                Désélectionner PC
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Table */}
@@ -428,7 +654,7 @@ export function ClientEndpointTopology() {
                 <th className="px-5 py-3.5 text-[11px] uppercase tracking-wider">Flux Réseau (Temps réel)</th>
                 <th className="px-5 py-3.5 text-[11px] uppercase tracking-wider">Télémétrie CPU/RAM</th>
                 <th className="px-5 py-3.5 text-[11px] uppercase tracking-wider">État Wazuh</th>
-                <th className="px-5 py-3.5 text-[11px] uppercase tracking-wider text-right">Action Directe</th>
+                <th className="px-5 py-3.5 text-[11px] uppercase tracking-wider text-right">Actions Directes</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -438,7 +664,7 @@ export function ClientEndpointTopology() {
                 const status = t.wazuhStatus;
                 return (
                   <tr key={pc.id}
-                    className={`hover:bg-slate-50/70 transition-all cursor-pointer ${isSelected ? "bg-orange-50/60 border-l-4 border-l-orange-400" : ""} ${status === "isolated" ? "bg-rose-50/50" : ""}`}
+                    className={`hover:bg-slate-50/70 transition-all cursor-pointer ${isSelected ? "bg-orange-50/60 border-l-4 border-l-orange-400" : ""} ${status === "isolated" ? "bg-rose-50/50" : ""} ${status === "alert" ? "bg-amber-50/60" : ""}`}
                     onClick={() => setSelectedPcId(pc.id)}>
 
                     {/* Terminal */}
@@ -471,10 +697,19 @@ export function ClientEndpointTopology() {
 
                     {/* Live bandwidth */}
                     <td className="px-5 py-4 font-mono text-xs">
-                      {status === "active" || status === "alert" ? (
-                        <div className="flex flex-col gap-0.5 text-emerald-600 font-semibold">
+                      {status === "active" ? (
+                        <div className="flex flex-col gap-0.5 font-semibold text-emerald-600">
                           <span className="flex items-center gap-1">↓ {t.rxSpeed} KB/s</span>
-                          <span className="text-[10px] text-slate-400 flex items-center gap-1">↑ {t.txSpeed} KB/s · PKTS: {t.packetsTotal}</span>
+                          <span className="text-[10px] text-slate-400 flex items-center gap-1">↑ {t.txSpeed} KB/s · PKTS: {t.packetsTotal?.toLocaleString()}</span>
+                        </div>
+                      ) : status === "alert" ? (
+                        <div className="flex flex-col gap-0.5 font-semibold text-rose-600">
+                          <span className="flex items-center gap-1 font-black text-rose-600 animate-pulse">
+                            ↓ {t.rxSpeed > 1000 ? `${(t.rxSpeed / 1024).toFixed(1)} MB/s` : `${t.rxSpeed} KB/s`} (DDoS FLOOD)
+                          </span>
+                          <span className="text-[10px] text-rose-500/80 font-bold flex items-center gap-1">
+                            ↑ {t.txSpeed} KB/s · PKTS: {t.packetsTotal?.toLocaleString()}
+                          </span>
                         </div>
                       ) : status === "isolated" ? (
                         <span className="text-rose-500 font-bold flex items-center gap-1">🚫 LOCKDOWN</span>
@@ -514,29 +749,60 @@ export function ClientEndpointTopology() {
                       )}
                     </td>
 
-                    {/* Action */}
+                    {/* Actions */}
                     <td className="px-5 py-4 text-right" onClick={e => e.stopPropagation()}>
-                      {status === "disconnected" ? (
-                        <span className="text-slate-300 text-xs">—</span>
-                      ) : status === "isolated" ? (
+                      <div className="flex items-center justify-end gap-1.5">
+                        {status === "disconnected" ? (
+                          <span className="text-slate-300 text-xs mr-1">—</span>
+                        ) : status === "isolated" ? (
+                          <button
+                            type="button"
+                            className="h-8 rounded-lg text-xs font-semibold px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white transition-all shadow-sm cursor-pointer"
+                            onClick={() => {
+                              setPcStatus(pc.id, "active");
+                              toast.success("Terminal reconnecté", { description: `L'accès réseau a été rétabli pour ${pc.name}.` });
+                            }}>
+                            Reconnecter
+                          </button>
+                        ) : (
+                          <>
+                            {status === "alert" ? (
+                              <button
+                                type="button"
+                                className="h-8 rounded-lg text-xs font-bold px-2.5 bg-rose-600 hover:bg-rose-700 text-white transition-all shadow-md shadow-rose-600/30 animate-pulse cursor-pointer flex items-center gap-1"
+                                onClick={() => {
+                                  setPcStatus(pc.id, "isolated");
+                                  toast.warning("Isolation d'urgence appliquée", { description: `${pc.name} a été placé en quarantaine immédiate.` });
+                                }}>
+                                <ShieldAlert className="h-3.5 w-3.5" />
+                                Isoler d'urgence
+                              </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  className="h-8 rounded-lg text-xs font-semibold px-2.5 bg-rose-600 hover:bg-rose-700 text-white transition-all shadow-sm cursor-pointer"
+                                  onClick={() => {
+                                    setPcStatus(pc.id, "isolated");
+                                    toast.warning("Isolation EDR ordonnée", { description: `${pc.name} a été placé en quarantaine réseau (Wazuh Active Response).` });
+                                  }}>
+                                  Isoler EDR
+                                </button>
+                              )}
+                            </>
+                          )}
+
+                        {/* Bouton de suppression d'un EDR */}
                         <button
-                          className="h-8 rounded-lg text-xs font-semibold px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white transition-all"
-                          onClick={() => {
-                            setPcStatus(pc.id, "active");
-                            toast.success("Terminal reconnecté", { description: `L'accès réseau a été rétabli pour ${pc.name}.` });
-                          }}>
-                          Reconnecter
+                          type="button"
+                          className="h-8 w-8 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 transition-all inline-flex items-center justify-center shrink-0 cursor-pointer"
+                          title={`Supprimer ${pc.name} du parc EDR`}
+                          aria-label={`Supprimer ${pc.name}`}
+                          disabled={deletingPcId === pc.id}
+                          onClick={() => setDeleteTarget({ id: pc.id, name: pc.name, ip: pc.ip })}
+                        >
+                          <Trash2 className="h-4 w-4" />
                         </button>
-                      ) : (
-                        <button
-                          className="h-8 rounded-lg text-xs font-semibold px-2.5 bg-rose-600 hover:bg-rose-700 text-white transition-all"
-                          onClick={() => {
-                            setPcStatus(pc.id, "isolated");
-                            toast.warning("Isolation EDR ordonnée", { description: `${pc.name} a été placé en quarantaine réseau (Wazuh Active Response).` });
-                          }}>
-                          Isoler EDR
-                        </button>
-                      )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -545,6 +811,59 @@ export function ClientEndpointTopology() {
           </table>
         </div>
       </div>
+
+      {/* ── Dialogue de confirmation de suppression d'un EDR ── */}
+      <AlertDialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={(open) => {
+          if (!open && !deletingPcId) setDeleteTarget(null);
+        }}
+      >
+        <AlertDialogContent className="max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl">
+          <div className="h-1.5 bg-rose-500" />
+          <AlertDialogHeader className="px-6 pt-6 text-left">
+            <div className="flex items-start gap-4">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 text-rose-600">
+                <Trash2 className="h-5 w-5" />
+              </div>
+              <div className="space-y-1">
+                <AlertDialogTitle className="text-lg font-bold text-slate-900">
+                  Supprimer ce poste EDR ?
+                </AlertDialogTitle>
+                <AlertDialogDescription className="text-sm leading-5 text-slate-600">
+                  Ce poste sera supprimé de votre console de supervision EDR et retiré de l'inventaire actif.
+                </AlertDialogDescription>
+              </div>
+            </div>
+          </AlertDialogHeader>
+          {deleteTarget && (
+            <div className="mx-6 mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <p className="truncate text-sm font-semibold text-slate-900">{deleteTarget.name}</p>
+              <p className="mt-0.5 font-mono text-xs text-slate-500">Adresse IP : {deleteTarget.ip}</p>
+            </div>
+          )}
+          <p className="px-6 pt-3 text-xs text-slate-400">
+            Cette action déconnecte et désinscrit la machine de la télémétrie SOC.
+          </p>
+          <AlertDialogFooter className="px-6 pb-6 pt-5">
+            <AlertDialogCancel disabled={Boolean(deletingPcId)} className="rounded-lg text-xs font-semibold cursor-pointer">
+              Annuler
+            </AlertDialogCancel>
+            <Button
+              variant="destructive"
+              disabled={!deleteTarget || deletingPcId === deleteTarget.id}
+              className="gap-2 rounded-lg text-xs font-semibold bg-rose-600 hover:bg-rose-700 cursor-pointer"
+              onClick={() => deleteTarget && void handleDeleteMachine(deleteTarget.id, deleteTarget.name)}
+            >
+              {deleteTarget && deletingPcId === deleteTarget.id ? (
+                <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Suppression...</>
+              ) : (
+                <><Trash2 className="h-3.5 w-3.5" /> Supprimer l'EDR</>
+              )}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

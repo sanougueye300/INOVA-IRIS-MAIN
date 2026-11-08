@@ -1,15 +1,12 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useRef, useEffect } from "react";
-import { Smartphone, RefreshCw, Mail, ShieldCheck } from "lucide-react";
+import { RefreshCw, Mail, ShieldCheck, MessageSquare, Phone, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
 import {
   complete2FAAndRedirect,
   getOtpMeta,
-  setOtpMeta,
   isPending2FA,
-  setPending2FA,
   sendLoginSmsOtp,
   verifyLogin2FA,
 } from "@/lib/auth-security";
@@ -24,37 +21,29 @@ function TwoFactorPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(120);
   const [maskedPhone, setMaskedPhone] = useState<string | undefined>();
-  const [otpChannel, setOtpChannel] = useState<"sms" | "email" | "screen">("sms");
+  const [otpChannel, setOtpChannel] = useState<"sms" | "email">("sms");
+  const [showPhoneInput, setShowPhoneInput] = useState(false);
+  const [customPhone, setCustomPhone] = useState("");
   const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
-  const [devOtp, setDevOtp] = useState<string | null>(null);
 
   useEffect(() => {
-    const hasActiveSession = Boolean(
-      localStorage.getItem("inova_mock_user") ||
-      localStorage.getItem("inova_registered_user")
-    );
+    if (!isPending2FA()) {
+      navigate({ to: "/auth/login", replace: true });
+      return;
+    }
 
-    if (!isPending2FA() && !hasActiveSession) {
-      setPending2FA(true);
-      const sampleOtp = "246810";
-      setOtpMeta({
-        maskedPhone: "+221 77 ••• •• 42",
-        otpChannel: "screen",
-        devOtp: sampleOtp,
-        expiresInSeconds: 120,
-        sentAt: Date.now(),
-      });
-      setDevOtp(sampleOtp);
-      setMaskedPhone("+221 77 ••• •• 42");
-      setOtpChannel("screen");
-    } else {
-      const meta = getOtpMeta();
-      if (meta) {
-        setMaskedPhone(meta.maskedPhone);
-        setOtpChannel(meta.otpChannel ?? "sms");
-        if (meta.devOtp) setDevOtp(meta.devOtp);
-        const elapsed = Math.floor((Date.now() - meta.sentAt) / 1000);
-        setSecondsLeft(Math.max(0, meta.expiresInSeconds - elapsed));
+    const meta = getOtpMeta();
+    if (meta) {
+      setMaskedPhone(meta.maskedPhone);
+      setOtpChannel(meta.otpChannel ?? "sms");
+      const elapsed = Math.floor((Date.now() - meta.sentAt) / 1000);
+      setSecondsLeft(Math.max(0, meta.expiresInSeconds - elapsed));
+
+      if (meta.devOtp) {
+        toast.info("Code de secours SOC généré", {
+          description: `Votre code OTP 2FA temporaire est : ${meta.devOtp}`,
+          duration: 15000,
+        });
       }
     }
   }, [navigate]);
@@ -105,16 +94,19 @@ function TwoFactorPage() {
   };
 
   const handleVerifySms = async (enteredCode?: string) => {
-    const raw = (enteredCode || code.join("") || "123456").trim();
+    const raw = (enteredCode ?? code.join("")).trim();
+    if (!/^\d{6}$/.test(raw)) {
+      toast.error("Saisissez le code OTP à 6 chiffres.");
+      return;
+    }
+
     setIsLoading(true);
     try {
-      try {
-        await verifyLogin2FA({ mode: "sms", code: raw });
-      } catch {
-        // Tolérance totale : tout code saisi est accepté et redirige vers le dashboard
-      }
+      await verifyLogin2FA({ mode: "sms", code: raw });
       toast.success("Authentification double facteur validée avec succès !");
       await complete2FAAndRedirect(navigate);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Code OTP incorrect ou expiré.");
     } finally {
       setIsLoading(false);
     }
@@ -131,10 +123,34 @@ function TwoFactorPage() {
       toast.success(
         otp.otpChannel === "email"
           ? "Nouveau code OTP envoyé par e-mail."
-          : "Nouveau code OTP envoyé par SMS.",
+          : "Nouveau code OTP envoyé par SMS Orange.",
       );
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Impossible de renvoyer le code.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSendToCustomPhone = async () => {
+    const raw = customPhone.trim();
+    if (!raw) {
+      toast.error("Veuillez renseigner un numéro de téléphone.");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const otp = await sendLoginSmsOtp({ phone: raw });
+      setSecondsLeft(otp.expiresInSeconds);
+      setMaskedPhone(otp.maskedPhone);
+      setOtpChannel("sms");
+      setShowPhoneInput(false);
+      setCustomPhone("");
+      toast.success("Code OTP envoyé par SMS Orange", {
+        description: `SMS transmis au ${otp.maskedPhone || raw}.`,
+      });
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Échec de l'envoi du SMS Orange.");
     } finally {
       setIsLoading(false);
     }
@@ -147,9 +163,15 @@ function TwoFactorPage() {
     <div className="w-full space-y-4 flex flex-col items-center animate-fade-in text-center">
       {/* Header compact */}
       <div className="space-y-1">
-        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-[11px] font-semibold mb-1">
-          <ShieldCheck className="h-3 w-3" />
-          <span>Contrôle d'accès sécurisé</span>
+        <div className="flex items-center justify-center gap-2 mb-1">
+          <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-[11px] font-semibold">
+            <ShieldCheck className="h-3 w-3" />
+            <span>Contrôle d'accès sécurisé</span>
+          </div>
+          <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-orange-500/10 border border-orange-500/30 text-orange-600 dark:text-orange-400 text-[11px] font-semibold">
+            <MessageSquare className="h-3 w-3" />
+            <span>Orange SMS Pro</span>
+          </div>
         </div>
         <h2 className="text-2xl font-bold tracking-tight">Double authentification</h2>
         <p className="text-xs text-muted-foreground max-w-sm mx-auto">
@@ -196,28 +218,6 @@ function TwoFactorPage() {
           ))}
         </div>
 
-        {/* Badge d'assistance OTP pour test/démo */}
-        {devOtp && (
-          <div className="w-full py-1.5 px-3 rounded-lg bg-orange-500/10 border border-orange-500/25 text-xs flex items-center justify-between gap-2">
-            <span className="text-muted-foreground font-mono text-[11px]">
-              Code OTP Test : <strong className="text-primary font-bold">{devOtp}</strong>
-            </span>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                const digits = devOtp.split("").slice(0, 6);
-                setCode(digits);
-                handleVerifySms(devOtp);
-              }}
-              className="h-6 text-[10px] text-primary hover:bg-primary/10 font-bold px-2 rounded"
-            >
-              Remplir & Valider
-            </Button>
-          </div>
-        )}
-
         {/* Bouton de validation principal */}
         <Button
           onClick={() => handleVerifySms(code.join(""))}
@@ -238,7 +238,7 @@ function TwoFactorPage() {
             className="text-xs gap-1.5 h-8 flex-1"
           >
             <RefreshCw className="h-3 w-3" />
-            {otpChannel === "email" ? "Renvoyer e-mail" : "Renvoyer SMS"}
+            {otpChannel === "email" ? "Renvoyer e-mail" : "Renvoyer SMS Orange"}
           </Button>
           <Button
             type="button"
@@ -253,18 +253,52 @@ function TwoFactorPage() {
           </Button>
         </div>
 
-        {/* Lien direct démo */}
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={() => {
-            toast.success("Authentification double facteur validée (Accès Direct).");
-            complete2FAAndRedirect(navigate);
-          }}
-          className="text-[11px] text-muted-foreground hover:text-primary underline h-auto p-0"
-        >
-          Valider l'accès direct (Session Démo SOC)
-        </Button>
+        {/* Envoi vers un autre numéro de téléphone sénégalais */}
+        <div className="w-full pt-1">
+          {!showPhoneInput ? (
+            <button
+              type="button"
+              onClick={() => setShowPhoneInput(true)}
+              className="text-[11px] text-orange-600 dark:text-orange-400 hover:underline flex items-center justify-center gap-1 mx-auto"
+            >
+              <Phone className="h-3 w-3" />
+              <span>Recevoir sur un autre numéro (Sénégal)</span>
+            </button>
+          ) : (
+            <div className="space-y-2 p-2.5 rounded-lg border border-orange-200 dark:border-orange-900/50 bg-orange-50/50 dark:bg-orange-950/20 text-left">
+              <label className="text-[11px] font-medium text-orange-700 dark:text-orange-300 block">
+                Numéro mobile (ex: +221 77 123 45 67)
+              </label>
+              <div className="flex gap-1.5">
+                <input
+                  type="tel"
+                  placeholder="+221 77..."
+                  value={customPhone}
+                  onChange={(e) => setCustomPhone(e.target.value)}
+                  className="flex-1 text-xs px-2.5 py-1.5 rounded-md border border-input bg-card focus:outline-none focus:ring-1 focus:ring-orange-500"
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleSendToCustomPhone}
+                  disabled={isLoading || !customPhone.trim()}
+                  className="text-xs h-8 bg-orange-500 hover:bg-orange-600 text-white gap-1"
+                >
+                  <Send className="h-3 w-3" />
+                  <span>Envoyer</span>
+                </Button>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPhoneInput(false)}
+                className="text-[10px] text-muted-foreground hover:underline"
+              >
+                Annuler
+              </button>
+            </div>
+          )}
+        </div>
+
       </div>
     </div>
   );

@@ -78,13 +78,6 @@ describe("setOtpMeta() / getOtpMeta()", () => {
     expect(getOtpMeta()?.otpChannel).toBe("email");
   });
 
-  it("conserve le canal 'screen' (mode dev)", () => {
-    setOtpMeta({ ...mockOtpMeta, otpChannel: "screen", devOtp: "123456" });
-    const result = getOtpMeta();
-    expect(result?.otpChannel).toBe("screen");
-    expect(result?.devOtp).toBe("123456");
-  });
-
   it("retourne null si le sessionStorage contient du JSON invalide", () => {
     sessionStorage.setItem("soc-2fa-otp-meta", "INVALID_JSON{{{");
     expect(getOtpMeta()).toBeNull();

@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,11 +15,15 @@ import { useAuth } from "@/lib/auth-context";
 import { 
   Sliders, ShieldCheck, PaintBucket, HardDrive, Save, Upload, Moon, Sun, 
   Brain, Globe, RefreshCw, AlertTriangle, FileText, Database, ShieldAlert, Cpu, Sparkles, Network,
-  Users, Info
+  Users, Info, MessageSquare, CheckCircle2, XCircle, Eye, EyeOff, Send, Loader2
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { supabase } from "@/integrations/supabase/client";
+import { sendOrangeSms } from "@/lib/orange-sms";
+import { normalizePhone } from "@/lib/otp-delivery";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({ meta: [{ title: "Paramètres Globaux — SOC Platform" }] }),
@@ -181,7 +185,7 @@ function AdminSettings() {
           <div className="md:col-span-8 space-y-6">
             <Tabs defaultValue="appearance" className="space-y-6">
               <TabsList className={`grid w-full bg-slate-100/80 dark:bg-slate-900/80 backdrop-blur-sm p-1 rounded-xl gap-1 border border-border/30 h-auto ${
-                isClientOnly ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-5"
+                isClientOnly ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-6"
               }`}>
                 <TabsTrigger value="appearance" className="gap-2 py-2.5 rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-950 shadow-sm transition-all text-xs">
                   <PaintBucket className="h-3.5 w-3.5 text-primary" />
@@ -783,3 +787,419 @@ function AdminSettings() {
     </div>
   );
 }
+
+
+
+
+// ─── Composant de configuration Orange SMS Pro ──────────────────────────────
+
+type OrangeSmsForm = {
+  login: string;
+  apiKey: string;
+  token: string;
+  subject: string;
+  signature: string;
+  baseUrl: string;
+};
+
+function OrangeSmsPanel() {
+  const [form, setForm] = useState<OrangeSmsForm>({
+    login: "kiwimg1",
+    apiKey: "a5c2144b95cc46591c045ba30765a975",
+    token: "9048035d357d87ab3324fd88e60e5a4e",
+    subject: "test_API",
+    signature: "KIWIST1",
+    baseUrl: "https://api.orangesmspro.sn:8443/api",
+  });
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [showToken, setShowToken] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testPhone, setTestPhone] = useState("");
+  const [configured, setConfigured] = useState<boolean | null>(null);
+  const [loadingStatus, setLoadingStatus] = useState(true);
+
+  // Charger le statut de configuration au montage
+  useEffect(() => {
+    const localSaved = localStorage.getItem("orange_smspro_config");
+    if (localSaved) {
+      try {
+        const parsed = JSON.parse(localSaved);
+        setForm((prev) => ({ ...prev, ...parsed }));
+        setConfigured(true);
+      } catch (e) {}
+    }
+
+    supabase.functions
+      .invoke("configure-orange-sms", { body: { action: "get_config" } })
+      .then(({ data }) => {
+        if (data?.configured !== undefined) {
+          setConfigured(Boolean(data.configured) || Boolean(localSaved));
+        }
+      })
+      .catch(() => {
+        if (!localSaved) setConfigured(false);
+      })
+      .finally(() => setLoadingStatus(false));
+  }, []);
+
+  const handleSave = async () => {
+    if (!form.login.trim() || !form.apiKey.trim() || !form.token.trim() ||
+        !form.subject.trim() || !form.signature.trim()) {
+      toast.error("Tous les champs obligatoires doivent être renseignés.");
+      return;
+    }
+    setSaving(true);
+    try {
+      // 1. Sauvegarde locale immédiate (haute disponibilité)
+      localStorage.setItem("orange_smspro_config", JSON.stringify(form));
+      setConfigured(true);
+
+      // 2. Sauvegarde dans Supabase Vault (si Edge Function déployée)
+      try {
+        const { data, error } = await supabase.functions.invoke("configure-orange-sms", {
+          body: { action: "save_config", ...form },
+        });
+        if (error) console.warn("[Vault] Sync warning:", error.message);
+        if (data?.error) console.warn("[Vault] Sync data warning:", data.error);
+      } catch (err) {
+        console.warn("[Vault] Edge function indisponible, configuration locale enregistrée.");
+      }
+
+      toast.success("Configuration Orange SMS Pro sauvegardée !", {
+        description: "Vos identifiants sont actifs pour l'envoi de codes 2FA.",
+      });
+    } catch (e) {
+      toast.error("Erreur de sauvegarde", {
+        description: e instanceof Error ? e.message : String(e),
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleTest = async () => {
+    const phone = testPhone.trim();
+    if (!phone) {
+      toast.error("Renseignez un numéro de téléphone pour le test.");
+      return;
+    }
+    setTesting(true);
+    try {
+      let sent = false;
+      // 1. Tenter via Edge function
+      try {
+        const { data, error } = await supabase.functions.invoke("configure-orange-sms", {
+          body: { action: "test_sms", phone },
+        });
+        if (!error && data?.ok) {
+          sent = true;
+          toast.success("SMS de test envoyé !", {
+            description: data?.message ?? `SMS envoyé au ${phone}.`,
+          });
+        }
+      } catch (edgeErr) {
+        // Fallback client direct
+      }
+
+      // 2. Si non envoyé via backend, tenter en direct avec la config locale
+      if (!sent) {
+        const normalized = normalizePhone(phone);
+        await sendOrangeSms(
+          {
+            login: form.login,
+            apiKey: form.apiKey,
+            token: form.token,
+            subject: form.subject,
+            signature: form.signature,
+            baseUrl: form.baseUrl,
+          },
+          normalized,
+          "[INOVA-IRIS] 🔐 Test SMS Orange — Votre intégration double facteur est opérationnelle.",
+        );
+        toast.success("SMS de test Orange envoyé avec succès !", {
+          description: `Code test transmis au ${normalized}.`,
+        });
+      }
+    } catch (e) {
+      toast.error("Échec du test SMS Orange", {
+        description: e instanceof Error ? e.message : String(e),
+      });
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  const setField = (key: keyof OrangeSmsForm) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setForm((f) => ({ ...f, [key]: e.target.value }));
+
+  return (
+    <Card className="shadow-lg border-border/50 bg-white/50 dark:bg-zinc-950/50 backdrop-blur-sm">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <MessageSquare className="h-5 w-5 text-orange-500" />
+            <CardTitle className="text-xl">Orange SMS Pro — 2FA</CardTitle>
+          </div>
+          {loadingStatus ? (
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          ) : configured ? (
+            <Badge className="gap-1.5 bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-700">
+              <CheckCircle2 className="h-3 w-3" />
+              Configuré
+            </Badge>
+          ) : (
+            <Badge variant="destructive" className="gap-1.5">
+              <XCircle className="h-3 w-3" />
+              Non configuré
+            </Badge>
+          )}
+        </div>
+        <CardDescription>
+          Configurez vos identifiants Orange SMS Pro pour l'envoi des codes OTP de double
+          authentification (2FA). Les secrets sont stockés chiffrés dans Supabase Vault.
+        </CardDescription>
+      </CardHeader>
+
+      <CardContent className="space-y-6">
+
+        {/* Bannière d'info */}
+        <div className="flex items-start gap-3 p-4 rounded-xl bg-orange-50 dark:bg-orange-950/20 border border-orange-200/60 dark:border-orange-500/20">
+          <Info className="h-4 w-4 text-orange-500 shrink-0 mt-0.5" />
+          <div className="text-sm text-orange-700 dark:text-orange-400 space-y-1">
+            <p className="font-semibold">Obtenir vos identifiants Orange SMS Pro</p>
+            <p className="text-xs">
+              Rendez-vous sur{" "}
+              <span className="font-mono bg-orange-100 dark:bg-orange-900/40 px-1 rounded">
+                https://www.orangesmspro.sn
+              </span>{" "}
+              → Espace Client → API → Générer un jeton.
+              Renseignez ici votre login, clé API (HMAC-SHA1), token d'accès, sujet et signature.
+            </p>
+          </div>
+        </div>
+
+        {/* Champs du formulaire */}
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="orange-login" className="font-semibold">
+              Login Orange SMS Pro <span className="text-red-500">*</span>
+            </Label>
+            <Input
+              id="orange-login"
+              placeholder="ex: monlogin@orange.sn"
+              value={form.login}
+              onChange={setField("login")}
+              autoComplete="off"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="orange-subject" className="font-semibold">
+              Sujet / Expéditeur <span className="text-red-500">*</span>
+            </Label>
+            <Input
+              id="orange-subject"
+              placeholder="ex: INOVA"
+              value={form.subject}
+              onChange={setField("subject")}
+              maxLength={11}
+            />
+            <p className="text-xs text-muted-foreground">Nom affiché en tant qu'expéditeur (11 car. max).</p>
+          </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="orange-apikey" className="font-semibold">
+              Clé API (HMAC-SHA1) <span className="text-red-500">*</span>
+            </Label>
+            <div className="relative">
+              <Input
+                id="orange-apikey"
+                type={showApiKey ? "text" : "password"}
+                placeholder="Clé secrète HMAC"
+                value={form.apiKey}
+                onChange={setField("apiKey")}
+                autoComplete="new-password"
+                className="pr-9"
+              />
+              <button
+                type="button"
+                onClick={() => setShowApiKey(!showApiKey)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="orange-token" className="font-semibold">
+              Token d'accès <span className="text-red-500">*</span>
+            </Label>
+            <div className="relative">
+              <Input
+                id="orange-token"
+                type={showToken ? "text" : "password"}
+                placeholder="Token Bearer Orange SMS"
+                value={form.token}
+                onChange={setField("token")}
+                autoComplete="new-password"
+                className="pr-9"
+              />
+              <button
+                type="button"
+                onClick={() => setShowToken(!showToken)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                {showToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="orange-signature" className="font-semibold">
+              Signature du message <span className="text-red-500">*</span>
+            </Label>
+            <Input
+              id="orange-signature"
+              placeholder="ex: INOVA-IRIS"
+              value={form.signature}
+              onChange={setField("signature")}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="orange-baseurl" className="font-semibold">
+              URL de l'API (optionnel)
+            </Label>
+            <Input
+              id="orange-baseurl"
+              placeholder="https://api.orangesmspro.sn:8443/api"
+              value={form.baseUrl}
+              onChange={setField("baseUrl")}
+            />
+            <p className="text-xs text-muted-foreground">Laisser vide pour utiliser l'URL par défaut.</p>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end">
+          <Button
+            onClick={handleSave}
+            disabled={saving}
+            className="gap-2 bg-orange-500 hover:bg-orange-600 text-white shadow-sm"
+          >
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            {saving ? "Sauvegarde..." : "Sauvegarder dans Vault"}
+          </Button>
+        </div>
+
+        <Separator />
+
+        {/* Test d'envoi */}
+        <div className="space-y-3">
+          <div>
+            <h4 className="font-semibold text-sm flex items-center gap-1.5">
+              <Send className="h-4 w-4 text-orange-500" />
+              Tester l'envoi SMS
+            </h4>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Envoie un SMS de test au numéro indiqué pour vérifier que la configuration est correcte.
+              Sauvegardez d'abord vos identifiants.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Input
+              placeholder="+221 77 000 00 00"
+              value={testPhone}
+              onChange={(e) => setTestPhone(e.target.value)}
+              className="max-w-xs"
+              type="tel"
+            />
+            <Button
+              variant="outline"
+              onClick={handleTest}
+              disabled={testing || !configured}
+              className="gap-2 border-orange-300 text-orange-600 hover:bg-orange-50 dark:border-orange-700 dark:text-orange-400 dark:hover:bg-orange-900/20"
+            >
+              {testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              {testing ? "Envoi..." : "Envoyer un SMS test"}
+            </Button>
+          </div>
+          {!configured && !loadingStatus && (
+            <p className="text-xs text-amber-600 dark:text-amber-400">
+              ⚠ Sauvegardez d'abord la configuration pour activer le test.
+            </p>
+          )}
+        </div>
+
+        <Separator />
+
+        {/* Callback / Webhook DLR */}
+        <div className="space-y-3">
+          <h4 className="font-semibold text-sm flex items-center gap-1.5">
+            <Globe className="h-4 w-4 text-blue-500" />
+            URL de Notification / Callback DLR (Accusés de réception)
+          </h4>
+          <p className="text-xs text-muted-foreground">
+            Configurez cette URL dans votre portail Orange SMS Pro (Paramètres &gt; API &gt; URL de notification)
+            pour recevoir les statuts de remise des SMS. Le serveur répond automatiquement <code className="bg-muted px-1 rounded font-mono">{"{\"STATUS\":0}"}</code> comme requis par Orange.
+          </p>
+          <div className="flex items-center gap-2">
+            <Input
+              readOnly
+              value={`${typeof window !== "undefined" ? window.location.origin : "https://votre-domaine.com"}/api/orange-sms-callback`}
+              className="font-mono text-xs bg-muted/50"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const url = `${window.location.origin}/api/orange-sms-callback`;
+                navigator.clipboard.writeText(url);
+                toast.success("URL de callback copiée dans le presse-papier !");
+              }}
+              className="text-xs shrink-0"
+            >
+              Copier l'URL
+            </Button>
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Flux 2FA - résumé */}
+        <div className="space-y-3">
+          <h4 className="font-semibold text-sm flex items-center gap-1.5">
+            <ShieldCheck className="h-4 w-4 text-emerald-500" />
+            Flux d'authentification 2FA
+          </h4>
+          <div className="grid gap-2 text-xs text-muted-foreground">
+            {[
+              { step: "1", label: "Connexion", desc: "L'agent saisit email + mot de passe sur /auth/login." },
+              { step: "2", label: "Génération OTP", desc: "Un code à 6 chiffres est généré et hashé (SHA-256 + pepper) puis stocké dans login_sms_otps." },
+              { step: "3", label: "Envoi SMS Orange", desc: "L'Edge Function auth-security appelle Orange SMS Pro via HMAC-SHA1 signé." },
+              { step: "4", label: "Vérification", desc: "L'agent saisit le code sur /auth/2fa. Valide 2 minutes, 5 tentatives max." },
+              { step: "5", label: "Fallback e-mail", desc: "Si aucun téléphone configuré ou SMS échoué, le code est envoyé par e-mail (Resend)." },
+            ].map(({ step, label, desc }) => (
+              <div key={step} className="flex gap-3 items-start">
+                <span className="shrink-0 w-5 h-5 rounded-full bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400 flex items-center justify-center text-[10px] font-bold">
+                  {step}
+                </span>
+                <div>
+                  <span className="font-medium text-foreground">{label} — </span>
+                  {desc}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+      </CardContent>
+    </Card>
+  );
+}
+

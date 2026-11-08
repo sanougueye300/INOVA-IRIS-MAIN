@@ -266,7 +266,7 @@ export async function syncClientPcsWithCloud(
     cloudPcs = await loadClientPcsFromCloud(clientId);
   }
 
-  const merged = new Map(cachedPcs.filter((pc) => !deletedIds.has(pc.id)).map((pc) => [pc.id, {
+  const merged = new Map<string, ClientPcItem>(cachedPcs.filter((pc) => !deletedIds.has(pc.id)).map((pc) => [pc.id, {
     ...pc,
     hostname: pc.name,
     clientName,

@@ -2,6 +2,7 @@ import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { generateBackupCode, generateOtpCode, hashSecret, maskPhone } from "./auth-crypto.ts";
 import { welcomeAccountEmailHtml } from "./email-templates.ts";
 import { deliverLoginOtp } from "./otp-delivery.ts";
+import { parseOrangeSmsConfig, sendOrangeSms } from "../../../src/lib/orange-sms.ts";
 
 const OTP_TTL_MS = 2 * 60 * 1000;
 
@@ -18,15 +19,21 @@ export function normalizePhone(phone: string): string {
 export async function sendSms(
   phone: string,
   message: string,
+  admin: SupabaseClient,
 ): Promise<{ sent: boolean; dev?: boolean }> {
+  const { data, error } = await admin.rpc("get_orange_sms_config");
+  if (error) throw new Error(`Impossible de charger la configuration Orange SMS: ${error.message}`);
+  const orangeConfig = parseOrangeSmsConfig(data);
+  if (orangeConfig) return sendOrangeSms(orangeConfig, normalizePhone(phone), message);
+
   const sid = Deno.env.get("TWILIO_ACCOUNT_SID");
   const token = Deno.env.get("TWILIO_AUTH_TOKEN");
   const from = Deno.env.get("TWILIO_PHONE_NUMBER");
   const normalized = normalizePhone(phone);
 
   if (!sid || !token || !from) {
-    console.info("[provisioning SMS dev]", normalized, message);
-    return { sent: true, dev: true };
+    console.warn("[provisioning] SMS non envoyé : aucun fournisseur SMS n'est configuré.");
+    return { sent: false, dev: true };
   }
 
   const body = new URLSearchParams({ To: normalized, From: from, Body: message });
@@ -150,7 +157,6 @@ export type ProvisionSecurityResult = {
   welcomeEmailSent: boolean;
   otpSentVia: "sms" | "email" | null;
   maskedPhone?: string;
-  devOtp?: string;
   backupCodesGenerated: boolean;
 };
 
@@ -187,7 +193,7 @@ export async function provisionUserSecurity(
     phone: normalizedPhone,
     email,
     fullName,
-    sendSms,
+    sendSms: (recipient, message) => sendSms(recipient, message, admin),
     sendEmail: sendBrandedEmail,
   });
 
@@ -198,7 +204,6 @@ export async function provisionUserSecurity(
     welcomeEmailSent,
     otpSentVia,
     maskedPhone: normalizedPhone ? maskPhone(normalizedPhone) : undefined,
-    devOtp: delivery.devOtp,
     backupCodesGenerated: true,
   };
 }

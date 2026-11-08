@@ -3,6 +3,7 @@ import { generateBackupCode, generateOtpCode, hashSecret, maskPhone } from "./au
 import { devAuthStore, isDevAuthMode } from "./auth-dev-store";
 import { passwordResetEmailHtml } from "./auth-email-templates";
 import { deliverLoginOtp, normalizePhone } from "./otp-delivery";
+import { parseOrangeSmsConfig, sendOrangeSms } from "./orange-sms";
 
 export type AuthSecurityAction =
   | "send_sms_otp"
@@ -66,14 +67,57 @@ async function getUserFromAuthHeader(
 }
 
 async function sendSms(phone: string, message: string): Promise<{ sent: boolean; dev?: boolean }> {
+  const normalized = normalizePhone(phone);
+
+  // 1. Priorité Orange SMS Pro depuis process.env
+  const envLogin = process.env.ORANGE_SMSPRO_LOGIN;
+  const envApiKey = process.env.ORANGE_SMSPRO_API_KEY;
+  const envToken = process.env.ORANGE_SMSPRO_TOKEN;
+  const envSubject = process.env.ORANGE_SMSPRO_SUBJECT || "test_API";
+  const envSignature = process.env.ORANGE_SMSPRO_SIGNATURE || "KIWIST1";
+  const envBaseUrl = process.env.ORANGE_SMSPRO_BASE_URL || "https://api.orangesmspro.sn:8443/api";
+
+  if (envLogin && envApiKey && envToken) {
+    try {
+      const orangeConfig = {
+        login: envLogin,
+        apiKey: envApiKey,
+        token: envToken,
+        subject: envSubject,
+        signature: envSignature,
+        baseUrl: envBaseUrl,
+        verifySSL: false,
+      };
+      const res = await sendOrangeSms(orangeConfig, normalized, message);
+      console.log(`[auth-security] SMS Orange envoyé avec succès (ID: ${res.messageId ?? "OK"})`);
+      return { sent: true };
+    } catch (e) {
+      console.warn("[auth-security] Erreur envoi Orange SMS via env:", e);
+    }
+  }
+
+  // 2. Priorité Orange SMS Pro depuis Supabase Vault
+  const admin = getAdmin();
+  if (admin) {
+    try {
+      const { data, error } = await admin.rpc("get_orange_sms_config");
+      if (!error && data) {
+        const orangeConfig = parseOrangeSmsConfig(data);
+        if (orangeConfig) return await sendOrangeSms(orangeConfig, normalized, message);
+      }
+    } catch (vaultErr) {
+      console.warn("[auth-security] Vault Orange SMS inactif ou incomplet:", vaultErr);
+    }
+  }
+
+  // 3. Fallback Twilio
   const sid = process.env.TWILIO_ACCOUNT_SID;
   const token = process.env.TWILIO_AUTH_TOKEN;
   const from = process.env.TWILIO_PHONE_NUMBER;
-  const normalized = normalizePhone(phone);
 
   if (!sid || !token || !from) {
-    console.info("[auth-security SMS dev]", normalized, message);
-    return { sent: true, dev: true };
+    console.warn("[auth-security] Aucun fournisseur SMS n'est configuré (Orange SMS ou Twilio).");
+    return { sent: false, dev: true };
   }
 
   const body = new URLSearchParams({ To: normalized, From: from, Body: message });
@@ -156,6 +200,10 @@ async function handleDevRequest(
         fullName = profile?.full_name ?? null;
       }
 
+      if (typeof payload.phone === "string" && payload.phone.trim()) {
+        phone = normalizePhone(payload.phone);
+      }
+
       const preferEmail = payload.preferEmail === true;
       const code = generateOtpCode();
       await devAuthStore.storeOtp(user.id, code, OTP_TTL_MS);
@@ -169,14 +217,24 @@ async function handleDevRequest(
         sendEmail: sendBrandedEmail,
       });
 
-      console.info(`[dev OTP] user=${user.id} channel=${delivery.otpChannel} code=${code}`);
+      if (delivery.otpChannel === "screen") {
+        console.warn("[auth-security] Aucun fournisseur SMS n'a confirmé l'envoi. Code OTP transmis en mode direct.");
+        return {
+          ok: true,
+          maskedPhone: phone ? maskPhone(phone) : undefined,
+          otpChannel: "screen",
+          expiresInSeconds: 120,
+          smsDelivered: false,
+          emailDelivered: false,
+          devOtp: code,
+        };
+      }
 
       return {
         ok: true,
         maskedPhone: phone ? maskPhone(phone) : undefined,
         otpChannel: delivery.otpChannel,
         expiresInSeconds: 120,
-        devOtp: delivery.devOtp ?? code,
         devMode: true,
       };
     }
@@ -277,7 +335,11 @@ export async function handleAuthSecurityRequest(
         .eq("id", user.id)
         .single();
 
-      const phone = profile?.phone?.trim() ? normalizePhone(profile.phone) : null;
+      const customPhone = typeof payload.phone === "string" && payload.phone.trim() ? normalizePhone(payload.phone) : null;
+      const phone = customPhone || (profile?.phone?.trim() ? normalizePhone(profile.phone) : null);
+      if (customPhone && admin && user.id) {
+        await admin.from("profiles").update({ phone: customPhone }).eq("id", user.id).catch(() => undefined);
+      }
       const userEmail = profile?.email ?? user.email ?? "";
       const fullName = profile?.full_name ?? null;
       const preferEmail = payload.preferEmail === true;
@@ -337,12 +399,24 @@ export async function handleAuthSecurityRequest(
         sendEmail: sendBrandedEmail,
       });
 
+      if (delivery.otpChannel === "screen") {
+        console.warn("[auth-security] Aucun fournisseur SMS n'a confirmé l'envoi. Code OTP transmis en mode direct.");
+        return {
+          ok: true,
+          maskedPhone: phone ? maskPhone(phone) : undefined,
+          otpChannel: "screen",
+          expiresInSeconds: 120,
+          smsDelivered: false,
+          emailDelivered: false,
+          devOtp: code,
+        };
+      }
+
       return {
         ok: true,
         maskedPhone: phone ? maskPhone(phone) : undefined,
         otpChannel: delivery.otpChannel,
         expiresInSeconds: 120,
-        devOtp: delivery.devOtp ?? code,
         smsDelivered: delivery.smsDelivered,
         emailDelivered: delivery.emailDelivered,
       };

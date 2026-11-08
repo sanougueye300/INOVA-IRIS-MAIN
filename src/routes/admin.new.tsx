@@ -698,9 +698,6 @@ function NewUserPage() {
         localStorage.setItem("client_user_count", String(newCount));
       }
 
-      if (securityInfo?.devOtp) {
-        toast.info("Mode développement", { description: `Code OTP : ${securityInfo.devOtp}` });
-      }
       navigate({ to: "/admin/new" });
     } catch (e: any) {
       toast.error("Erreur", { description: e.message ?? "Impossible de créer l'agent" });

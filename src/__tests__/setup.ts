@@ -1,4 +1,5 @@
 import "@testing-library/jest-dom";
+import { webcrypto } from "node:crypto";
 
 // Mock sessionStorage pour tous les tests
 const sessionStorageMock = (() => {
@@ -15,28 +16,9 @@ Object.defineProperty(window, "sessionStorage", {
   value: sessionStorageMock,
 });
 
-// Mock crypto.subtle (Web Crypto API)
+// Polyfill Web Crypto API complet (Node.js webcrypto avec support HMAC, SHA-256, etc.)
 Object.defineProperty(globalThis, "crypto", {
-  value: {
-    subtle: {
-      digest: async (algorithm: string, data: ArrayBuffer) => {
-        // Simple mock SHA-256 — retourne un buffer de 32 bytes basé sur l'input
-        const view = new Uint8Array(data);
-        const result = new Uint8Array(32);
-        for (let i = 0; i < 32; i++) {
-          result[i] = view[i % view.length] ^ (i * 7);
-        }
-        return result.buffer;
-      },
-    },
-    getRandomValues: <T extends ArrayBufferView>(arr: T): T => {
-      if (arr instanceof Uint32Array) {
-        for (let i = 0; i < arr.length; i++) {
-          arr[i] = Math.floor(Math.random() * 0xffffffff);
-        }
-      }
-      return arr;
-    },
-  },
+  value: webcrypto,
   writable: true,
+  configurable: true,
 });

@@ -7,6 +7,7 @@ type SimulationContextValue = {
   /** Alertes mock ajoutées pour la session courante. */
   injectedAlerts: MockAlertNode[];
   injectRedTeam: () => void;
+  injectAttackOnTarget: (targetName: string, ip: string, title?: string) => void;
   clearInjection: () => void;
 };
 
@@ -15,6 +16,38 @@ const SimulationContext = createContext<SimulationContextValue | null>(null);
 export function SocSimulationProvider({ children }: { children: ReactNode }) {
   const [injectionEpoch, setInjectionEpoch] = useState(0);
   const [injectedAlerts, setInjectedAlerts] = useState<MockAlertNode[]>([]);
+
+  const injectAttackOnTarget = useCallback((targetName: string, ip: string, title?: string) => {
+    const now = new Date().toISOString();
+    const extra: MockAlertNode[] = [
+      {
+        id: `attack-${Date.now()}-1`,
+        title: title || `[CRITIQUE] Attaque DDoS volumétrique (SYN Flood) en cours sur ${targetName}`,
+        severity: 14,
+        status: "new",
+        ruleId: "92055",
+        mitreTactic: "TA0040",
+        sourceIp: ip,
+        hostname: targetName,
+        detectedAt: now,
+        agentName: targetName,
+      },
+      {
+        id: `attack-${Date.now()}-2`,
+        title: `[ALERTE] Saturation de bande passante et inondation SYN (MITRE T1498) sur ${targetName}`,
+        severity: 13,
+        status: "new",
+        ruleId: "92056",
+        mitreTactic: "TA0040",
+        sourceIp: ip,
+        hostname: targetName,
+        detectedAt: now,
+        agentName: targetName,
+      },
+    ];
+    setInjectedAlerts((prev) => [...extra, ...prev]);
+    setInjectionEpoch((e) => e + 1);
+  }, []);
 
   const injectRedTeam = useCallback(() => {
     const now = new Date().toISOString();
@@ -54,8 +87,8 @@ export function SocSimulationProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ injectionEpoch, injectedAlerts, injectRedTeam, clearInjection }),
-    [injectionEpoch, injectedAlerts, injectRedTeam, clearInjection],
+    () => ({ injectionEpoch, injectedAlerts, injectRedTeam, injectAttackOnTarget, clearInjection }),
+    [injectionEpoch, injectedAlerts, injectRedTeam, injectAttackOnTarget, clearInjection],
   );
 
   return <SimulationContext.Provider value={value}>{children}</SimulationContext.Provider>;

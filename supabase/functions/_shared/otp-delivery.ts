@@ -28,13 +28,13 @@ export async function deliverLoginOtp(params: DeliverOtpParams): Promise<OtpDeli
   if (normalizedPhone) {
     try {
       const sms = await sendSms(normalizedPhone, message);
-      smsDelivered = !sms.dev;
+      smsDelivered = sms.sent && !sms.dev;
     } catch (err) {
       console.warn("[otp-delivery] SMS échoué:", err instanceof Error ? err.message : err);
     }
   }
 
-  if (email) {
+  if (email && !smsDelivered) {
     try {
       const html = otpEmailHtml({ code, userEmail: email, fullName, expiresMinutes });
       emailDelivered = await sendEmail(email, "Code OTP de connexion — INOVA-IRIS", html);
@@ -44,8 +44,8 @@ export async function deliverLoginOtp(params: DeliverOtpParams): Promise<OtpDeli
   }
 
   let otpChannel: "sms" | "email" | "screen" = "screen";
-  if (emailDelivered) otpChannel = "email";
-  else if (smsDelivered) otpChannel = "sms";
+  if (smsDelivered) otpChannel = "sms";
+  else if (emailDelivered) otpChannel = "email";
 
   return { otpChannel, smsDelivered, emailDelivered };
 }

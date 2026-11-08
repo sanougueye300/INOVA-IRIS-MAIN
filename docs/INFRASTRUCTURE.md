@@ -182,6 +182,15 @@ npx supabase secrets set SHUFFLE_URL=http://VPS_IP:3001
 npx supabase secrets set SHUFFLE_API_KEY=VOTRE_CLE_API
 ```
 
+Pour tester PayTech depuis `/integrations`, configurez également ses secrets :
+
+```bash
+npx supabase secrets set PAYTECH_API_KEY=VOTRE_CLE_API
+npx supabase secrets set PAYTECH_SECRET_KEY=VOTRE_CLE_SECRETE
+```
+
+Le test PayTech crée une session de paiement en environnement `test` afin de vérifier les identifiants, sans lancer un paiement réel.
+
 ---
 
 ## 6. Déployer les Edge Functions Supabase

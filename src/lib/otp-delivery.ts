@@ -14,7 +14,6 @@ export type OtpDeliveryResult = {
   otpChannel: "sms" | "email" | "screen";
   smsDelivered: boolean;
   emailDelivered: boolean;
-  devOtp?: string;
 };
 
 type DeliverOtpParams = {
@@ -27,7 +26,7 @@ type DeliverOtpParams = {
   expiresMinutes?: number;
 };
 
-/** Envoie l'OTP : SMS si Twilio OK, sinon e-mail, sinon code affiché à l'écran. */
+/** Envoie l'OTP par SMS, puis par e-mail si aucun SMS n'a été confirmé. */
 export async function deliverLoginOtp(params: DeliverOtpParams): Promise<OtpDeliveryResult> {
   const { code, phone, email, fullName, sendSms, sendEmail, expiresMinutes = 2 } = params;
   const message = otpSmsMessage(code, expiresMinutes);
@@ -39,14 +38,13 @@ export async function deliverLoginOtp(params: DeliverOtpParams): Promise<OtpDeli
   if (normalizedPhone) {
     try {
       const sms = await sendSms(normalizedPhone, message);
-      smsDelivered = !sms.dev;
+      smsDelivered = sms.sent && !sms.dev;
     } catch (err) {
       console.warn("[otp-delivery] SMS échoué:", err instanceof Error ? err.message : err);
     }
   }
 
-  // E-mail systématique si SMS indisponible (Twilio absent) ou en complément si SMS a échoué
-  if (email && (!smsDelivered || !normalizedPhone)) {
+  if (email && !smsDelivered) {
     try {
       const html = otpEmailHtml({ code, userEmail: email, fullName, expiresMinutes });
       emailDelivered = await sendEmail(email, "Code OTP de connexion — INOVA-IRIS", html);
@@ -59,7 +57,5 @@ export async function deliverLoginOtp(params: DeliverOtpParams): Promise<OtpDeli
   if (smsDelivered) otpChannel = "sms";
   else if (emailDelivered) otpChannel = "email";
 
-  const devOtp = !smsDelivered && !emailDelivered ? code : undefined;
-
-  return { otpChannel, smsDelivered, emailDelivered, devOtp };
+  return { otpChannel, smsDelivered, emailDelivered };
 }

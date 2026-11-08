@@ -1,11 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { Mail, Lock, Eye, EyeOff } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { authenticateRegisteredClient } from "@/lib/registered-client-auth";
-import { setPending2FA } from "@/lib/auth-security";
+import { sendLoginSmsOtp, setPending2FA } from "@/lib/auth-security";
 
 export const Route = createFileRoute("/auth/login")({
   component: LoginPage,
@@ -40,8 +40,25 @@ function LoginPage() {
               fullName: regUser.fullName || "Abonné",
               companyName: regUser.companyName || "Client",
             });
+            let otp: Awaited<ReturnType<typeof sendLoginSmsOtp>>;
+            try {
+              otp = await sendLoginSmsOtp();
+            } catch (error) {
+              await supabase.auth.signOut();
+              throw error;
+            }
             setPending2FA(true);
-            toast.success("Identifiants validés", { description: "Vérification à double facteur requise." });
+            toast.success("Identifiants validés", {
+              description: otp.otpChannel === "email"
+                ? "Votre code 2FA a été envoyé par e-mail."
+                : `Votre code 2FA a été envoyé par SMS${otp.maskedPhone ? ` au ${otp.maskedPhone}` : ""}.`,
+            });
+            if (otp.devOtp) {
+              toast.info(`Code 2FA (mode dev) : ${otp.devOtp}`, {
+                duration: 30000,
+                description: "SMS/Email non configuré — utilisez ce code pour vous connecter.",
+              });
+            }
             navigate({ to: "/auth/2fa", replace: true });
           } catch (error) {
             toast.error("Impossible d'activer votre compte", {
@@ -65,6 +82,7 @@ function LoginPage() {
     }
 
     setIsLoading(true);
+    let credentialsValidated = false;
     try {
       const { data: authData, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
@@ -85,38 +103,52 @@ function LoginPage() {
         throw new Error("Votre compte est suspendu. Contactez l'administrateur SOC.");
       }
 
+      credentialsValidated = true;
+      let otp: Awaited<ReturnType<typeof sendLoginSmsOtp>>;
+      try {
+        otp = await sendLoginSmsOtp();
+      } catch (error) {
+        await supabase.auth.signOut();
+        throw new Error(
+          `Connexion vérifiée, mais le code 2FA n'a pas pu être envoyé. ${error instanceof Error ? error.message : ""}`.trim(),
+        );
+      }
+
       setPending2FA(true);
-      toast.success("Identifiants validés", { description: "Veuillez saisir votre code de sécurité 2FA." });
+      toast.success("Identifiants validés", {
+        description:
+          otp.otpChannel === "email"
+            ? "Votre code 2FA a été envoyé par e-mail."
+            : otp.otpChannel === "sms"
+            ? `Votre code 2FA a été envoyé par SMS Orange${otp.maskedPhone ? ` au ${otp.maskedPhone}` : ""}.`
+            : "Code 2FA temporaire généré.",
+      });
+
+      // En mode développement, afficher le code OTP directement si l'envoi SMS/email n'est pas configuré
+      if (otp.devOtp) {
+        toast.info(`Code 2FA (mode dev) : ${otp.devOtp}`, {
+          duration: 30000,
+          description: "SMS/Email non configuré — utilisez ce code pour vous connecter.",
+        });
+      }
 
       // Redirection directe vers la double authentification
       navigate({ to: "/auth/2fa", replace: true });
     } catch (err: unknown) {
-      // Secours gracieux si Supabase est hors-ligne pour le compte SOC principal
-      if (email.toLowerCase() === "sanougueye300@gmail.com" && password) {
-        const mockAdminUser = {
-          id: "admin-sanou-gueye-001",
-          email: "sanougueye300@gmail.com",
-          user_metadata: { full_name: "Sanou Gueye", organization: "SONATEL / SOC" },
-        };
-        localStorage.setItem("inova_mock_user", JSON.stringify(mockAdminUser));
-        setPending2FA(true);
-        toast.success("Identifiants validés", { description: "Veuillez saisir votre code de sécurité 2FA." });
-        navigate({ to: "/auth/2fa", replace: true });
-        return;
+      if (!credentialsValidated) {
+        setLoginAttempts(prev => {
+          const next = prev + 1;
+          if (next >= 5) {
+            const lockUntil = new Date(Date.now() + 15 * 60 * 1000); // 15 min
+            setLockoutUntil(lockUntil);
+            toast.error("Trop de tentatives. Compte verrouillé 15 minutes.");
+          }
+          return next;
+        });
       }
-
-      setLoginAttempts(prev => {
-        const next = prev + 1;
-        if (next >= 5) {
-          const lockUntil = new Date(Date.now() + 15 * 60 * 1000); // 15 min
-          setLockoutUntil(lockUntil);
-          toast.error("Trop de tentatives. Compte verrouillé 15 minutes.");
-        }
-        return next;
-      });
       const message = err instanceof Error ? err.message : "Email ou mot de passe incorrect.";
       const isServerConfig = message.includes("Configuration Supabase") || message.includes("manquante");
-      toast.error("Échec de l'authentification", {
+      toast.error(credentialsValidated ? "Code 2FA non envoyé" : "Échec de l'authentification", {
         description: isServerConfig
           ? "Ajoutez SUPABASE_SERVICE_ROLE_KEY dans .env (Supabase → Settings → API), puis redémarrez le serveur."
           : message,
@@ -129,6 +161,10 @@ function LoginPage() {
   return (
     <div className="w-full space-y-4">
       <div className="space-y-1 text-center lg:text-left">
+        <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-500/10 border border-orange-500/30 text-orange-600 dark:text-orange-400 text-[10px] font-semibold mb-1">
+          <MessageSquare className="h-3 w-3" />
+          <span>Double facteur par Orange SMS Pro</span>
+        </div>
         <h2 className="text-2xl font-bold tracking-tight">Connexion au SOC</h2>
         <p className="text-xs text-muted-foreground">
           Saisissez vos identifiants réseau pour accéder au SOC INOVA-IRIS.
@@ -195,4 +231,3 @@ function LoginPage() {
     </div>
   );
 }
-

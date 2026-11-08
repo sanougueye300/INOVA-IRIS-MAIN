@@ -5,7 +5,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-type ConnectorId = "wazuh" | "thehive" | "misp" | "virustotal" | "shuffle" | "iris";
+type ConnectorId = "wazuh" | "thehive" | "misp" | "virustotal" | "shuffle" | "paytech" | "iris";
 
 interface CheckResult {
   id: ConnectorId;
@@ -146,6 +146,51 @@ async function checkShuffle(): Promise<CheckResult> {
   }
 }
 
+async function checkPayTech(): Promise<CheckResult> {
+  const apiKey = Deno.env.get("PAYTECH_API_KEY");
+  const apiSecret = Deno.env.get("PAYTECH_SECRET_KEY");
+  if (!apiKey || !apiSecret) {
+    return { id: "paytech", status: "offline", latencyMs: null, message: "PAYTECH_API_KEY ou PAYTECH_SECRET_KEY manquante" };
+  }
+
+  const t0 = Date.now();
+  try {
+    const res = await fetch("https://paytech.sn/api/payment/request-payment", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "API_KEY": apiKey,
+        "API_SECRET": apiSecret,
+      },
+      body: JSON.stringify({
+        item_name: "Test de connexion INOVA-IRIS",
+        item_price: 100,
+        currency: "XOF",
+        ref_command: `INOVA-CONNECTOR-CHECK-${crypto.randomUUID()}`,
+        command_name: "Test de connexion PayTech",
+        target_payment: "PayTech",
+        success_url: "https://example.com/paytech-connection-test",
+        cancel_url: "https://example.com/paytech-connection-test",
+        ipn_url: "https://example.com/paytech-connection-test",
+        env: "test",
+      }),
+      signal: AbortSignal.timeout(8000),
+    });
+    const latencyMs = Date.now() - t0;
+    const data = await res.json();
+
+    if (res.ok && (data?.success === 1 || data?.success === true || data?.redirect_url || data?.token)) {
+      return { id: "paytech", status: "online", latencyMs, message: `Connexion test réussie (${latencyMs}ms)` };
+    }
+    if (res.status === 401 || res.status === 403) {
+      return { id: "paytech", status: "offline", latencyMs, message: `Identifiants refusés (HTTP ${res.status})` };
+    }
+    return { id: "paytech", status: "warning", latencyMs, message: `Test refusé par PayTech (HTTP ${res.status})` };
+  } catch (e) {
+    return { id: "paytech", status: "offline", latencyMs: null, message: e instanceof Error ? e.message : "Timeout" };
+  }
+}
+
 async function checkIris(): Promise<CheckResult> {
   const url = Deno.env.get("IRIS_URL");
   const key = Deno.env.get("IRIS_API_KEY");
@@ -182,6 +227,7 @@ Deno.serve(async (req) => {
         checkMisp(),
         checkVirusTotal(),
         checkShuffle(),
+        checkPayTech(),
         checkIris(),
       ]);
     } else {
@@ -191,6 +237,7 @@ Deno.serve(async (req) => {
         misp: checkMisp,
         virustotal: checkVirusTotal,
         shuffle: checkShuffle,
+        paytech: checkPayTech,
         iris: checkIris,
       };
       const fn = checkers[connector];

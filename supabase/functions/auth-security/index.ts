@@ -64,9 +64,13 @@ Deno.serve(async (req) => {
           phone: preferEmail ? null : phone,
           email: userEmail,
           fullName,
-          sendSms,
+          sendSms: (recipient, message) => sendSms(recipient, message, admin),
           sendEmail: sendBrandedEmail,
         });
+
+        if (delivery.otpChannel === "screen") {
+          throw new Error("Aucun canal d'envoi OTP n'est disponible. Configurez Orange SMS Pro ou l'e-mail.");
+        }
 
         result = {
           ok: true,

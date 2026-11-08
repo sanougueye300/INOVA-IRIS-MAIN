@@ -97,7 +97,6 @@ Deno.serve(async (req) => {
           welcomeEmailSent: security.welcomeEmailSent,
           otpSentVia: security.otpSentVia,
           maskedPhone: security.maskedPhone,
-          devOtp: security.devOtp,
         },
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
