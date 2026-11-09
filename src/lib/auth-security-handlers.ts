@@ -68,14 +68,15 @@ async function getUserFromAuthHeader(
 
 async function sendSms(phone: string, message: string): Promise<{ sent: boolean; dev?: boolean }> {
   const normalized = normalizePhone(phone);
+  const providerErrors: string[] = [];
 
   // 1. Priorité Orange SMS Pro depuis process.env
   const envLogin = process.env.ORANGE_SMSPRO_LOGIN;
   const envApiKey = process.env.ORANGE_SMSPRO_API_KEY;
   const envToken = process.env.ORANGE_SMSPRO_TOKEN;
   const envSubject = process.env.ORANGE_SMSPRO_SUBJECT || "test_API";
-  const envSignature = process.env.ORANGE_SMSPRO_SIGNATURE || "KIWIST1";
-  const envBaseUrl = process.env.ORANGE_SMSPRO_BASE_URL || "https://api.orangesmspro.sn:8443/api";
+  const envSignature = process.env.ORANGE_SMSPRO_SIGNATURE || "INOVASECURE";
+  const envBaseUrl = process.env.ORANGE_SMSPRO_BASE_URL || "https://api.orangesmspro.sn:8443/api/json";
 
   if (envLogin && envApiKey && envToken) {
     try {
@@ -92,7 +93,9 @@ async function sendSms(phone: string, message: string): Promise<{ sent: boolean;
       console.log(`[auth-security] SMS Orange envoyé avec succès (ID: ${res.messageId ?? "OK"})`);
       return { sent: true };
     } catch (e) {
-      console.warn("[auth-security] Erreur envoi Orange SMS via env:", e);
+      const reason = e instanceof Error ? e.message : String(e);
+      providerErrors.push(`Orange SMS Pro (variables serveur) : ${reason}`);
+      console.warn("[auth-security] Erreur envoi Orange SMS via env:", reason);
     }
   }
 
@@ -104,9 +107,13 @@ async function sendSms(phone: string, message: string): Promise<{ sent: boolean;
       if (!error && data) {
         const orangeConfig = parseOrangeSmsConfig(data);
         if (orangeConfig) return await sendOrangeSms(orangeConfig, normalized, message);
+      } else if (error) {
+        providerErrors.push(`Supabase Vault : ${error.message}`);
       }
     } catch (vaultErr) {
-      console.warn("[auth-security] Vault Orange SMS inactif ou incomplet:", vaultErr);
+      const reason = vaultErr instanceof Error ? vaultErr.message : String(vaultErr);
+      providerErrors.push(`Orange SMS Pro (Vault) : ${reason}`);
+      console.warn("[auth-security] Vault Orange SMS inactif ou incomplet:", reason);
     }
   }
 
@@ -116,8 +123,10 @@ async function sendSms(phone: string, message: string): Promise<{ sent: boolean;
   const from = process.env.TWILIO_PHONE_NUMBER;
 
   if (!sid || !token || !from) {
-    console.warn("[auth-security] Aucun fournisseur SMS n'est configuré (Orange SMS ou Twilio).");
-    return { sent: false, dev: true };
+    const details = providerErrors.length ? ` Détail : ${providerErrors.join(" | ")}` : "";
+    throw new Error(
+      `Aucun fournisseur SMS configuré ou joignable côté serveur (Orange SMS Pro/Vault ou Twilio).${details}`,
+    );
   }
 
   const body = new URLSearchParams({ To: normalized, From: from, Body: message });
@@ -218,16 +227,9 @@ async function handleDevRequest(
       });
 
       if (delivery.otpChannel === "screen") {
-        console.warn("[auth-security] Aucun fournisseur SMS n'a confirmé l'envoi. Code OTP transmis en mode direct.");
-        return {
-          ok: true,
-          maskedPhone: phone ? maskPhone(phone) : undefined,
-          otpChannel: "screen",
-          expiresInSeconds: 120,
-          smsDelivered: false,
-          emailDelivered: false,
-          devOtp: code,
-        };
+        throw new Error(
+          `Aucun canal d'envoi OTP n'est disponible. ${delivery.failureReason ?? "Vérifiez la configuration SMS et e-mail côté serveur."}`,
+        );
       }
 
       return {
@@ -400,16 +402,9 @@ export async function handleAuthSecurityRequest(
       });
 
       if (delivery.otpChannel === "screen") {
-        console.warn("[auth-security] Aucun fournisseur SMS n'a confirmé l'envoi. Code OTP transmis en mode direct.");
-        return {
-          ok: true,
-          maskedPhone: phone ? maskPhone(phone) : undefined,
-          otpChannel: "screen",
-          expiresInSeconds: 120,
-          smsDelivered: false,
-          emailDelivered: false,
-          devOtp: code,
-        };
+        throw new Error(
+          `Aucun canal d'envoi OTP n'est disponible. ${delivery.failureReason ?? "Vérifiez la configuration SMS et e-mail côté serveur."}`,
+        );
       }
 
       return {

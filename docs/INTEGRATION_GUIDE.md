@@ -223,7 +223,9 @@ SELECT vault.create_secret('<SIGNATURE_SMS>', 'orange_smspro_signature', 'Orange
 
 L'URL par défaut est `https://api.orangesmspro.sn:8443/api`. Pour la remplacer, créer aussi le secret Vault `orange_smspro_base_url`. Seul le rôle serveur `service_role` peut lire la configuration. Twilio reste le secours si aucune configuration Orange n'existe; en cas d'échec Orange, le parcours OTP conserve son secours e-mail.
 
-Après l'application de la migration, déployer les fonctions Edge concernées (`auth-security` et `admin-create-user`) ainsi que l'application serveur. Les mises à jour ultérieures des secrets Vault sont prises en compte sans redéploiement. Le fournisseur est nommé **SMS ORANGE** dans la logique d'envoi OTP.
+Après l'application des migrations, déployer les fonctions Edge `configure-orange-sms`, `auth-security` et `admin-create-user`, ainsi que l'application serveur. Dans **Paramètres → Orange SMS Pro — 2FA**, enregistrer les identifiants dans Vault puis envoyer un SMS de test. Une configuration locale du navigateur ne suffit pas : l'envoi OTP est effectué côté serveur. Les mises à jour ultérieures des secrets Vault sont prises en compte sans redéploiement.
+
+Si la connexion affiche « Aucun canal d'envoi OTP n'est disponible », vérifier que la configuration apparaît comme **Configuré**, que le SMS de test aboutit et que `RESEND_API_KEY` est renseignée si l'e-mail de secours est utilisé. Le message d'erreur indique maintenant si le fournisseur SMS, Vault ou l'e-mail a échoué.
 
 ---
 

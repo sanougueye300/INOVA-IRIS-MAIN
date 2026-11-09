@@ -38,13 +38,6 @@ function TwoFactorPage() {
       setOtpChannel(meta.otpChannel ?? "sms");
       const elapsed = Math.floor((Date.now() - meta.sentAt) / 1000);
       setSecondsLeft(Math.max(0, meta.expiresInSeconds - elapsed));
-
-      if (meta.devOtp) {
-        toast.info("Code de secours SOC généré", {
-          description: `Votre code OTP 2FA temporaire est : ${meta.devOtp}`,
-          duration: 15000,
-        });
-      }
     }
   }, [navigate]);
 

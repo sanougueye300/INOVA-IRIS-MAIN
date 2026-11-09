@@ -69,7 +69,9 @@ Deno.serve(async (req) => {
         });
 
         if (delivery.otpChannel === "screen") {
-          throw new Error("Aucun canal d'envoi OTP n'est disponible. Configurez Orange SMS Pro ou l'e-mail.");
+          throw new Error(
+            `Aucun canal d'envoi OTP n'est disponible. ${delivery.failureReason ?? "Vérifiez la configuration SMS et e-mail côté serveur."}`,
+          );
         }
 
         result = {

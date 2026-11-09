@@ -35,6 +35,24 @@ describe("deliverLoginOtp SMS-first delivery", () => {
     expect(result.otpChannel).toBe("email");
     expect(result.smsDelivered).toBe(false);
     expect(result.emailDelivered).toBe(true);
+    expect(result.failureReason).toBeUndefined();
     expect(sendEmail).toHaveBeenCalledOnce();
+  });
+
+  it("explains why login OTP delivery failed when neither channel is available", async () => {
+    const sendSms = vi.fn().mockRejectedValue(new Error("Orange SMS Pro: signature invalide"));
+    const sendEmail = vi.fn().mockResolvedValue(false);
+
+    const result = await deliverLoginOtp({
+      code: "123456",
+      phone: "+221771234567",
+      email: "user@example.com",
+      sendSms,
+      sendEmail,
+    });
+
+    expect(result.otpChannel).toBe("screen");
+    expect(result.failureReason).toContain("Orange SMS Pro: signature invalide");
+    expect(result.failureReason).toContain("RESEND_API_KEY");
   });
 });

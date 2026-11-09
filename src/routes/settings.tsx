@@ -22,8 +22,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-import { sendOrangeSms } from "@/lib/orange-sms";
-import { normalizePhone } from "@/lib/otp-delivery";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({ meta: [{ title: "Paramètres Globaux — SOC Platform" }] }),
@@ -804,12 +802,12 @@ type OrangeSmsForm = {
 
 function OrangeSmsPanel() {
   const [form, setForm] = useState<OrangeSmsForm>({
-    login: "kiwimg1",
-    apiKey: "a5c2144b95cc46591c045ba30765a975",
-    token: "9048035d357d87ab3324fd88e60e5a4e",
-    subject: "test_API",
-    signature: "KIWIST1",
-    baseUrl: "https://api.orangesmspro.sn:8443/api",
+    login: "",
+    apiKey: "",
+    token: "",
+    subject: "",
+    signature: "",
+    baseUrl: "https://api.orangesmspro.sn:8443/api/json",
   });
   const [showApiKey, setShowApiKey] = useState(false);
   const [showToken, setShowToken] = useState(false);
@@ -821,24 +819,14 @@ function OrangeSmsPanel() {
 
   // Charger le statut de configuration au montage
   useEffect(() => {
-    const localSaved = localStorage.getItem("orange_smspro_config");
-    if (localSaved) {
-      try {
-        const parsed = JSON.parse(localSaved);
-        setForm((prev) => ({ ...prev, ...parsed }));
-        setConfigured(true);
-      } catch (e) {}
-    }
-
     supabase.functions
       .invoke("configure-orange-sms", { body: { action: "get_config" } })
-      .then(({ data }) => {
-        if (data?.configured !== undefined) {
-          setConfigured(Boolean(data.configured) || Boolean(localSaved));
-        }
+      .then(({ data, error }) => {
+        if (error) throw error;
+        setConfigured(Boolean(data?.configured));
       })
       .catch(() => {
-        if (!localSaved) setConfigured(false);
+        setConfigured(false);
       })
       .finally(() => setLoadingStatus(false));
   }, []);
@@ -851,23 +839,17 @@ function OrangeSmsPanel() {
     }
     setSaving(true);
     try {
-      // 1. Sauvegarde locale immédiate (haute disponibilité)
-      localStorage.setItem("orange_smspro_config", JSON.stringify(form));
+      const { data, error } = await supabase.functions.invoke("configure-orange-sms", {
+        body: { action: "save_config", ...form },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      if (!data?.ok) throw new Error("La configuration n’a pas été enregistrée dans Supabase Vault.");
+
       setConfigured(true);
-
-      // 2. Sauvegarde dans Supabase Vault (si Edge Function déployée)
-      try {
-        const { data, error } = await supabase.functions.invoke("configure-orange-sms", {
-          body: { action: "save_config", ...form },
-        });
-        if (error) console.warn("[Vault] Sync warning:", error.message);
-        if (data?.error) console.warn("[Vault] Sync data warning:", data.error);
-      } catch (err) {
-        console.warn("[Vault] Edge function indisponible, configuration locale enregistrée.");
-      }
-
+      setForm((current) => ({ ...current, apiKey: "", token: "" }));
       toast.success("Configuration Orange SMS Pro sauvegardée !", {
-        description: "Vos identifiants sont actifs pour l'envoi de codes 2FA.",
+        description: "Vos identifiants sont stockés côté serveur dans Supabase Vault.",
       });
     } catch (e) {
       toast.error("Erreur de sauvegarde", {
@@ -886,41 +868,15 @@ function OrangeSmsPanel() {
     }
     setTesting(true);
     try {
-      let sent = false;
-      // 1. Tenter via Edge function
-      try {
-        const { data, error } = await supabase.functions.invoke("configure-orange-sms", {
-          body: { action: "test_sms", phone },
-        });
-        if (!error && data?.ok) {
-          sent = true;
-          toast.success("SMS de test envoyé !", {
-            description: data?.message ?? `SMS envoyé au ${phone}.`,
-          });
-        }
-      } catch (edgeErr) {
-        // Fallback client direct
-      }
-
-      // 2. Si non envoyé via backend, tenter en direct avec la config locale
-      if (!sent) {
-        const normalized = normalizePhone(phone);
-        await sendOrangeSms(
-          {
-            login: form.login,
-            apiKey: form.apiKey,
-            token: form.token,
-            subject: form.subject,
-            signature: form.signature,
-            baseUrl: form.baseUrl,
-          },
-          normalized,
-          "[INOVA-IRIS] 🔐 Test SMS Orange — Votre intégration double facteur est opérationnelle.",
-        );
-        toast.success("SMS de test Orange envoyé avec succès !", {
-          description: `Code test transmis au ${normalized}.`,
-        });
-      }
+      const { data, error } = await supabase.functions.invoke("configure-orange-sms", {
+        body: { action: "test_sms", phone },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      if (!data?.ok) throw new Error("Le fournisseur n’a pas confirmé l’envoi du SMS de test.");
+      toast.success("SMS de test envoyé !", {
+        description: data.message ?? `SMS envoyé au ${phone}.`,
+      });
     } catch (e) {
       toast.error("Échec du test SMS Orange", {
         description: e instanceof Error ? e.message : String(e),
@@ -1078,7 +1034,7 @@ function OrangeSmsPanel() {
             </Label>
             <Input
               id="orange-baseurl"
-              placeholder="https://api.orangesmspro.sn:8443/api"
+              placeholder="https://api.orangesmspro.sn:8443/api/json"
               value={form.baseUrl}
               onChange={setField("baseUrl")}
             />
@@ -1202,4 +1158,3 @@ function OrangeSmsPanel() {
     </Card>
   );
 }
-

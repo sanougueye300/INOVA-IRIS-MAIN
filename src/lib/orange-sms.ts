@@ -1,8 +1,21 @@
+/**
+ * Orange SMS Pro Sénégal — API JSON
+ * Endpoint : POST https://api.orangesmspro.sn:8443/api/json
+ *
+ * Formule HMAC-SHA1 : HMAC_SHA1(token + flux_JSON + timestamp, clé_privée)
+ * Les paramètres token, key et timestamp sont passés dans l'URL (query string).
+ * Le corps de la requête est le payload JSON (Content-Type: application/json).
+ */
+
 export type OrangeSmsConfig = {
   login: string;
+  /** Clé privée (API Key) — utilisée pour signer le HMAC */
   apiKey: string;
+  /** Token — passé en query string et inclus dans le HMAC */
   token: string;
+  /** Sujet/objet du message */
   subject: string;
+  /** Signature/Sender ID validée sur le portail Orange */
   signature: string;
   baseUrl?: string;
   verifySSL?: boolean;
@@ -15,7 +28,7 @@ export type OrangeSmsResult = {
   messageId?: string;
 };
 
-const DEFAULT_BASE_URL = "https://api.orangesmspro.sn:8443/api";
+const DEFAULT_BASE_URL = "https://api.orangesmspro.sn:8443/api/json";
 
 /**
  * Normalise le numéro de téléphone pour l'API Orange SMS Pro Sénégal.
@@ -23,21 +36,14 @@ const DEFAULT_BASE_URL = "https://api.orangesmspro.sn:8443/api";
  */
 export function formatOrangeRecipient(phone: string): string {
   if (!phone) return "";
-  const cleaned = phone.trim();
-  const digits = cleaned.replace(/\D/g, "");
+  const digits = phone.trim().replace(/\D/g, "");
 
-  // Si le numéro commence déjà par 221 (Sénégal)
-  if (digits.startsWith("221")) {
-    return digits;
-  }
+  // Déjà au format 221XXXXXXXXX (12 chiffres pour le Sénégal)
+  if (digits.startsWith("221") && digits.length === 12) return digits;
   // Numéro local sénégalais à 9 chiffres (ex: 77 123 45 67)
-  if (digits.length === 9) {
-    return `221${digits}`;
-  }
+  if (digits.length === 9) return `221${digits}`;
   // Numéro avec 0 initial (ex: 077 123 45 67)
-  if (digits.length === 10 && digits.startsWith("0")) {
-    return `221${digits.slice(1)}`;
-  }
+  if (digits.length === 10 && digits.startsWith("0")) return `221${digits.slice(1)}`;
   return digits;
 }
 
@@ -47,13 +53,13 @@ export function parseOrangeSmsConfig(value: unknown): OrangeSmsConfig | null {
     throw new Error("Configuration Orange SMS invalide.");
   }
 
-  const settings = value as Record<string, unknown>;
-  const login = settings.orange_smspro_login;
-  const apiKey = settings.orange_smspro_api_key;
-  const token = settings.orange_smspro_token;
-  const subject = settings.orange_smspro_subject;
-  const signature = settings.orange_smspro_signature;
-  const baseUrl = settings.orange_smspro_base_url;
+  const s = value as Record<string, unknown>;
+  const login = s.orange_smspro_login;
+  const apiKey = s.orange_smspro_api_key;
+  const token = s.orange_smspro_token;
+  const subject = s.orange_smspro_subject;
+  const signature = s.orange_smspro_signature;
+  const baseUrl = s.orange_smspro_base_url;
 
   if (
     typeof login !== "string" || !login ||
@@ -64,30 +70,17 @@ export function parseOrangeSmsConfig(value: unknown): OrangeSmsConfig | null {
   ) {
     throw new Error("Configuration Orange SMS incomplète dans Supabase Vault.");
   }
-  if (baseUrl !== undefined && typeof baseUrl !== "string") {
-    throw new Error("URL de l'API Orange SMS invalide.");
-  }
-  if (typeof baseUrl === "string" && baseUrl.trim()) {
-    try {
-      if (new URL(baseUrl).protocol !== "https:") throw new Error();
-    } catch {
-      throw new Error("L'URL de l'API Orange SMS doit être une URL HTTPS valide.");
-    }
-  }
 
-  return {
-    login,
-    apiKey,
-    token,
-    subject,
-    signature,
-    baseUrl,
-  };
+  return { login, apiKey, token, subject, signature, baseUrl: typeof baseUrl === "string" ? baseUrl : undefined };
 }
 
 /**
- * Envoie un SMS via l'API Orange SMS Pro Sénégal avec signature dynamique HMAC-SHA1
- * et authentification HTTP Basic (login:token).
+ * Envoie un SMS via l'API JSON Orange SMS Pro Sénégal.
+ *
+ * Méthode : POST
+ * URL     : {baseUrl}?token={TOKEN}&key={HMAC}&timestamp={TS}
+ * Body    : JSON { messages: [{ signature, subject, content, recipients: [{id, value}] }] }
+ * HMAC    : SHA1( token + JSON_body_string + timestamp,  clé_privée )
  */
 export async function sendOrangeSms(
   config: OrangeSmsConfig,
@@ -97,45 +90,59 @@ export async function sendOrangeSms(
 ): Promise<OrangeSmsResult> {
   const formattedRecipient = formatOrangeRecipient(recipient);
   const timestamp = Math.floor(Date.now() / 1000).toString();
-  const message = `${config.token}${config.subject}${config.signature}${formattedRecipient}${content}${timestamp}`;
 
-  const hmacKey = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(config.apiKey),
-    { name: "HMAC", hash: "SHA-1" },
-    false,
-    ["sign"],
-  );
-  const digest = await crypto.subtle.sign("HMAC", hmacKey, new TextEncoder().encode(message));
-  const key = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+  // ── 1. Construction du payload JSON ────────────────────────────────────────
+  const payload = JSON.stringify({
+    messages: [
+      {
+        signature: config.signature,
+        subject: config.subject,
+        content,
+        recipients: [
+          { id: "1", value: formattedRecipient },
+        ],
+      },
+    ],
+  });
 
-  const url = new URL(config.baseUrl?.trim() || DEFAULT_BASE_URL);
-  url.search = new URLSearchParams({
-    token: config.token,
-    subject: config.subject,
-    signature: config.signature,
-    recipient: formattedRecipient,
-    content,
-    timestamp,
-    key,
-  }).toString();
+  // ── 2. Génération HMAC-SHA1 : token + JSON_payload + timestamp ──────────────
+  const msgToSign = `${config.token}${payload}${timestamp}`;
 
-  const credentials = `${config.login}:${config.token}`;
-  const authHeader = typeof Buffer !== "undefined"
-    ? Buffer.from(credentials).toString("base64")
-    : btoa(credentials);
+  let key: string;
+  if (typeof process !== "undefined" && process.versions?.node) {
+    const { createHmac } = await import("node:crypto");
+    key = createHmac("sha1", config.apiKey).update(msgToSign).digest("hex");
+  } else {
+    const hmacKey = await crypto.subtle.importKey(
+      "raw",
+      new TextEncoder().encode(config.apiKey),
+      { name: "HMAC", hash: "SHA-1" },
+      false,
+      ["sign"],
+    );
+    const digest = await crypto.subtle.sign("HMAC", hmacKey, new TextEncoder().encode(msgToSign));
+    key = Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
+  }
 
+  // ── 3. Construction de l'URL avec les paramètres query ─────────────────────
+  const baseUrl = (config.baseUrl?.trim() || DEFAULT_BASE_URL);
+  const url = new URL(baseUrl);
+  url.searchParams.set("token", config.token);
+  url.searchParams.set("key", key);
+  url.searchParams.set("timestamp", timestamp);
+
+  // ── 4. Préparation de la requête POST ──────────────────────────────────────
   const requestInit: RequestInit = {
-    method: "GET",
+    method: "POST",
     headers: {
-      Authorization: `Basic ${authHeader}`,
-      "Content-Type": "application/x-www-form-urlencoded",
+      "Content-Type": "application/json",
       Accept: "application/json",
     },
+    body: payload,
     signal: AbortSignal.timeout(30_000),
   };
 
-  // En environnement Node.js, supporter verifySSL = false (comme en PHP) pour les certificats auto-signés
+  // Désactivation SSL pour certificats auto-signés Orange (Node.js uniquement)
   if (config.verifySSL === false && typeof process !== "undefined" && process.versions?.node) {
     try {
       const { Agent } = await import("undici");
@@ -143,13 +150,14 @@ export async function sendOrangeSms(
         connect: { rejectUnauthorized: false },
       });
     } catch {
-      // Ignorer si undici n'est pas importable
+      // continuer si non disponible
     }
   }
 
-  const response = await fetchImpl(url, requestInit);
-
+  // ── 5. Envoi de la requête ─────────────────────────────────────────────────
+  const response = await fetchImpl(url.toString(), requestInit);
   const text = await response.text();
+
   let body: any = null;
   try {
     body = JSON.parse(text);
@@ -158,25 +166,48 @@ export async function sendOrangeSms(
   }
 
   if (!response.ok) {
-    const errorDetails = typeof body === "object" ? JSON.stringify(body) : text;
-    throw new Error(`Orange SMS Pro a répondu avec le statut HTTP ${response.status}: ${errorDetails}`);
+    const details = typeof body === "object" ? JSON.stringify(body) : text;
+    throw new Error(`Orange SMS Pro a répondu avec le statut HTTP ${response.status}: ${details}`);
   }
 
-  // Vérification de la réponse logique Orange SMS Pro (STATUS === 0 pour succès)
+  // ── 6. Vérification de la réponse Orange ──────────────────────────────────
   if (body && typeof body === "object") {
-    const statusCode = body.STATUS ?? body.status;
-    if (statusCode !== undefined && statusCode !== 0 && statusCode !== "0" && statusCode !== "OK" && statusCode !== 200) {
+    // Vérifier format standard / legacy { STATUS: 1, message: "..." }
+    const rootStatus = body.STATUS ?? body.status;
+    if (rootStatus !== undefined && rootStatus !== 0 && rootStatus !== "0" && rootStatus !== "OK" && rootStatus !== 200 && rootStatus !== 100) {
       const reason = body.message || body.messageReason || body.error || JSON.stringify(body);
-      throw new Error(`Orange SMS Pro a retourné une erreur (statut ${statusCode}): ${reason}`);
+      throw new Error(`Orange SMS Pro a retourné une erreur (statut ${rootStatus}): ${reason}`);
+    }
+
+    // Vérifier tableau de réponses { responses: { response: [...] } } ou { response: [...] }
+    const responseArr: any[] =
+      body?.responses?.response ??
+      body?.response ??
+      (Array.isArray(body) ? body : []);
+
+    for (const r of (Array.isArray(responseArr) ? responseArr : [])) {
+      const sc = r?.status?.status_CODE ?? r?.status_code ?? r?.STATUS ?? r?.status;
+      if (sc !== undefined && sc !== 100 && sc !== 200 && sc !== "OK" && sc !== 0) {
+        const reason =
+          r?.status?.status_TEXT ?? r?.status_text ?? r?.message ?? JSON.stringify(r);
+        throw new Error(`Orange SMS Pro a retourné une erreur (statut ${sc}): ${reason}`);
+      }
     }
   }
 
-  const messageId = body?.message_id ?? body?.messageId ?? body?.messagedetail_id;
+  // Extraction de l'ID de message
+  const responseArr: any[] =
+    body?.responses?.response ?? body?.response ?? (Array.isArray(body) ? body : []);
+  const firstResponse = Array.isArray(responseArr) ? responseArr[0] : null;
+  const messageId =
+    body?.message_id ?? body?.messageId ??
+    firstResponse?.message_ID ?? firstResponse?.message_id ??
+    firstResponse?.messagedetail_ID ?? firstResponse?.messagedetail_id;
 
   return {
     sent: true,
     statusCode: response.status,
     response: body,
-    messageId: messageId ? String(messageId) : undefined,
+    messageId: messageId != null ? String(messageId) : undefined,
   };
 }

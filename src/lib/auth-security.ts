@@ -1,7 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { generateBackupCode, generateOtpCode, hashSecret, maskPhone } from "./auth-crypto";
-import { normalizePhone } from "./otp-delivery";
-import { parseOrangeSmsConfig, sendOrangeSms } from "./orange-sms";
+import { generateBackupCode, hashSecret } from "./auth-crypto";
 
 export type AuthSecurityAction =
   | "send_sms_otp"
@@ -25,14 +23,20 @@ const PUBLIC_ACTIONS = new Set<AuthSecurityAction>([
 
 const PENDING_2FA_KEY = "soc-2fa-pending";
 const OTP_META_KEY = "soc-2fa-otp-meta";
-const FALLBACK_OTP_KEY = "soc-fallback-otp";
+
+/**
+ * Statut d'activation du 2FA.
+ * Mis en pause temporairement jusqu'à validation de la signature Orange SMS Pro sur le portail Orange.
+ * Pour le réactiver : définir VITE_ENABLE_2FA="true" dans le fichier .env
+ */
+export const IS_2FA_ENABLED: boolean =
+  typeof import.meta !== "undefined" && import.meta.env?.VITE_ENABLE_2FA === "true";
 
 export type OtpMeta = {
   maskedPhone?: string;
   otpChannel?: "sms" | "email";
   expiresInSeconds: number;
   sentAt: number;
-  devOtp?: string;
 };
 
 export function setPending2FA(pending: boolean) {
@@ -62,136 +66,12 @@ export function getOtpMeta(): OtpMeta | null {
 export function clear2FAState() {
   sessionStorage.removeItem(PENDING_2FA_KEY);
   sessionStorage.removeItem(OTP_META_KEY);
-  sessionStorage.removeItem(FALLBACK_OTP_KEY);
+  sessionStorage.removeItem("soc-fallback-otp");
 }
 
 async function getAccessToken(): Promise<string | null> {
   const { data } = await supabase.auth.getSession();
   return data.session?.access_token ?? null;
-}
-
-/** Fallback client direct lorsque le serveur local ou l'Edge Function ne répond pas */
-async function executeClientFallback<T extends Record<string, unknown>>(
-  action: AuthSecurityAction,
-  payload: Record<string, unknown> = {},
-): Promise<T> {
-  const { data: authData } = await supabase.auth.getUser();
-  const userId = authData.user?.id;
-
-  if (action === "send_sms_otp") {
-    let phone: string | null = null;
-    let email = authData.user?.email ?? "";
-
-    if (userId) {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("phone, email")
-        .eq("id", userId)
-        .maybeSingle();
-
-      if (profile?.phone?.trim()) phone = normalizePhone(profile.phone);
-      if (profile?.email?.trim()) email = profile.email.trim();
-    }
-
-    if (typeof payload.phone === "string" && payload.phone.trim()) {
-      phone = normalizePhone(payload.phone);
-    }
-
-    const code = generateOtpCode();
-    const codeHash = await hashSecret(code);
-    const expiresAt = Date.now() + 120 * 1000;
-
-    // Enregistrer l'état OTP pour la vérification
-    sessionStorage.setItem(
-      FALLBACK_OTP_KEY,
-      JSON.stringify({ userId, codeHash, expiresAt, attempts: 0 }),
-    );
-
-    let smsDelivered = false;
-    let orangeConfigObj = null;
-
-    // Tenter Orange SMS Pro si configuré localement ou identifiants actifs
-    const orangeConfigRaw = localStorage.getItem("orange_smspro_config");
-    if (orangeConfigRaw && phone) {
-      try {
-        const parsed = JSON.parse(orangeConfigRaw);
-        orangeConfigObj = parseOrangeSmsConfig({
-          orange_smspro_login: parsed.login,
-          orange_smspro_api_key: parsed.apiKey,
-          orange_smspro_token: parsed.token,
-          orange_smspro_subject: parsed.subject,
-          orange_smspro_signature: parsed.signature,
-          orange_smspro_base_url: parsed.baseUrl,
-        });
-      } catch (err) {
-        console.warn("[Orange SMS] Config parse warning:", err);
-      }
-    } else if (phone) {
-      orangeConfigObj = parseOrangeSmsConfig({
-        orange_smspro_login: "kiwimg1",
-        orange_smspro_api_key: "a5c2144b95cc46591c045ba30765a975",
-        orange_smspro_token: "9048035d357d87ab3324fd88e60e5a4e",
-        orange_smspro_subject: "test_API",
-        orange_smspro_signature: "KIWIST1",
-        orange_smspro_base_url: "https://api.orangesmspro.sn:8443/api",
-      });
-    }
-
-    if (orangeConfigObj && phone) {
-      try {
-        const smsBody = `[INOVA-IRIS] Votre code de sécurité SOC est : ${code}. Valable 2 minutes.`;
-        await sendOrangeSms(orangeConfigObj, phone, smsBody);
-        smsDelivered = true;
-      } catch (smsErr) {
-        console.warn("[Orange SMS] Envoi direct échoué:", smsErr);
-      }
-    }
-
-    return {
-      ok: true,
-      maskedPhone: phone ? maskPhone(phone) : undefined,
-      otpChannel: phone ? "sms" : "email",
-      expiresInSeconds: 120,
-      smsDelivered,
-      emailDelivered: false,
-      devOtp: !smsDelivered ? code : undefined,
-    } as unknown as T;
-  }
-
-  if (action === "verify_sms_otp") {
-    const raw = sessionStorage.getItem(FALLBACK_OTP_KEY);
-    if (!raw) throw new Error("Code OTP expiré ou introuvable. Demandez un nouveau code.");
-    const stored = JSON.parse(raw) as {
-      userId?: string;
-      codeHash: string;
-      expiresAt: number;
-      attempts: number;
-    };
-
-    if (Date.now() > stored.expiresAt) {
-      sessionStorage.removeItem(FALLBACK_OTP_KEY);
-      throw new Error("Ce code OTP a expiré. Veuillez renvoyer un code.");
-    }
-
-    if (stored.attempts >= 5) {
-      sessionStorage.removeItem(FALLBACK_OTP_KEY);
-      throw new Error("Trop de tentatives. Code invalidé.");
-    }
-
-    const inputCode = String(payload.code ?? "").trim();
-    const inputHash = await hashSecret(inputCode);
-
-    if (inputHash !== stored.codeHash) {
-      stored.attempts += 1;
-      sessionStorage.setItem(FALLBACK_OTP_KEY, JSON.stringify(stored));
-      throw new Error(`Code OTP incorrect (${5 - stored.attempts} tentatives restantes).`);
-    }
-
-    sessionStorage.removeItem(FALLBACK_OTP_KEY);
-    return { ok: true, verified: true } as unknown as T;
-  }
-
-  throw new Error(`Action ${action} indisponible sans connexion serveur.`);
 }
 
 export async function invokeAuthSecurity<T extends Record<string, unknown>>(
@@ -249,18 +129,26 @@ export async function invokeAuthSecurity<T extends Record<string, unknown>>(
       if ("error" in data) throw new Error(String((data as { error: string }).error));
       return data as T;
     }
-    if (error && !error.message?.includes("Failed to send") && !error.message?.includes("FunctionsFetchError")) {
-      console.warn("[auth-security] Edge Function réponse:", error.message);
+    if (error) {
+      const message = error.message ?? String(error);
+      const isNetworkOrUnavailable =
+        message.includes("Failed to send") ||
+        message.includes("FunctionsFetchError") ||
+        message.includes("Failed to fetch");
+      if (!isNetworkOrUnavailable) throw error;
+      console.warn("[auth-security] Edge Function réponse:", message);
     }
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    if (!msg.includes("Failed to send") && !msg.includes("FunctionsFetchError") && !msg.includes("Failed to fetch")) {
-      console.warn("[auth-security] Edge function indisponible:", msg);
-    }
+    const isNetworkOrUnavailable =
+      msg.includes("Failed to send") ||
+      msg.includes("FunctionsFetchError") ||
+      msg.includes("Failed to fetch");
+    if (!isNetworkOrUnavailable) throw e;
+    console.warn("[auth-security] Edge function indisponible:", msg);
   }
 
-  // 3. Fallback client direct hautement disponible (Orange SMS + OTP local)
-  return executeClientFallback<T>(action, payload);
+  throw new Error("Services de sécurité indisponibles. Vérifiez la connexion au serveur, puis réessayez.");
 }
 
 /** Envoie l'e-mail de récupération (branded via serveur, ou Supabase Auth en secours). */
@@ -308,7 +196,6 @@ export async function sendLoginSmsOtp(options?: { preferEmail?: boolean; phone?:
     expiresInSeconds: number;
     emailDelivered?: boolean;
     smsDelivered?: boolean;
-    devOtp?: string;
   }>("send_sms_otp", payload);
 
   const meta: OtpMeta = {
@@ -316,7 +203,6 @@ export async function sendLoginSmsOtp(options?: { preferEmail?: boolean; phone?:
     otpChannel: result.otpChannel ?? (result.maskedPhone ? "sms" : "email"),
     expiresInSeconds: result.expiresInSeconds ?? 120,
     sentAt: Date.now(),
-    devOtp: result.devOtp,
   };
   setOtpMeta(meta);
   return meta;

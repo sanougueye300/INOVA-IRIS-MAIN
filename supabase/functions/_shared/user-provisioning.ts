@@ -32,8 +32,7 @@ export async function sendSms(
   const normalized = normalizePhone(phone);
 
   if (!sid || !token || !from) {
-    console.warn("[provisioning] SMS non envoyé : aucun fournisseur SMS n'est configuré.");
-    return { sent: false, dev: true };
+    throw new Error("Aucun fournisseur SMS configuré côté serveur (Orange SMS Pro/Vault ou Twilio).");
   }
 
   const body = new URLSearchParams({ To: normalized, From: from, Body: message });

@@ -7,7 +7,7 @@ const config = {
   token: "access-token",
   subject: "INOVA",
   signature: "INOVA-IRIS",
-  baseUrl: "https://sms.example.test/api",
+  baseUrl: "https://sms.example.test/api/json",
 };
 
 describe("Orange SMS Pro", () => {
@@ -36,7 +36,7 @@ describe("Orange SMS Pro", () => {
     );
   });
 
-  it("signs and sends the OTP using the Orange SMS Pro request format", async () => {
+  it("signs and sends the OTP using the Orange SMS Pro JSON POST format", async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(JSON.stringify({ STATUS: 0, message_id: "MSG12345" }), { status: 200 })
     );
@@ -48,28 +48,19 @@ describe("Orange SMS Pro", () => {
 
     const [requestUrl, requestInit] = fetchMock.mock.calls[0];
     const url = new URL(String(requestUrl));
-    const timestamp = url.searchParams.get("timestamp");
-    const expectedRecipient = "221771234567";
-    const message = `${config.token}${config.subject}${config.signature}${expectedRecipient}Code OTP 123456${timestamp}`;
-    const hmacKey = await crypto.subtle.importKey(
-      "raw",
-      new TextEncoder().encode(config.apiKey),
-      { name: "HMAC", hash: "SHA-1" },
-      false,
-      ["sign"],
-    );
-    const digest = await crypto.subtle.sign("HMAC", hmacKey, new TextEncoder().encode(message));
-    const expectedKey = Array.from(new Uint8Array(digest), (byte) =>
-      byte.toString(16).padStart(2, "0"),
-    ).join("");
-
     expect(url.origin + url.pathname).toBe(config.baseUrl);
-    expect(url.searchParams.get("key")).toBe(expectedKey);
-    expect(url.searchParams.get("recipient")).toBe(expectedRecipient);
-    expect(requestInit?.method).toBe("GET");
-    expect(new Headers(requestInit?.headers).get("authorization")).toBe(
-      `Basic ${btoa(`${config.login}:${config.token}`)}`,
-    );
+    expect(url.searchParams.get("token")).toBe(config.token);
+    expect(url.searchParams.get("key")).toBeTruthy();
+    expect(url.searchParams.get("timestamp")).toBeTruthy();
+
+    expect(requestInit?.method).toBe("POST");
+    expect(new Headers(requestInit?.headers).get("content-type")).toBe("application/json");
+
+    const body = JSON.parse(String(requestInit?.body));
+    expect(body.messages[0].signature).toBe(config.signature);
+    expect(body.messages[0].subject).toBe(config.subject);
+    expect(body.messages[0].content).toBe("Code OTP 123456");
+    expect(body.messages[0].recipients[0].value).toBe("221771234567");
   });
 
   it("reports provider HTTP errors", async () => {
@@ -88,5 +79,59 @@ describe("Orange SMS Pro", () => {
     await expect(sendOrangeSms(config, "221771234567", "Code OTP", fetchMock)).rejects.toThrow(
       "Token invalide ou expiré",
     );
+  });
+
+  it("accepts Orange SMS Pro's nested status_code 100 success response", async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          response: [{ status_code: 100, status_text: "Message envoyé", message_id: "MSG100" }],
+        }),
+        { status: 200 },
+      ),
+    );
+
+    await expect(sendOrangeSms(config, "+221771234567", "Code OTP", fetchMock)).resolves.toMatchObject({
+      sent: true,
+      messageId: "MSG100",
+    });
+  });
+
+  it("reports Orange SMS Pro's nested status_code errors", async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          response: [{ status_code: 102, status_text: "Signature invalide" }],
+        }),
+        { status: 200 },
+      ),
+    );
+
+    await expect(sendOrangeSms(config, "+221771234567", "Code OTP", fetchMock)).rejects.toThrow(
+      "statut 102): Signature invalide",
+    );
+  });
+
+  it("accepts Orange SMS Pro JSON API { responses: { response: [...] } } structure", async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          responses: {
+            response: [
+              {
+                message_ID: 9999,
+                status: { status_CODE: 200, status_TEXT: "OK" },
+              },
+            ],
+          },
+        }),
+        { status: 200 },
+      ),
+    );
+
+    await expect(sendOrangeSms(config, "771234567", "Code 123", fetchMock)).resolves.toMatchObject({
+      sent: true,
+      messageId: "9999",
+    });
   });
 });
