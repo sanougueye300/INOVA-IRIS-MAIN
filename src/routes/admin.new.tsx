@@ -706,723 +706,670 @@ function NewUserPage() {
     }
   };
 
-  /* Encapsulated Enterprise Input */
+  /* ─── Modern Input Helper ─────────────────────────────────────── */
   const renderInput = (
     label: string, value: string, onChange: (v: string) => void,
-    placeholder: string, icon: React.ReactNode, type = "text"
+    placeholder: string, icon: React.ReactNode, type = "text",
+    required = false
   ) => (
-    <div className="space-y-1">
-      <label className="block text-[11px] font-bold text-slate-600 dark:text-zinc-400 uppercase tracking-wider">
-        {label}
+    <div className="space-y-1.5">
+      <label className="block text-xs font-semibold text-slate-500 dark:text-zinc-400">
+        {label}{required && <span className="text-red-500 ml-1">*</span>}
       </label>
-      <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-slate-50/90 dark:bg-zinc-900/90 border border-slate-200/90 dark:border-zinc-800 focus-within:border-amber-500 focus-within:ring-2 focus-within:ring-amber-500/10 focus-within:bg-white dark:focus-within:bg-zinc-950 transition-all">
-        <div className="text-slate-400 shrink-0">{icon}</div>
+      <div className="relative">
+        <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-zinc-500 pointer-events-none">
+          {icon}
+        </div>
         <input
           type={type}
           value={value}
           onChange={e => onChange(e.target.value)}
           placeholder={placeholder}
-          className="w-full bg-transparent border-none outline-none p-0 text-slate-800 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-600 text-xs font-semibold focus:ring-0"
+          className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700/80 text-sm text-slate-800 dark:text-zinc-100 placeholder-slate-300 dark:placeholder-zinc-600 font-medium focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-400 transition-all shadow-sm"
         />
       </div>
     </div>
   );
 
-  /* Encapsulated Enterprise Select */
+  /* ─── Modern Select Helper ──────────────────────────────────────── */
   const renderSelect = (
     label: string, value: string, onValueChange: (v: string) => void,
     placeholder: string, icon: React.ReactNode,
-    options: { value: string; label: string; sub?: string }[]
+    options: { value: string; label: string; sub?: string }[],
+    required = false
   ) => (
-    <div className="space-y-1">
-      <label className="block text-[11px] font-bold text-slate-600 dark:text-zinc-400 uppercase tracking-wider">
-        {label}
+    <div className="space-y-1.5">
+      <label className="block text-xs font-semibold text-slate-500 dark:text-zinc-400">
+        {label}{required && <span className="text-red-500 ml-1">*</span>}
       </label>
-      <div className="px-3 py-1.5 rounded-xl bg-slate-50/90 dark:bg-zinc-900/90 border border-slate-200/90 dark:border-zinc-800 focus-within:border-amber-500 focus-within:ring-2 focus-within:ring-amber-500/10 focus-within:bg-white dark:focus-within:bg-zinc-950 transition-all">
-        <div className="flex items-center gap-2.5">
-          <div className="text-slate-400 shrink-0">{icon}</div>
-          <div className="flex-1 min-w-0">
-            <Select value={value} onValueChange={onValueChange}>
-              <SelectTrigger className="w-full bg-transparent border-none shadow-none p-0 h-7 text-xs font-semibold text-slate-800 dark:text-zinc-100 focus:ring-0 focus:outline-none [&>span]:flex [&>span]:items-center">
-                <SelectValue placeholder={<span className="text-slate-400 dark:text-zinc-600 font-normal">{placeholder}</span>} />
-                <ChevronDown className="h-3.5 w-3.5 text-slate-400 ml-auto shrink-0" />
-              </SelectTrigger>
-              <SelectContent className="bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-xl shadow-2xl">
-                {options.map(opt => (
-                  <SelectItem key={opt.value} value={opt.value} className="rounded-lg cursor-pointer hover:bg-amber-50 dark:hover:bg-amber-500/10 focus:bg-amber-50 dark:focus:bg-amber-500/10">
-                    <div>
-                      <div className="text-xs font-bold text-slate-800 dark:text-zinc-100">{opt.label}</div>
-                      {opt.sub && <div className="text-[10px] text-slate-400 dark:text-zinc-500 font-normal mt-0.5">{opt.sub}</div>}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+      <div className="relative">
+        <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-zinc-500 pointer-events-none z-10">
+          {icon}
         </div>
+        <Select value={value} onValueChange={onValueChange}>
+          <SelectTrigger className="w-full pl-10 py-2.5 h-auto rounded-xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700/80 text-sm font-medium text-slate-800 dark:text-zinc-100 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-400 shadow-sm transition-all">
+            <SelectValue placeholder={<span className="text-slate-300 dark:text-zinc-600">{placeholder}</span>} />
+          </SelectTrigger>
+          <SelectContent className="bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-2xl z-50">
+            {options.map(opt => (
+              <SelectItem key={opt.value} value={opt.value} className="rounded-xl cursor-pointer hover:bg-amber-50 dark:hover:bg-amber-500/10 focus:bg-amber-50 dark:focus:bg-amber-500/10 py-2.5">
+                <div>
+                  <div className="text-xs font-bold text-slate-800 dark:text-zinc-100">{opt.label}</div>
+                  {opt.sub && <div className="text-[10px] text-slate-400 dark:text-zinc-500 font-normal mt-0.5">{opt.sub}</div>}
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
     </div>
   );
 
-  const progressPct = ((activeStep - 1) / (STEPS.length - 1)) * 88; // 88% max width (5%→93%)
+  const stepColors = ["from-amber-500 to-orange-500", "from-violet-500 to-indigo-500", "from-emerald-500 to-teal-500", "from-amber-400 to-emerald-500"];
+  const stepDescriptions = [
+    "Coordonnées professionnelles, organisation et localisation",
+    "Rôle, habilitations applicatives et sécurité du compte",
+    "Services activés, permissions et statut opérationnel",
+    "Vérification finale avant création du profil"
+  ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-amber-50/30 dark:from-[#080a10] dark:via-[#0b0d14] dark:to-[#0f1018] transition-colors duration-300 relative overflow-hidden">
+    <div className="min-h-screen flex bg-slate-50 dark:bg-[#080a10] transition-colors duration-300">
 
-      {/* Background decorations */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-0 right-0 w-[700px] h-[700px] rounded-full bg-gradient-radial from-amber-500/8 via-transparent to-transparent blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] rounded-full bg-gradient-radial from-amber-400/5 via-transparent to-transparent blur-3xl" />
-        {/* Grid mesh */}
-        <div
-          className="absolute inset-0 opacity-[0.025] dark:opacity-[0.04]"
-          style={{ backgroundImage: "linear-gradient(rgba(245,158,11,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(245,158,11,0.5) 1px, transparent 1px)", backgroundSize: "60px 60px" }}
+      {/* ══════════════════════════════════════════════════════════
+          LEFT SIDEBAR — Fixed dark panel with branding & progress
+      ══════════════════════════════════════════════════════════ */}
+      <aside className="hidden lg:flex w-80 xl:w-96 flex-col shrink-0 bg-gradient-to-b from-slate-900 via-zinc-900 to-slate-950 relative overflow-hidden border-r border-slate-800">
+
+        {/* Ambient glow decorations */}
+        <div className="absolute top-0 right-0 w-64 h-64 rounded-full bg-amber-500/5 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-1/3 left-0 w-48 h-48 rounded-full bg-violet-500/5 blur-3xl pointer-events-none" />
+        <div className="absolute inset-0 opacity-[0.03]"
+          style={{ backgroundImage: "linear-gradient(rgba(245,158,11,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(245,158,11,0.6) 1px, transparent 1px)", backgroundSize: "40px 40px" }}
         />
-      </div>
 
-      <div className="container mx-auto px-4 py-4 max-w-6xl relative z-10">
-
-        {/* Fil d'Ariane & Bascule Rapide */}
-        <div className="flex items-center justify-between text-[11px] font-semibold text-slate-400 mb-2.5">
-          <div className="flex items-center gap-1.5">
-            <Link to="/admin" className="hover:text-amber-500 transition-colors">Console SOC</Link>
-            <span>/</span>
-            <span className="text-slate-600 dark:text-zinc-300">Agents RH & Accréditations</span>
-            <span>/</span>
-            <span className="text-amber-500 font-bold">Nouvel Agent</span>
+        {/* Top branding */}
+        <div className="relative z-10 p-7 pb-6 border-b border-white/5">
+          <div className="flex items-center gap-3 mb-5">
+            <Avatar className="h-10 w-10 border border-amber-500/30 shadow-lg shadow-amber-500/10">
+              <AvatarImage src={orangeLogo} className="object-cover" />
+              <AvatarFallback className="bg-amber-500/20 text-amber-400 font-black text-sm">{initials || "AG"}</AvatarFallback>
+            </Avatar>
+            <div>
+              <div className="text-white font-black text-sm leading-tight">{fullName || "Nouvel Agent"}</div>
+              <div className="text-zinc-400 text-[11px] font-medium mt-0.5">
+                {ORGANIZATIONS.find(o => o.value === form.organization)?.label ?? "Direction non assignée"}
+              </div>
+            </div>
           </div>
-          {!isClientOnly && (
-            <Link to="/clients/new" className="text-slate-500 hover:text-amber-500 transition-colors flex items-center gap-1 text-[11px]">
-              <span>Pour un compte client externe :</span>
-              <span className="underline font-bold text-amber-600 dark:text-amber-400">Nouveau Client →</span>
-            </Link>
-          )}
+
+          <div className="flex items-center gap-2 mb-1.5">
+            <div className={`w-2 h-2 rounded-full ${isActive ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" : "bg-red-400"} animate-pulse`} />
+            <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">SONATEL SOC SECURITY</span>
+          </div>
+          <div className="font-mono text-[10px] text-amber-400/70 bg-zinc-800/60 border border-zinc-700/50 rounded-lg px-2.5 py-1 w-fit">
+            {form.matricule || "SON-RH-XXXX"}
+          </div>
         </div>
 
-        {/* ── En-tête Unifié & Stepper Intégré ── */}
-        <div className="mb-4 bg-white/95 dark:bg-zinc-900/90 border border-slate-200/90 dark:border-zinc-800/90 rounded-2xl p-3.5 shadow-sm">
-          {/* Top Row: Back button, Title & Quick Status */}
-          <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-zinc-800">
-            <div className="flex items-center gap-2.5">
-              <Button
-                variant="ghost" size="icon"
-                onClick={() => navigate({ to: isClientOnly ? "/admin/new" : "/admin" })}
-                className="rounded-xl h-8 w-8 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 hover:border-amber-400 hover:bg-amber-50 dark:hover:bg-amber-500/10 shadow-none transition-all"
+        {/* Step progress navigation */}
+        <div className="relative z-10 flex-1 p-7 py-8 space-y-2">
+          <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-5">Progression</p>
+          {STEPS.map((st, i) => {
+            const isDone = activeStep > st.num;
+            const isAct  = activeStep === st.num;
+            return (
+              <button
+                key={st.num}
+                type="button"
+                onClick={() => { if (isDone) setActiveStep(st.num); }}
+                disabled={!isDone && !isAct}
+                className={[
+                  "w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl text-left transition-all duration-300 group",
+                  isAct  ? "bg-white/10 border border-white/15 shadow-lg" : "",
+                  isDone ? "hover:bg-white/5 cursor-pointer" : "",
+                  !isAct && !isDone ? "opacity-30 cursor-not-allowed" : ""
+                ].join(" ")}
               >
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-lg md:text-xl font-black text-slate-900 dark:text-white tracking-tight">
-                    {isClientOnly ? "Nouvel Utilisateur Organisation" : "Créer un Nouvel Agent SOC"}
-                  </h1>
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-[10px] font-bold uppercase">
-                    <ShieldCheck className="h-3 w-3" /> Sonatel RH
-                  </span>
+                <div className={[
+                  "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-all duration-300 font-black text-sm",
+                  isAct  ? `bg-gradient-to-br ${stepColors[i]} text-white shadow-lg` : "",
+                  isDone ? "bg-emerald-500/20 text-emerald-400" : "",
+                  !isAct && !isDone ? "bg-zinc-800 text-zinc-600" : ""
+                ].join(" ")}>
+                  {isDone ? <Check className="h-4 w-4 stroke-[3]" /> : st.num}
                 </div>
-                <p className="text-[11px] text-slate-500 dark:text-zinc-400">
-                  {isClientOnly
-                    ? "Ajoutez un collaborateur à votre espace organisation (max 3)."
-                    : "Onboarding sécurisé : identité, habilitations de sécurité et services."}
-                </p>
-              </div>
-            </div>
-
-            <div className="hidden sm:flex items-center gap-2 text-xs font-semibold bg-slate-50 dark:bg-zinc-800/60 border border-slate-200 dark:border-zinc-800 px-3 py-1 rounded-xl">
-              <span className="text-slate-400">Étape</span>
-              <span className="text-amber-500 font-bold">{activeStep} / 4</span>
-              <span className="text-slate-300 dark:text-zinc-700">|</span>
-              <span className="font-bold text-slate-700 dark:text-zinc-200">{STEPS[activeStep - 1].label}</span>
-            </div>
-          </div>
-
-          {/* Bottom Row: Sleek Step Segmented Tabs */}
-          <div className="pt-2.5 grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {STEPS.map((st) => {
-              const isDone = activeStep > st.num;
-              const isActive = activeStep === st.num;
-              return (
-                <button
-                  key={st.num}
-                  type="button"
-                  onClick={() => { if (isDone) setActiveStep(st.num); }}
-                  className={`flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-left transition-all ${
-                    isActive
-                      ? "bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400"
-                      : isDone
-                        ? "bg-emerald-500/5 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 cursor-pointer"
-                        : "bg-slate-50 dark:bg-zinc-900/40 border border-transparent text-slate-400 dark:text-zinc-600 opacity-60"
-                  }`}
-                >
-                  <div className={`w-5 h-5 rounded-lg flex items-center justify-center text-[10px] font-black shrink-0 ${
-                    isActive
-                      ? "bg-amber-500 text-white"
-                      : isDone
-                        ? "bg-emerald-500 text-white"
-                        : "bg-slate-200 dark:bg-zinc-800 text-slate-500"
-                  }`}>
-                    {isDone ? <Check className="h-3 w-3 stroke-[3]" /> : st.num}
-                  </div>
-                  <div className="min-w-0">
-                    <span className="block text-[11px] font-extrabold truncate">
-                      {st.label}
-                    </span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+                <div className="min-w-0 flex-1">
+                  <div className={[
+                    "text-sm font-bold leading-tight",
+                    isAct  ? "text-white" : isDone ? "text-zinc-300" : "text-zinc-600"
+                  ].join(" ")}>{st.label}</div>
+                  {isAct && (
+                    <div className="text-[10px] text-zinc-400 mt-0.5 leading-snug line-clamp-2">
+                      {stepDescriptions[i]}
+                    </div>
+                  )}
+                </div>
+                {isAct && <ChevronRight className="h-3.5 w-3.5 text-zinc-500 shrink-0" />}
+              </button>
+            );
+          })}
         </div>
 
-        {/* ── Main Content Grid ── */}
-        <div className="grid gap-8 lg:grid-cols-3">
+        {/* Bottom security info */}
+        <div className="relative z-10 p-7 pt-5 border-t border-white/5 space-y-2.5">
+          {[
+            { k: "2FA",        v: "Orange SMS Pro", icon: <Shield className="h-3 w-3" /> },
+            { k: "Chiffrement", v: "AES-256-GCM",   icon: <Lock className="h-3 w-3" /> },
+            { k: "Accréditation", v: "SOC SONATEL",  icon: <ShieldCheck className="h-3 w-3" /> },
+          ].map(row => (
+            <div key={row.k} className="flex items-center justify-between text-[11px]">
+              <span className="text-zinc-500 flex items-center gap-1.5">{row.icon}{row.k}</span>
+              <span className="text-zinc-300 font-bold">{row.v}</span>
+            </div>
+          ))}
+        </div>
+      </aside>
 
-          {/* ── Left / Center Panel ── */}
-          <div className="lg:col-span-2 space-y-6">
+      {/* ══════════════════════════════════════════════════════════
+          RIGHT PANEL — Main scrollable content area
+      ══════════════════════════════════════════════════════════ */}
+      <main className="flex-1 flex flex-col min-h-screen overflow-y-auto">
 
-            {/* ════════════════════════════════════════════════════
-                STEP 1 — Identité & Adresse
-            ════════════════════════════════════════════════════ */}
-            {activeStep === 1 && (
-              <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-400">
+        {/* Top bar */}
+        <header className="sticky top-0 z-30 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border-b border-slate-200/80 dark:border-zinc-800/80 px-6 py-3 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost" size="icon"
+              onClick={() => navigate({ to: "/admin" })}
+              className="rounded-xl h-8 w-8 border border-slate-200 dark:border-zinc-700 hover:border-amber-400 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-all"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-sm font-black text-slate-900 dark:text-white">Créer un Nouvel Agent SOC</h1>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-[10px] font-bold uppercase">
+                  <ShieldCheck className="h-3 w-3" /> Sonatel RH
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5">
+                <Link to="/admin" className="hover:text-amber-500 transition-colors">Console SOC</Link>
+                <span>/</span>
+                <span>Agents RH</span>
+                <span>/</span>
+                <span className="text-amber-500 font-semibold">{STEPS[activeStep - 1].label}</span>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            {/* Mobile step indicator */}
+            <div className="lg:hidden flex items-center gap-1.5 text-xs">
+              {STEPS.map(st => (
+                <div key={st.num} className={[
+                  "h-2 rounded-full transition-all duration-300",
+                  activeStep === st.num ? "w-6 bg-amber-500" : activeStep > st.num ? "w-2 bg-emerald-500" : "w-2 bg-slate-200 dark:bg-zinc-700"
+                ].join(" ")} />
+              ))}
+            </div>
+            {!isClientOnly && (
+              <Link to="/clients/new" className="hidden sm:flex items-center gap-1.5 text-[11px] text-slate-400 hover:text-amber-500 transition-colors font-medium">
+                <span>Nouveau Client</span>
+                <ChevronRight className="h-3 w-3" />
+              </Link>
+            )}
+          </div>
+        </header>
 
-                {/* Identity card */}
-                <div className="bg-white/80 dark:bg-zinc-900/60 backdrop-blur-xl border border-white dark:border-zinc-800/80 rounded-3xl shadow-xl shadow-slate-200/60 dark:shadow-black/40 overflow-hidden">
-                  <div className="h-1 bg-gradient-to-r from-amber-400 via-orange-500 to-amber-400 bg-[length:200%_100%] animate-[shimmer_2s_infinite]" />
-                  <div className="p-7">
-                    <div className="flex items-center gap-3 mb-6">
-                      <div className="w-9 h-9 rounded-xl bg-amber-500/10 flex items-center justify-center">
-                        <User className="h-4.5 w-4.5 text-amber-500" />
-                      </div>
-                      <div>
-                        <h2 className="text-sm font-black text-slate-800 dark:text-zinc-100 uppercase tracking-wider">Identité de l'Agent</h2>
-                        <p className="text-[11px] text-slate-400 font-medium">Nom, prénom, contact et matricule</p>
-                      </div>
-                    </div>
+        {/* Content wrapper */}
+        <div className="flex-1 px-6 py-8 max-w-3xl w-full mx-auto">
 
-                    <div className="grid gap-x-8 gap-y-1 md:grid-cols-2">
-                      {renderInput("Prénom de l'Agent", form.prenom, v => setForm({ ...form, prenom: v }), "Fatou", <User className="h-4 w-4" />)}
-                      {renderInput("Nom de l'Agent", form.nom, v => setForm({ ...form, nom: v }), "Sow", <User className="h-4 w-4" />)}
-                      {renderInput("Email Professionnel", form.email, v => setForm({ ...form, email: v }), "fatou.sow@orange-sonatel.com", <Mail className="h-4 w-4" />, "email")}
-                      {renderInput("Contact Téléphonique", form.phone, v => setForm({ ...form, phone: v }), "+221 77 123 45 67", <Phone className="h-4 w-4" />, "tel")}
-                      {renderInput("Matricule Agent", form.matricule, v => setForm({ ...form, matricule: v }), "SON-CYBER-2024", <Lock className="h-4 w-4" />)}
-                    </div>
+          {/* Step header */}
+          <div className="mb-8">
+            <div className="flex items-center gap-3 mb-2">
+              <div className={`w-10 h-10 rounded-2xl bg-gradient-to-br ${stepColors[activeStep - 1]} flex items-center justify-center shadow-lg text-white font-black text-sm`}>
+                {activeStep}
+              </div>
+              <div>
+                <h2 className="text-xl font-black text-slate-900 dark:text-white">{STEPS[activeStep - 1].label}</h2>
+                <p className="text-sm text-slate-500 dark:text-zinc-400 mt-0.5">{stepDescriptions[activeStep - 1]}</p>
+              </div>
+              <div className="ml-auto hidden sm:flex items-center gap-1.5 text-xs font-bold bg-slate-100 dark:bg-zinc-800 px-3 py-1.5 rounded-xl text-slate-500 dark:text-zinc-400">
+                <span className="text-amber-500">{activeStep}</span>
+                <span>/</span>
+                <span>4</span>
+              </div>
+            </div>
+            {/* Progress bar */}
+            <div className="h-1.5 bg-slate-100 dark:bg-zinc-800 rounded-full overflow-hidden mt-5">
+              <div
+                className={`h-full rounded-full bg-gradient-to-r ${stepColors[activeStep - 1]} transition-all duration-700 ease-out`}
+                style={{ width: `${(activeStep / 4) * 100}%` }}
+              />
+            </div>
+          </div>
+
+          {/* ════════════════════════════════════════════════════
+              STEP 1 — Identité & Adresse
+          ════════════════════════════════════════════════════ */}
+          {activeStep === 1 && (
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-3 duration-300">
+
+              {/* Identity card */}
+              <div className="bg-white dark:bg-zinc-900/80 border border-slate-200/80 dark:border-zinc-800/80 rounded-2xl p-6 shadow-sm">
+                <div className="flex items-center gap-2.5 mb-5 pb-4 border-b border-slate-100 dark:border-zinc-800">
+                  <div className="w-8 h-8 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                    <User className="h-4 w-4 text-amber-500" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-800 dark:text-zinc-100">Identité de l'Agent</h3>
+                    <p className="text-[11px] text-slate-400">Nom, prénom, contact et matricule</p>
                   </div>
                 </div>
-
-                {/* Organisation card */}
-                <div className="bg-white/80 dark:bg-zinc-900/60 backdrop-blur-xl border border-white dark:border-zinc-800/80 rounded-3xl shadow-xl shadow-slate-200/60 dark:shadow-black/40 overflow-hidden">
-                  <div className="h-1 bg-gradient-to-r from-violet-500 to-amber-500" />
-                  <div className="p-7">
-                    <div className="flex items-center gap-3 mb-6">
-                      <div className="w-9 h-9 rounded-xl bg-violet-500/10 flex items-center justify-center">
-                        <Building className="h-4.5 w-4.5 text-violet-500" />
-                      </div>
-                      <div>
-                        <h2 className="text-sm font-black text-slate-800 dark:text-zinc-100 uppercase tracking-wider">Organisation & Localisation</h2>
-                        <p className="text-[11px] text-slate-400 font-medium">Direction, département et site d'affectation</p>
-                      </div>
-                    </div>
-
-                    <div className="grid gap-x-8 gap-y-1 md:grid-cols-2">
-                      {/* Organisation dropdown */}
-                      {renderSelect(
-                        "Organisation / Direction",
-                        form.organization,
-                        v => setForm({ ...form, organization: v }),
-                        "Sélectionnez une direction...",
-                        <Building className="h-4 w-4" />,
-                        ORGANIZATIONS
-                      )}
-
-                      {/* Physical address dropdown */}
-                      {renderSelect(
-                        "Site / Adresse physique du bureau",
-                        form.physicalAddress,
-                        handleSiteChange,
-                        "Sélectionnez un site...",
-                        <MapPin className="h-4 w-4" />,
-                        SITES.map(s => ({ value: s.value, label: s.label, sub: `Ville : ${s.city}` }))
-                      )}
-
-                      {/* City auto-filled */}
-                      {renderInput("Ville de résidence", form.city, v => setForm({ ...form, city: v }), "Dakar", <Globe2 className="h-4 w-4" />)}
-                    </div>
-
-                    <div className="mt-5 relative">
-                      <div className="flex items-start gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-zinc-800/50 border border-slate-100 dark:border-zinc-700/50">
-                        <Info className="h-4 w-4 text-slate-400 shrink-0 mt-0.5" />
-                        <textarea
-                          value={form.info}
-                          onChange={e => setForm({ ...form, info: e.target.value })}
-                          placeholder="Commentaires administratifs complémentaires..."
-                          className="flex-1 bg-transparent border-none outline-none text-sm text-slate-700 dark:text-zinc-200 placeholder-slate-300 dark:placeholder-zinc-600 font-medium resize-none min-h-[70px] focus:ring-0 focus:outline-none"
-                        />
-                      </div>
-                    </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {renderInput("Prénom de l'Agent", form.prenom, v => setForm({ ...form, prenom: v }), "Ex: Fatou", <User className="h-4 w-4" />, "text", true)}
+                  {renderInput("Nom de l'Agent", form.nom, v => setForm({ ...form, nom: v }), "Ex: Sow", <User className="h-4 w-4" />, "text", true)}
+                  {renderInput("Email Professionnel", form.email, v => setForm({ ...form, email: v }), "fatou.sow@orange-sonatel.com", <Mail className="h-4 w-4" />, "email", true)}
+                  {renderInput("Contact Téléphonique", form.phone, v => setForm({ ...form, phone: v }), "+221 77 123 45 67", <Phone className="h-4 w-4" />, "tel", true)}
+                  <div className="sm:col-span-2">
+                    {renderInput("Matricule Agent", form.matricule, v => setForm({ ...form, matricule: v }), "SON-CYBER-2024", <Lock className="h-4 w-4" />)}
                   </div>
                 </div>
               </div>
-            )}
 
-            {/* ════════════════════════════════════════════════════
-                STEP 2 — Accès & Rôles
-            ════════════════════════════════════════════════════ */}
-            {activeStep === 2 && (
-              <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-400">
-                <div className="bg-white/80 dark:bg-zinc-900/60 backdrop-blur-xl border border-white dark:border-zinc-800/80 rounded-3xl shadow-xl shadow-slate-200/60 dark:shadow-black/40 overflow-hidden">
-                  <div className="h-1 bg-gradient-to-r from-violet-500 to-indigo-500" />
-                  <div className="p-7">
-                    <div className="flex items-center gap-3 mb-6">
-                      <div className="w-9 h-9 rounded-xl bg-violet-500/10 flex items-center justify-center">
-                        <Key className="h-4.5 w-4.5 text-violet-500" />
-                      </div>
-                      <div>
-                        <h2 className="text-sm font-black text-slate-800 dark:text-zinc-100 uppercase tracking-wider">Rôle & Accès Applicatif</h2>
-                        <p className="text-[11px] text-slate-400 font-medium">Définissez le niveau de privilège de l'agent</p>
-                      </div>
-                    </div>
-
-                    {isClientOnly ? (
-                      <div className="flex items-start gap-3 rounded-2xl p-4 bg-sky-50/80 dark:bg-sky-950/30 border border-sky-300/60 dark:border-sky-500/30">
-                        <Users className="h-5 w-5 text-sky-500 shrink-0 mt-0.5" />
-                        <div>
-                          <p className="text-sm font-black text-sky-700 dark:text-sky-400">Rôle attribué : Client</p>
-                          <p className="text-[11px] text-slate-500 dark:text-zinc-400 mt-0.5">
-                            Les utilisateurs ajoutés depuis votre espace auront automatiquement le rôle <strong>Client</strong> avec accès restreint à votre organisation.
-                          </p>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        {ROLES.map(r => (
-                          <div
-                            key={r.value}
-                            onClick={() => setForm({ ...form, role: r.value })}
-                            className={`
-                              cursor-pointer rounded-2xl p-4 border-2 transition-all duration-300 relative overflow-hidden group
-                              ${form.role === r.value
-                                ? "border-amber-500 bg-amber-500/8 shadow-[0_0_20px_rgba(245,158,11,0.15)]"
-                                : "border-slate-100 dark:border-zinc-800 bg-slate-50/60 dark:bg-zinc-800/20 hover:border-amber-300 hover:bg-amber-50/50 dark:hover:bg-amber-500/5"
-                              }
-                            `}
-                          >
-                            {form.role === r.value && (
-                              <div className="absolute top-3 right-3">
-                                <span className="w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center">
-                                  <Check className="h-3 w-3 text-white stroke-[3]" />
-                                </span>
-                              </div>
-                            )}
-                            <div className={`flex items-center gap-2 mb-2 ${r.color}`}>{r.icon}</div>
-                            <div className="text-sm font-black text-slate-800 dark:text-zinc-100 mb-1">{r.label}</div>
-                            <p className="text-[11px] text-slate-400 dark:text-zinc-500 leading-snug">{r.desc}</p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    <Separator className="my-6 border-slate-100 dark:border-zinc-800" />
-
-                    {/* Version + Tagging */}
-                    <div className="grid gap-6 md:grid-cols-2">
-                      <div>
-                        <Label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-2 block">Version applicative</Label>
-                        <Select value={form.generation} onValueChange={v => setForm({ ...form, generation: v })}>
-                          <SelectTrigger className="bg-slate-50 dark:bg-zinc-800/60 border border-slate-200 dark:border-zinc-700 rounded-xl text-xs font-semibold focus:ring-1 focus:ring-amber-500 h-10">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="bg-white dark:bg-zinc-950 border-slate-200 dark:border-zinc-800 rounded-xl">
-                            <SelectItem value="v1" className="text-xs font-semibold">Génération 1 — Legacy Console</SelectItem>
-                            <SelectItem value="v2" className="text-xs font-semibold">Génération 2 — Premium High-Tech Engine</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div>
-                        <Label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-2 block">Politique d'étiquetage</Label>
-                        <div className="grid grid-cols-2 gap-2">
-                          {[
-                            { id: "group", label: "Groupe seulement" },
-                            { id: "everyone", label: "Tout le monde" },
-                          ].map(t => (
-                            <div
-                              key={t.id}
-                              onClick={() => setTagPolicy(t.id as any)}
-                              className={`cursor-pointer rounded-xl p-3 border text-[11px] font-bold text-center transition-all duration-300 ${
-                                tagPolicy === t.id
-                                  ? "bg-amber-500/10 border-amber-500 text-amber-600 dark:text-amber-400"
-                                  : "border-slate-200 dark:border-zinc-800 text-slate-500 hover:border-amber-300"
-                              }`}
-                            >
-                              {t.label}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-
-                    <Separator className="my-6 border-slate-100 dark:border-zinc-800" />
-
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-9 h-9 rounded-xl bg-amber-500/10 flex items-center justify-center">
-                        <Lock className="h-4.5 w-4.5 text-amber-500" />
-                      </div>
-                      <div>
-                        <h2 className="text-sm font-black text-slate-800 dark:text-zinc-100 uppercase tracking-wider">Sécurité du Compte</h2>
-                        <p className="text-[11px] text-slate-400 font-medium">Définissez un mot de passe initial pour l'agent (minimum 6 caractères)</p>
-                      </div>
-                    </div>
-
-                    <div className="grid gap-x-8 gap-y-1 md:grid-cols-2">
-                      {renderInput("Mot de passe", form.password, v => setForm({ ...form, password: v }), "••••••••", <Lock className="h-4 w-4" />, "password")}
-                      {renderInput("Confirmer le mot de passe", form.confirmPassword, v => setForm({ ...form, confirmPassword: v }), "••••••••", <Lock className="h-4 w-4" />, "password")}
-                    </div>
-
-                    <Separator className="my-6 border-slate-100 dark:border-zinc-800" />
-
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-                        <Shield className="h-4.5 w-4.5 text-emerald-500" />
-                      </div>
-                      <div>
-                        <h2 className="text-sm font-black text-slate-800 dark:text-zinc-100 uppercase tracking-wider">Questions de secours</h2>
-                        <p className="text-[11px] text-slate-400 font-medium">Utilisées pour la récupération de compte (2 questions obligatoires)</p>
-                      </div>
-                    </div>
-
-                    {loadingQuestions ? (
-                      <div className="flex items-center gap-2 text-muted-foreground py-4 text-sm">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Chargement du catalogue...
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        {securityQuestions.map((q) => (
-                          <div key={q.id} className="border border-dashed border-slate-200 dark:border-zinc-700 rounded-xl p-4 space-y-2">
-                            <p className="text-xs font-semibold text-slate-600 dark:text-zinc-300">{q.question_text}</p>
-                            <input
-                              type="text"
-                              value={securityAnswers[q.id] ?? ""}
-                              onChange={(e) => setSecurityAnswers({ ...securityAnswers, [q.id]: e.target.value })}
-                              placeholder="Réponse secrète de l'agent"
-                              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                              required
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
+              {/* Organisation card */}
+              <div className="bg-white dark:bg-zinc-900/80 border border-slate-200/80 dark:border-zinc-800/80 rounded-2xl p-6 shadow-sm">
+                <div className="flex items-center gap-2.5 mb-5 pb-4 border-b border-slate-100 dark:border-zinc-800">
+                  <div className="w-8 h-8 rounded-xl bg-violet-500/10 flex items-center justify-center">
+                    <Building className="h-4 w-4 text-violet-500" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-800 dark:text-zinc-100">Organisation & Localisation</h3>
+                    <p className="text-[11px] text-slate-400">Direction, département et site d'affectation</p>
                   </div>
                 </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {renderSelect("Organisation / Direction", form.organization, v => setForm({ ...form, organization: v }), "Sélectionnez une direction...", <Building className="h-4 w-4" />, ORGANIZATIONS, true)}
+                  {renderSelect("Site / Bureau", form.physicalAddress, handleSiteChange, "Sélectionnez un site...", <MapPin className="h-4 w-4" />, SITES.map(s => ({ value: s.value, label: s.label, sub: `Ville : ${s.city}` })), true)}
+                  <div className="sm:col-span-2">
+                    {renderInput("Ville de résidence", form.city, v => setForm({ ...form, city: v }), "Dakar", <Globe2 className="h-4 w-4" />)}
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <label className="block text-xs font-semibold text-slate-500 dark:text-zinc-400 mb-1.5">Notes administratives</label>
+                  <textarea
+                    value={form.info}
+                    onChange={e => setForm({ ...form, info: e.target.value })}
+                    placeholder="Commentaires complémentaires (optionnel)..."
+                    rows={3}
+                    className="w-full px-4 py-2.5 rounded-xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700/80 text-sm text-slate-800 dark:text-zinc-100 placeholder-slate-300 dark:placeholder-zinc-600 font-medium focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-400 transition-all shadow-sm resize-none"
+                  />
+                </div>
               </div>
-            )}
+            </div>
+          )}
 
-            {/* ════════════════════════════════════════════════════
-                STEP 3 — Services & Permissions
-            ════════════════════════════════════════════════════ */}
-            {activeStep === 3 && (
-              <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-400">
-                <div className="bg-white/80 dark:bg-zinc-900/60 backdrop-blur-xl border border-white dark:border-zinc-800/80 rounded-3xl shadow-xl shadow-slate-200/60 dark:shadow-black/40 overflow-hidden">
-                  <div className="h-1 bg-gradient-to-r from-emerald-500 to-teal-500" />
-                  <div className="p-7">
-                    <div className="flex items-center gap-3 mb-6">
-                      <div className="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-                        <Shield className="h-4.5 w-4.5 text-emerald-500" />
-                      </div>
-                      <div>
-                        <h2 className="text-sm font-black text-slate-800 dark:text-zinc-100 uppercase tracking-wider">Permissions & Statut</h2>
-                        <p className="text-[11px] text-slate-400 font-medium">Habilitations cyber-défense et statut d'activation</p>
-                      </div>
+          {/* ════════════════════════════════════════════════════
+              STEP 2 — Accès & Rôles
+          ════════════════════════════════════════════════════ */}
+          {activeStep === 2 && (
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-3 duration-300">
+
+              {/* Role selection */}
+              <div className="bg-white dark:bg-zinc-900/80 border border-slate-200/80 dark:border-zinc-800/80 rounded-2xl p-6 shadow-sm">
+                <div className="flex items-center gap-2.5 mb-5 pb-4 border-b border-slate-100 dark:border-zinc-800">
+                  <div className="w-8 h-8 rounded-xl bg-violet-500/10 flex items-center justify-center">
+                    <Key className="h-4 w-4 text-violet-500" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-800 dark:text-zinc-100">Rôle & Accès Applicatif</h3>
+                    <p className="text-[11px] text-slate-400">Niveau de privilège de l'agent SOC</p>
+                  </div>
+                </div>
+
+                {isClientOnly ? (
+                  <div className="flex items-start gap-3 rounded-xl p-4 bg-sky-50 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-500/30">
+                    <Users className="h-5 w-5 text-sky-500 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-bold text-sky-700 dark:text-sky-400">Rôle attribué : Client</p>
+                      <p className="text-[11px] text-slate-500 dark:text-zinc-400 mt-1">Accès restreint à votre organisation uniquement.</p>
                     </div>
+                  </div>
+                ) : (
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    {ROLES.map(r => (
+                      <div
+                        key={r.value}
+                        onClick={() => setForm({ ...form, role: r.value })}
+                        className={[
+                          "cursor-pointer rounded-xl p-4 border-2 transition-all duration-200 relative group",
+                          form.role === r.value
+                            ? "border-amber-500 bg-amber-50 dark:bg-amber-500/8 shadow-sm"
+                            : "border-slate-100 dark:border-zinc-800 hover:border-amber-200 dark:hover:border-amber-500/30 hover:bg-amber-50/50 dark:hover:bg-amber-500/5"
+                        ].join(" ")}
+                      >
+                        {form.role === r.value && (
+                          <span className="absolute top-3 right-3 w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center">
+                            <Check className="h-3 w-3 text-white stroke-[3]" />
+                          </span>
+                        )}
+                        <div className={`mb-2 ${r.color}`}>{r.icon}</div>
+                        <div className="text-xs font-bold text-slate-800 dark:text-zinc-100 mb-1">{r.label}</div>
+                        <p className="text-[10px] text-slate-400 dark:text-zinc-500 leading-snug">{r.desc}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
-                    <div className="space-y-3 mb-6">
-                      {[
-                        { key: "dispatching"      as const, label: "Autoriser le Dispatching d'alertes",       desc: "Distribuer et réaffecter des incidents aux analystes" },
-                        { key: "showExperiences"  as const, label: "Afficher le journal d'expériences",        desc: "Historique complet d'apprentissage IA de l'agent" },
-                        { key: "showFollowers"    as const, label: "Afficher les followers de dossiers",        desc: "Collaborateurs abonnés aux dossiers cyber" },
-                      ].map(p => (
+                <div className="mt-5 pt-5 border-t border-slate-100 dark:border-zinc-800 grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <Label className="text-xs font-semibold text-slate-500 dark:text-zinc-400 mb-2 block">Version applicative</Label>
+                    <Select value={form.generation} onValueChange={v => setForm({ ...form, generation: v })}>
+                      <SelectTrigger className="rounded-xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 text-xs font-semibold focus:ring-2 focus:ring-amber-500/40 h-10">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white dark:bg-zinc-950 border-slate-200 dark:border-zinc-800 rounded-xl">
+                        <SelectItem value="v1" className="text-xs font-semibold">Génération 1 — Legacy Console</SelectItem>
+                        <SelectItem value="v2" className="text-xs font-semibold">Génération 2 — Premium High-Tech</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs font-semibold text-slate-500 dark:text-zinc-400 mb-2 block">Politique d'étiquetage</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[{ id: "group", label: "Groupe" }, { id: "everyone", label: "Tout le monde" }].map(t => (
                         <div
-                          key={p.key}
-                          onClick={() => setPermissions(prev => ({ ...prev, [p.key]: !prev[p.key] }))}
-                          className={`flex items-center gap-4 p-4 rounded-2xl border-2 cursor-pointer transition-all duration-300 ${
-                            permissions[p.key]
-                              ? "bg-emerald-500/5 border-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.08)]"
-                              : "border-slate-100 dark:border-zinc-800 hover:border-emerald-200 dark:hover:border-emerald-500/20"
-                          }`}
+                          key={t.id}
+                          onClick={() => setTagPolicy(t.id as any)}
+                          className={[
+                            "cursor-pointer rounded-xl px-3 py-2.5 border text-[11px] font-bold text-center transition-all",
+                            tagPolicy === t.id
+                              ? "bg-amber-500/10 border-amber-500 text-amber-600 dark:text-amber-400"
+                              : "border-slate-200 dark:border-zinc-800 text-slate-500 hover:border-amber-300"
+                          ].join(" ")}
                         >
-                          <Checkbox
-                            checked={permissions[p.key]}
-                            onCheckedChange={() => {}}
-                            className="data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
-                          />
-                          <div>
-                            <div className="text-xs font-bold text-slate-800 dark:text-zinc-200">{p.label}</div>
-                            <div className="text-[11px] text-slate-400 mt-0.5">{p.desc}</div>
-                          </div>
+                          {t.label}
                         </div>
                       ))}
                     </div>
-
-                    <Separator className="border-slate-100 dark:border-zinc-800 mb-6" />
-
-                    <Label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-3 block">Statut opérationnel à la création</Label>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div className={`flex items-center justify-between p-4 rounded-2xl border-2 transition-all ${isActive ? "border-emerald-500/40 bg-emerald-500/5" : "border-slate-100 dark:border-zinc-800"}`}>
-                        <div>
-                          <div className="text-xs font-bold text-slate-800 dark:text-zinc-200">Compte Actif</div>
-                          <div className="text-[11px] text-slate-400">Accès instantané disponible</div>
-                        </div>
-                        <Switch id="active" checked={isActive} onCheckedChange={c => setIsActive(c)} className="data-[state=checked]:bg-emerald-500" />
-                      </div>
-                      <div className={`flex items-center justify-between p-4 rounded-2xl border-2 transition-all ${!isActive ? "border-red-500/40 bg-red-500/5" : "border-slate-100 dark:border-zinc-800"}`}>
-                        <div>
-                          <div className="text-xs font-bold text-slate-800 dark:text-zinc-200">Mode Suspendu</div>
-                          <div className="text-[11px] text-slate-400">Bloquer toute connexion</div>
-                        </div>
-                        <Switch id="inactive" checked={!isActive} onCheckedChange={c => setIsActive(!c)} className="data-[state=checked]:bg-red-500" />
-                      </div>
-                    </div>
                   </div>
                 </div>
               </div>
-            )}
 
-            {/* ════════════════════════════════════════════════════
-                STEP 4 — Validation
-            ════════════════════════════════════════════════════ */}
-            {activeStep === 4 && (
-              <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-400">
-                <div className="bg-white/80 dark:bg-zinc-900/60 backdrop-blur-xl border border-white dark:border-zinc-800/80 rounded-3xl shadow-xl shadow-slate-200/60 dark:shadow-black/40 overflow-hidden">
-                  <div className="h-1 bg-gradient-to-r from-amber-500 to-emerald-500 animate-pulse" />
-                  <div className="p-7">
-                    <div className="flex items-center gap-3 mb-6">
-                      <div className="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-                        <CheckCircle2 className="h-4.5 w-4.5 text-emerald-500" />
-                      </div>
-                      <div>
-                        <h2 className="text-sm font-black text-slate-800 dark:text-zinc-100 uppercase tracking-wider">Récapitulatif & Validation</h2>
-                        <p className="text-[11px] text-slate-400 font-medium">Vérifiez les informations avant de créer le profil</p>
-                      </div>
+              {/* Password + Security questions */}
+              <div className="bg-white dark:bg-zinc-900/80 border border-slate-200/80 dark:border-zinc-800/80 rounded-2xl p-6 shadow-sm">
+                <div className="flex items-center justify-between mb-5 pb-4 border-b border-slate-100 dark:border-zinc-800">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                      <Lock className="h-4 w-4 text-amber-500" />
                     </div>
-
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      {/* Identity */}
-                      <div className="p-4 rounded-2xl bg-slate-50/80 dark:bg-zinc-800/30 border border-slate-100 dark:border-zinc-700/50">
-                        <div className="flex items-center gap-2 mb-3">
-                          <User className="h-3.5 w-3.5 text-amber-500" />
-                          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Identité</span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-10 w-10 border-2 border-white dark:border-zinc-800 shadow">
-                            <AvatarImage src={orangeLogo} className="object-cover" />
-                            <AvatarFallback className="bg-amber-500/10 text-amber-600 font-black text-sm">{initials}</AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <div className="text-sm font-black text-slate-800 dark:text-zinc-100">{form.prenom} {form.nom}</div>
-                            <div className="text-[11px] text-slate-400">{form.email}</div>
-                            {form.matricule && <div className="text-[10px] text-amber-500 font-mono">{form.matricule}</div>}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Organisation */}
-                      <div className="p-4 rounded-2xl bg-slate-50/80 dark:bg-zinc-800/30 border border-slate-100 dark:border-zinc-700/50">
-                        <div className="flex items-center gap-2 mb-3">
-                          <Building className="h-3.5 w-3.5 text-violet-500" />
-                          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Organisation</span>
-                        </div>
-                        <div className="text-sm font-black text-slate-800 dark:text-zinc-100">
-                          {ORGANIZATIONS.find(o => o.value === form.organization)?.label ?? "—"}
-                        </div>
-                        <div className="text-[11px] text-slate-400 mt-1">{ORGANIZATIONS.find(o => o.value === form.organization)?.sub}</div>
-                        <div className="text-[11px] text-slate-400 mt-1">
-                          {SITES.find(s => s.value === form.physicalAddress)?.label ?? "—"}
-                        </div>
-                      </div>
-
-                      {/* Role & Access */}
-                      <div className="p-4 rounded-2xl bg-slate-50/80 dark:bg-zinc-800/30 border border-slate-100 dark:border-zinc-700/50">
-                        <div className="flex items-center gap-2 mb-3">
-                          <Key className="h-3.5 w-3.5 text-indigo-500" />
-                          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Rôle & Accès</span>
-                        </div>
-                        <div className="text-sm font-black text-amber-600 dark:text-amber-400 uppercase">{form.role}</div>
-                        <div className="text-[11px] text-slate-400 mt-1">Génération {form.generation}</div>
-                        <div className="text-[11px] text-slate-400">Politique : {tagPolicy === "group" ? "Groupe seulement" : "Tout le monde"}</div>
-                      </div>
-
-                      {/* Permissions */}
-                      <div className="p-4 rounded-2xl bg-slate-50/80 dark:bg-zinc-800/30 border border-slate-100 dark:border-zinc-700/50">
-                        <div className="flex items-center gap-2 mb-3">
-                          <Shield className="h-3.5 w-3.5 text-emerald-500" />
-                          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Permissions</span>
-                        </div>
-                        <div className="text-sm font-black mb-2">
-                          <span className={isActive ? "text-emerald-500" : "text-red-500"}>{isActive ? "● Actif" : "● Suspendu"}</span>
-                        </div>
-                        <div className="space-y-0.5 text-[11px] text-slate-400">
-                          <div>• Dispatching : {permissions.dispatching ? "Activé" : "Désactivé"}</div>
-                          <div>• Expériences : {permissions.showExperiences ? "Affichées" : "Masquées"}</div>
-                          <div>• Followers : {permissions.showFollowers ? "Affichés" : "Masqués"}</div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="mt-5 flex items-start gap-3 p-4 rounded-2xl bg-emerald-500/8 border border-emerald-500/20">
-                      <Info className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
-                      <p className="text-xs text-slate-600 dark:text-zinc-300 leading-relaxed">
-                        En cliquant sur <strong>« Créer le Profil Agent »</strong>, le système provisionne l'agent, envoie un e-mail de bienvenue à <strong className="text-emerald-600 dark:text-emerald-400">{form.email}</strong> et un code OTP par SMS au <strong className="text-emerald-600 dark:text-emerald-400">{form.phone || "téléphone enregistré"}</strong>.
-                      </p>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-800 dark:text-zinc-100">Sécurité du Compte</h3>
+                      <p className="text-[11px] text-slate-400">Mot de passe initial (min. 6 caractères)</p>
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
-
-            {/* ── Navigation Buttons ── */}
-            <div className="flex items-center justify-between pt-2">
-              {activeStep > 1 ? (
-                <Button
-                  type="button" variant="outline" size="lg" onClick={handlePrev}
-                  className="rounded-2xl font-bold bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-700 hover:border-amber-400 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-all"
-                >
-                  <ChevronLeft className="mr-2 h-4 w-4" /> Précédent
-                </Button>
-              ) : <div />}
-
-              {activeStep < 4 ? (
-                <Button
-                  type="button" size="lg" onClick={handleNext}
-                  className="rounded-2xl font-bold bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-lg shadow-amber-500/30 hover:shadow-amber-500/50 transition-all ml-auto"
-                >
-                  Suivant <ChevronRight className="ml-2 h-4 w-4" />
-                </Button>
-              ) : (
-                <Button
-                  type="button" size="lg" onClick={handleCreate} disabled={busy}
-                  className="rounded-2xl font-extrabold bg-gradient-to-r from-amber-500 via-orange-500 to-emerald-500 hover:from-amber-600 hover:to-emerald-600 text-white shadow-xl shadow-amber-500/30 hover:shadow-amber-500/50 transition-all ml-auto gap-2 px-8"
-                >
-                  {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle2 className="h-5 w-5" />}
-                  Créer le Profil Agent
-                </Button>
-              )}
-            </div>
-
-          </div>
-
-          {/* ── Right Column: Live Preview ── */}
-          <div className="space-y-4">
-
-            {/* Sonatel SOC Security Credential Card */}
-            <div className="bg-white/95 dark:bg-zinc-900/90 border border-slate-200/90 dark:border-zinc-800/90 rounded-2xl shadow-sm overflow-hidden animate-in slide-in-from-right-4 duration-500">
-              {/* Badge Header: Corporate Sonatel Dark Bar */}
-              <div className="bg-gradient-to-r from-slate-900 via-zinc-900 to-slate-950 px-4 py-2.5 border-b border-zinc-800 text-white flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shadow-[0_0_8px_rgba(245,158,11,0.8)]" />
-                  <span className="text-[10px] font-black tracking-widest uppercase text-zinc-300">SONATEL SOC SECURITY</span>
-                </div>
-                <span className="text-[9px] font-mono text-amber-400 px-2 py-0.5 rounded bg-zinc-800/90 border border-zinc-700/60">
-                  {form.matricule || "SON-RH-2024"}
-                </span>
-              </div>
-
-              {/* Badge Body */}
-              <div className="p-4 text-center">
-                <div className="relative inline-block mb-2">
-                  <Avatar className="h-16 w-16 border-2 border-amber-500/30 shadow-md">
-                    <AvatarImage src={orangeLogo} className="object-cover" />
-                    <AvatarFallback className="bg-amber-500/10 text-amber-600 text-lg font-black">{initials}</AvatarFallback>
-                  </Avatar>
-                  <div className={`absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-white dark:border-zinc-900 shadow ${isActive ? "bg-emerald-500" : "bg-red-400"}`} />
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {renderInput("Mot de passe", form.password, v => setForm({ ...form, password: v }), "••••••••", <Lock className="h-4 w-4" />, "password", true)}
+                  {renderInput("Confirmer le mot de passe", form.confirmPassword, v => setForm({ ...form, confirmPassword: v }), "••••••••", <Lock className="h-4 w-4" />, "password", true)}
                 </div>
 
-                <h3 className="text-sm font-black text-slate-800 dark:text-zinc-100">{fullName || "Nouveau Agent RH"}</h3>
-                <p className="text-[11px] text-slate-500 dark:text-zinc-400 font-medium">
-                  {ORGANIZATIONS.find(o => o.value === form.organization)?.label ?? "Direction non assignée"}
-                </p>
-
-                <div className="mt-2.5 flex items-center justify-center gap-1.5 flex-wrap">
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded-full text-[10px] font-bold uppercase tracking-wider">
-                    <Users className="h-3 w-3" /> {form.role}
-                  </span>
-                  {form.physicalAddress && (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-300 rounded-full text-[10px] font-medium">
-                      <MapPin className="h-3 w-3 text-slate-400" />
-                      {SITES.find(s => s.value === form.physicalAddress)?.city ?? "Dakar"}
-                    </span>
+                {/* Security questions */}
+                <div className="mt-5 pt-5 border-t border-slate-100 dark:border-zinc-800">
+                  <div className="flex items-center gap-2.5 mb-4">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                      <Shield className="h-4 w-4 text-emerald-500" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-800 dark:text-zinc-100">Questions de secours</h3>
+                      <p className="text-[11px] text-slate-400">2 questions obligatoires pour la récupération</p>
+                    </div>
+                  </div>
+                  {loadingQuestions ? (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground py-3">
+                      <Loader2 className="h-4 w-4 animate-spin" /> Chargement...
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {securityQuestions.map((q) => (
+                        <div key={q.id} className="rounded-xl border border-dashed border-slate-200 dark:border-zinc-700 p-4 space-y-2">
+                          <p className="text-xs font-semibold text-slate-600 dark:text-zinc-300">{q.question_text}</p>
+                          <input
+                            type="text"
+                            value={securityAnswers[q.id] ?? ""}
+                            onChange={(e) => setSecurityAnswers({ ...securityAnswers, [q.id]: e.target.value })}
+                            placeholder="Réponse secrète de l'agent"
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700/80 text-sm text-slate-800 dark:text-zinc-100 placeholder-slate-300 dark:placeholder-zinc-600 font-medium focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-400 transition-all shadow-sm"
+                            required
+                          />
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
+              </div>
+            </div>
+          )}
 
-                {/* Status List */}
-                <div className="mt-3.5 pt-3 border-t border-slate-100 dark:border-zinc-800/80 space-y-1.5 text-left">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-500 text-[11px]">Accréditation</span>
-                    <span className="font-bold text-emerald-600 dark:text-emerald-400 text-[11px] flex items-center gap-1">
-                      <ShieldCheck className="h-3 w-3" /> Active
-                    </span>
+          {/* ════════════════════════════════════════════════════
+              STEP 3 — Services & Permissions
+          ════════════════════════════════════════════════════ */}
+          {activeStep === 3 && (
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-3 duration-300">
+              <div className="bg-white dark:bg-zinc-900/80 border border-slate-200/80 dark:border-zinc-800/80 rounded-2xl p-6 shadow-sm">
+                <div className="flex items-center gap-2.5 mb-5 pb-4 border-b border-slate-100 dark:border-zinc-800">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                    <Shield className="h-4 w-4 text-emerald-500" />
                   </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-500 text-[11px]">Double Facteur 2FA</span>
-                    <span className="font-bold text-amber-600 dark:text-amber-400 text-[11px]">
-                      Orange SMS Pro
-                    </span>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-800 dark:text-zinc-100">Permissions & Habilitations</h3>
+                    <p className="text-[11px] text-slate-400">Droits cyber-défense et modules activés</p>
                   </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-500 text-[11px]">Génération</span>
-                    <span className="font-mono font-semibold text-slate-700 dark:text-zinc-300 text-[11px]">
-                      Gen {form.generation}
-                    </span>
+                </div>
+
+                <div className="space-y-3 mb-6">
+                  {[
+                    { key: "dispatching"     as const, label: "Dispatching d'alertes",        desc: "Distribuer et réaffecter des incidents aux analystes", icon: <Zap className="h-4 w-4 text-amber-500" /> },
+                    { key: "showExperiences" as const, label: "Journal d'expériences IA",     desc: "Historique complet d'apprentissage IA de l'agent",    icon: <Fingerprint className="h-4 w-4 text-violet-500" /> },
+                    { key: "showFollowers"   as const, label: "Affichage des followers",      desc: "Collaborateurs abonnés aux dossiers cyber",           icon: <Users className="h-4 w-4 text-sky-500" /> },
+                  ].map(p => (
+                    <div
+                      key={p.key}
+                      onClick={() => setPermissions(prev => ({ ...prev, [p.key]: !prev[p.key] }))}
+                      className={[
+                        "flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all duration-200",
+                        permissions[p.key]
+                          ? "bg-emerald-50 dark:bg-emerald-500/8 border-emerald-500/40"
+                          : "border-slate-100 dark:border-zinc-800 hover:border-emerald-200 dark:hover:border-emerald-500/20"
+                      ].join(" ")}
+                    >
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${permissions[p.key] ? "bg-emerald-500/15" : "bg-slate-100 dark:bg-zinc-800"}`}>
+                        {p.icon}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-bold text-slate-800 dark:text-zinc-200">{p.label}</div>
+                        <div className="text-[11px] text-slate-400 mt-0.5">{p.desc}</div>
+                      </div>
+                      <Checkbox
+                        checked={permissions[p.key]}
+                        onCheckedChange={() => {}}
+                        className="data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500 shrink-0"
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                <div className="pt-4 border-t border-slate-100 dark:border-zinc-800">
+                  <Label className="text-xs font-semibold text-slate-500 dark:text-zinc-400 mb-3 block">Statut opérationnel à la création</Label>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div
+                      onClick={() => setIsActive(true)}
+                      className={[
+                        "flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all",
+                        isActive ? "border-emerald-500/50 bg-emerald-50 dark:bg-emerald-500/8" : "border-slate-100 dark:border-zinc-800 hover:border-emerald-200"
+                      ].join(" ")}
+                    >
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${isActive ? "bg-emerald-500/20" : "bg-slate-100 dark:bg-zinc-800"}`}>
+                        <Check className={`h-4 w-4 ${isActive ? "text-emerald-500" : "text-slate-400"}`} />
+                      </div>
+                      <div>
+                        <div className="text-sm font-bold text-slate-800 dark:text-zinc-100">Compte Actif</div>
+                        <div className="text-[11px] text-slate-400">Accès instantané disponible</div>
+                      </div>
+                    </div>
+                    <div
+                      onClick={() => setIsActive(false)}
+                      className={[
+                        "flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all",
+                        !isActive ? "border-red-500/50 bg-red-50 dark:bg-red-500/8" : "border-slate-100 dark:border-zinc-800 hover:border-red-200"
+                      ].join(" ")}
+                    >
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${!isActive ? "bg-red-500/20" : "bg-slate-100 dark:bg-zinc-800"}`}>
+                        <AlertTriangle className={`h-4 w-4 ${!isActive ? "text-red-500" : "text-slate-400"}`} />
+                      </div>
+                      <div>
+                        <div className="text-sm font-bold text-slate-800 dark:text-zinc-100">Mode Suspendu</div>
+                        <div className="text-[11px] text-slate-400">Bloquer toute connexion</div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
+          )}
 
-            {/* Security info */}
-            <div className="bg-white/80 dark:bg-zinc-900/60 backdrop-blur-xl border border-white dark:border-zinc-800/80 rounded-3xl p-5 shadow-xl shadow-slate-200/60 dark:shadow-black/40">
-              <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                <Key className="h-3.5 w-3.5 text-amber-500" /> Sécurité d'Accès
-              </h3>
-              <div className="space-y-2.5">
-                {[
-                  { k: "Authentification", v: "Double Facteur (OTP)" },
-                  { k: "Version",          v: `Génération ${form.generation}` },
-                  { k: "Étape actuelle",   v: `${activeStep} / 4` },
-                ].map(row => (
-                  <div key={row.k} className="flex items-center justify-between text-xs">
-                    <span className="text-slate-500 font-medium">{row.k}</span>
-                    <span className="font-bold text-amber-500">{row.v}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+          {/* ════════════════════════════════════════════════════
+              STEP 4 — Validation & Récapitulatif
+          ════════════════════════════════════════════════════ */}
+          {activeStep === 4 && (
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-3 duration-300">
 
-            {/* Step mini guide */}
-            <div className="bg-white/80 dark:bg-zinc-900/60 backdrop-blur-xl border border-white dark:border-zinc-800/80 rounded-3xl p-5 shadow-xl shadow-slate-200/60 dark:shadow-black/40">
-              <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Progression</h3>
-              <div className="space-y-2">
-                {STEPS.map(st => (
-                  <div key={st.num} className={`flex items-center gap-2.5 text-xs transition-all duration-300 ${
-                    activeStep === st.num ? "opacity-100" : activeStep > st.num ? "opacity-60" : "opacity-30"
-                  }`}>
-                    <div className={`w-5 h-5 rounded-lg flex items-center justify-center shrink-0 ${
-                      activeStep > st.num ? "bg-emerald-500 text-white" : activeStep === st.num ? "bg-amber-500 text-white" : "bg-slate-100 dark:bg-zinc-800 text-slate-400"
-                    }`}>
-                      {activeStep > st.num ? <Check className="h-3 w-3 stroke-[3]" /> : <span className="text-[10px] font-bold">{st.num}</span>}
+              {/* Agent preview card */}
+              <div className="bg-gradient-to-br from-slate-900 via-zinc-900 to-slate-950 rounded-2xl p-6 shadow-xl relative overflow-hidden">
+                <div className="absolute inset-0 opacity-[0.04]"
+                  style={{ backgroundImage: "linear-gradient(rgba(245,158,11,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(245,158,11,0.6) 1px, transparent 1px)", backgroundSize: "30px 30px" }}
+                />
+                <div className="relative z-10 flex items-center gap-4">
+                  <Avatar className="h-16 w-16 border-2 border-amber-500/30 shadow-xl shadow-amber-500/10">
+                    <AvatarImage src={orangeLogo} className="object-cover" />
+                    <AvatarFallback className="bg-amber-500/20 text-amber-400 text-xl font-black">{initials}</AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="text-white font-black text-lg">{fullName || "Nouveau Agent"}</h3>
+                      <div className={`w-2.5 h-2.5 rounded-full ${isActive ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" : "bg-red-400"}`} />
                     </div>
-                    <span className={`font-semibold ${activeStep === st.num ? "text-amber-600 dark:text-amber-400" : "text-slate-500"}`}>
-                      {st.label}
-                    </span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-zinc-400 text-sm">{form.email || "—"}</span>
+                      {form.matricule && <span className="font-mono text-amber-400/80 text-xs bg-zinc-800 px-2 py-0.5 rounded">{form.matricule}</span>}
+                    </div>
+                    <div className="flex items-center gap-2 mt-2 flex-wrap">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-amber-500/15 text-amber-400 border border-amber-500/20 rounded-full text-[10px] font-bold uppercase">
+                        <Users className="h-3 w-3" /> {form.role}
+                      </span>
+                      {form.physicalAddress && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-zinc-800 text-zinc-300 rounded-full text-[10px] font-medium">
+                          <MapPin className="h-3 w-3 text-zinc-500" />
+                          {SITES.find(s => s.value === form.physicalAddress)?.city ?? "Dakar"}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                ))}
+                </div>
+              </div>
+
+              {/* Summary grid */}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="bg-white dark:bg-zinc-900/80 border border-slate-200/80 dark:border-zinc-800/80 rounded-2xl p-5 shadow-sm">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Building className="h-3.5 w-3.5 text-violet-500" />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Organisation</span>
+                  </div>
+                  <div className="text-sm font-bold text-slate-800 dark:text-zinc-100">
+                    {ORGANIZATIONS.find(o => o.value === form.organization)?.label ?? "—"}
+                  </div>
+                  <div className="text-[11px] text-slate-400 mt-1">{ORGANIZATIONS.find(o => o.value === form.organization)?.sub}</div>
+                  <div className="text-[11px] text-slate-400 mt-1">{SITES.find(s => s.value === form.physicalAddress)?.label ?? "—"}</div>
+                </div>
+
+                <div className="bg-white dark:bg-zinc-900/80 border border-slate-200/80 dark:border-zinc-800/80 rounded-2xl p-5 shadow-sm">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Key className="h-3.5 w-3.5 text-indigo-500" />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Accès & Rôle</span>
+                  </div>
+                  <div className="text-sm font-black text-amber-600 dark:text-amber-400 uppercase">{form.role}</div>
+                  <div className="text-[11px] text-slate-400 mt-1">Génération {form.generation}</div>
+                  <div className="text-[11px] text-slate-400">Politique : {tagPolicy === "group" ? "Groupe seulement" : "Tout le monde"}</div>
+                </div>
+
+                <div className="bg-white dark:bg-zinc-900/80 border border-slate-200/80 dark:border-zinc-800/80 rounded-2xl p-5 shadow-sm">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Shield className="h-3.5 w-3.5 text-emerald-500" />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Permissions</span>
+                  </div>
+                  <div className="text-sm font-black mb-2">
+                    <span className={isActive ? "text-emerald-500" : "text-red-500"}>{isActive ? "● Actif" : "● Suspendu"}</span>
+                  </div>
+                  <div className="space-y-0.5 text-[11px] text-slate-400">
+                    <div>• Dispatching : {permissions.dispatching ? "Activé" : "Désactivé"}</div>
+                    <div>• Expériences : {permissions.showExperiences ? "Affichées" : "Masquées"}</div>
+                    <div>• Followers : {permissions.showFollowers ? "Affichés" : "Masqués"}</div>
+                  </div>
+                </div>
+
+                <div className="bg-white dark:bg-zinc-900/80 border border-slate-200/80 dark:border-zinc-800/80 rounded-2xl p-5 shadow-sm">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Phone className="h-3.5 w-3.5 text-sky-500" />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Contact</span>
+                  </div>
+                  <div className="text-sm font-bold text-slate-800 dark:text-zinc-100">{form.phone || "—"}</div>
+                  <div className="text-[11px] text-slate-400 mt-1 break-all">{form.email || "—"}</div>
+                </div>
+              </div>
+
+              {/* Confirm notice */}
+              <div className="flex items-start gap-3 p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-500/8 border border-emerald-200 dark:border-emerald-500/20">
+                <Info className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                <p className="text-xs text-slate-600 dark:text-zinc-300 leading-relaxed">
+                  En cliquant sur <strong>« Créer le Profil Agent »</strong>, le système provisionne l'agent, envoie un e-mail de bienvenue à <strong className="text-emerald-600 dark:text-emerald-400">{form.email}</strong> et un code OTP par SMS au <strong className="text-emerald-600 dark:text-emerald-400">{form.phone || "téléphone enregistré"}</strong>.
+                </p>
               </div>
             </div>
+          )}
 
+          {/* ── Navigation Buttons ── */}
+          <div className="flex items-center justify-between mt-8 pt-6 border-t border-slate-100 dark:border-zinc-800">
+            {activeStep > 1 ? (
+              <Button
+                type="button" variant="outline" onClick={handlePrev}
+                className="rounded-xl font-bold border-slate-200 dark:border-zinc-700 hover:border-amber-400 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-all px-5"
+              >
+                <ChevronLeft className="mr-2 h-4 w-4" /> Précédent
+              </Button>
+            ) : <div />}
+
+            {activeStep < 4 ? (
+              <Button
+                type="button" onClick={handleNext}
+                className="ml-auto rounded-xl font-bold bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 transition-all px-6 gap-2"
+              >
+                Continuer <ChevronRight className="h-4 w-4" />
+              </Button>
+            ) : (
+              <Button
+                type="button" onClick={handleCreate} disabled={busy}
+                className="ml-auto rounded-xl font-extrabold bg-gradient-to-r from-amber-500 via-orange-500 to-emerald-500 hover:from-amber-600 hover:to-emerald-600 text-white shadow-xl shadow-amber-500/30 hover:shadow-amber-500/50 transition-all px-8 gap-2"
+              >
+                {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle2 className="h-5 w-5" />}
+                Créer le Profil Agent
+              </Button>
+            )}
           </div>
 
         </div>
-      </div>
+      </main>
+
     </div>
   );
 }
+

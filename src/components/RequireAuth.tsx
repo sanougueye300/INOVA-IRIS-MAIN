@@ -1,7 +1,8 @@
 import { useAuth } from "@/lib/auth-context";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
-import { Loader2, ShieldOff } from "lucide-react";
+import { ShieldOff } from "lucide-react";
+import { InovaLoader } from "@/components/InovaLoader";
 import { isPending2FA } from "@/lib/auth-security";
 
 /** Pages that a 'client' role is allowed to access inside the admin area */
@@ -36,11 +37,7 @@ export function RequireAuth({ children, requireAdmin }: { children: ReactNode; r
   }, [user, loading, navigate]);
 
   if (loading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-slate-950">
-        <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
-      </div>
-    );
+    return <InovaLoader message="Chargement de l'environnement SOC..." />;
   }
 
   if (!user) return null;

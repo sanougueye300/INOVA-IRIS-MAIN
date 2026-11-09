@@ -70,6 +70,7 @@ function ErrorComponent({ error, reset }: { error: any; reset: () => void }) {
 }
 
 import orangeLogo from "../assets/orange-logo.png";
+import { InovaLoader } from "@/components/InovaLoader";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
@@ -105,6 +106,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
   errorComponent: ErrorComponent,
+  pendingComponent: () => <InovaLoader message="Chargement d'INOVA-IRIS..." />,
 });
 
 function RootShell({ children }: { children: React.ReactNode }) {
