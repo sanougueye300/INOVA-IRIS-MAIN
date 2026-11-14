@@ -26,11 +26,11 @@ const OTP_META_KEY = "soc-2fa-otp-meta";
 
 /**
  * Statut d'activation du 2FA.
- * Mis en pause temporairement jusqu'à validation de la signature Orange SMS Pro sur le portail Orange.
- * Pour le réactiver : définir VITE_ENABLE_2FA="true" dans le fichier .env
+ * Activé par défaut pour la sécurité SOC Sonatel.
+ * Pour le désactiver temporairement : définir VITE_ENABLE_2FA="false" dans le fichier .env
  */
 export const IS_2FA_ENABLED: boolean =
-  typeof import.meta !== "undefined" && import.meta.env?.VITE_ENABLE_2FA === "true";
+  typeof import.meta === "undefined" || import.meta.env?.VITE_ENABLE_2FA !== "false";
 
 export type OtpMeta = {
   maskedPhone?: string;

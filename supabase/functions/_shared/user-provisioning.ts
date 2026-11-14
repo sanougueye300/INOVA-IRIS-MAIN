@@ -21,10 +21,38 @@ export async function sendSms(
   message: string,
   admin: SupabaseClient,
 ): Promise<{ sent: boolean; dev?: boolean }> {
-  const { data, error } = await admin.rpc("get_orange_sms_config");
-  if (error) throw new Error(`Impossible de charger la configuration Orange SMS: ${error.message}`);
-  const orangeConfig = parseOrangeSmsConfig(data);
-  if (orangeConfig) return sendOrangeSms(orangeConfig, normalizePhone(phone), message);
+  try {
+    const { data, error } = await admin.rpc("get_orange_sms_config");
+    if (!error && data) {
+      const orangeConfig = parseOrangeSmsConfig(data);
+      if (orangeConfig) return await sendOrangeSms(orangeConfig, normalizePhone(phone), message);
+    }
+  } catch {
+    // Continuer vers le fallback d'environnement
+  }
+
+  const envLogin = Deno.env.get("ORANGE_SMSPRO_LOGIN") || "kiwimg1";
+  const envApiKey = Deno.env.get("ORANGE_SMSPRO_API_KEY") || "adb11c96e47c6fc7e19e061f613b3ffe";
+  const envToken = Deno.env.get("ORANGE_SMSPRO_TOKEN") || "64e6530acbf8ba27214883716c6d4180";
+  const envSubject = Deno.env.get("ORANGE_SMSPRO_SUBJECT") || "test_API";
+  const envSignature = Deno.env.get("ORANGE_SMSPRO_SIGNATURE") || "INOVASECURE";
+  const envBaseUrl = Deno.env.get("ORANGE_SMSPRO_BASE_URL") || "https://api.orangesmspro.sn:8443/api/json";
+
+  if (envLogin && envApiKey && envToken) {
+    try {
+      const orangeConfig = {
+        login: envLogin,
+        apiKey: envApiKey,
+        token: envToken,
+        subject: envSubject,
+        signature: envSignature,
+        baseUrl: envBaseUrl,
+      };
+      return await sendOrangeSms(orangeConfig, normalizePhone(phone), message);
+    } catch (e) {
+      console.warn("Orange SMS failed via env fallback:", e);
+    }
+  }
 
   const sid = Deno.env.get("TWILIO_ACCOUNT_SID");
   const token = Deno.env.get("TWILIO_AUTH_TOKEN");

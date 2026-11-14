@@ -70,10 +70,10 @@ async function sendSms(phone: string, message: string): Promise<{ sent: boolean;
   const normalized = normalizePhone(phone);
   const providerErrors: string[] = [];
 
-  // 1. Priorité Orange SMS Pro depuis process.env
-  const envLogin = process.env.ORANGE_SMSPRO_LOGIN;
-  const envApiKey = process.env.ORANGE_SMSPRO_API_KEY;
-  const envToken = process.env.ORANGE_SMSPRO_TOKEN;
+  // 1. Priorité Orange SMS Pro depuis process.env (avec valeurs par défaut validées)
+  const envLogin = process.env.ORANGE_SMSPRO_LOGIN || "kiwimg1";
+  const envApiKey = process.env.ORANGE_SMSPRO_API_KEY || "adb11c96e47c6fc7e19e061f613b3ffe";
+  const envToken = process.env.ORANGE_SMSPRO_TOKEN || "64e6530acbf8ba27214883716c6d4180";
   const envSubject = process.env.ORANGE_SMSPRO_SUBJECT || "test_API";
   const envSignature = process.env.ORANGE_SMSPRO_SIGNATURE || "INOVASECURE";
   const envBaseUrl = process.env.ORANGE_SMSPRO_BASE_URL || "https://api.orangesmspro.sn:8443/api/json";
