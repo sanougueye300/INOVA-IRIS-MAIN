@@ -23,6 +23,11 @@ const PUBLIC_ACTIONS = new Set<AuthSecurityAction>([
 
 const PENDING_2FA_KEY = "soc-2fa-pending";
 const OTP_META_KEY = "soc-2fa-otp-meta";
+const VERIFIED_2FA_KEY = "soc-2fa-verified";
+
+export function is2FAVerified(): boolean {
+  return typeof window !== "undefined" && sessionStorage.getItem(VERIFIED_2FA_KEY) === "true";
+}
 
 /**
  * Statut d'activation du 2FA.
@@ -67,6 +72,7 @@ export function clear2FAState() {
   sessionStorage.removeItem(PENDING_2FA_KEY);
   sessionStorage.removeItem(OTP_META_KEY);
   sessionStorage.removeItem("soc-fallback-otp");
+  sessionStorage.removeItem(VERIFIED_2FA_KEY);
 }
 
 async function getAccessToken(): Promise<string | null> {
@@ -231,6 +237,9 @@ export async function verifyLogin2FA(params: {
 }
 
 export async function complete2FAAndRedirect(navigate: (opts: { to: string; replace?: boolean }) => void) {
-  clear2FAState();
+  sessionStorage.removeItem(PENDING_2FA_KEY);
+  sessionStorage.removeItem(OTP_META_KEY);
+  sessionStorage.removeItem("soc-fallback-otp");
+  sessionStorage.setItem(VERIFIED_2FA_KEY, "true");
   navigate({ to: "/dashboard", replace: true });
 }

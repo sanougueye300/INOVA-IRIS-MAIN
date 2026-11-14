@@ -1,11 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { Mail, Lock, Eye, EyeOff, MessageSquare, ShieldCheck } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { authenticateRegisteredClient } from "@/lib/registered-client-auth";
-import { clear2FAState, IS_2FA_ENABLED, sendLoginSmsOtp, setPending2FA } from "@/lib/auth-security";
+import { sendLoginSmsOtp, setPending2FA } from "@/lib/auth-security";
 
 export const Route = createFileRoute("/auth/login")({
   component: LoginPage,
@@ -40,16 +40,6 @@ function LoginPage() {
               fullName: regUser.fullName || "Abonné",
               companyName: regUser.companyName || "Client",
             });
-
-            if (!IS_2FA_ENABLED) {
-              clear2FAState();
-              setPending2FA(false);
-              toast.success("Connexion réussie", {
-                description: "Bienvenue sur le SOC INOVA-IRIS.",
-              });
-              navigate({ to: "/dashboard", replace: true });
-              return;
-            }
 
             let otp: Awaited<ReturnType<typeof sendLoginSmsOtp>>;
             try {
@@ -110,17 +100,6 @@ function LoginPage() {
 
       credentialsValidated = true;
 
-      // Si le 2FA est en pause (en attente de validation de la signature Orange SMS)
-      if (!IS_2FA_ENABLED) {
-        clear2FAState();
-        setPending2FA(false);
-        toast.success("Connexion réussie", {
-          description: "Bienvenue sur la console de cyberdéfense INOVA-IRIS SOC.",
-        });
-        navigate({ to: "/dashboard", replace: true });
-        return;
-      }
-
       let otp: Awaited<ReturnType<typeof sendLoginSmsOtp>>;
       try {
         otp = await sendLoginSmsOtp();
@@ -168,17 +147,10 @@ function LoginPage() {
   return (
     <div className="w-full space-y-4">
       <div className="space-y-1 text-center lg:text-left">
-        {IS_2FA_ENABLED ? (
-          <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-500/10 border border-orange-500/30 text-orange-600 dark:text-orange-400 text-[10px] font-semibold mb-1">
-            <MessageSquare className="h-3 w-3" />
-            <span>Double facteur par Orange SMS Pro</span>
-          </div>
-        ) : (
-          <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-[10px] font-semibold mb-1">
-            <ShieldCheck className="h-3 w-3" />
-            <span>2FA en pause temporaire (validation signature Orange en attente)</span>
-          </div>
-        )}
+        <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-orange-500/10 border border-orange-500/30 text-orange-600 dark:text-orange-400 text-[10px] font-semibold mb-1">
+          <MessageSquare className="h-3 w-3" />
+          <span>Double facteur SMS actif (Orange SMS Pro · INOVASECURE)</span>
+        </div>
         <h2 className="text-2xl font-bold tracking-tight">Connexion au SOC</h2>
         <p className="text-xs text-muted-foreground">
           Saisissez vos identifiants réseau pour accéder au SOC INOVA-IRIS.

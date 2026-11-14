@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { clear2FAState } from "./auth-security";
 
 export type AppRole = "admin" | "analyste" | "manager" | "client";
 
@@ -94,6 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = async () => { 
+    clear2FAState();
     localStorage.removeItem("inova_mock_user");
     await supabase.auth.signOut(); 
     setUser(null);
