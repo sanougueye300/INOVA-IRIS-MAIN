@@ -1,9 +1,9 @@
 import { useAuth } from "@/lib/auth-context";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { ShieldOff } from "lucide-react";
 import { InovaLoader } from "@/components/InovaLoader";
-import { isPending2FA, is2FAVerified, IS_2FA_ENABLED } from "@/lib/auth-security";
+import { isPending2FA, is2FAVerified } from "@/lib/auth-security";
 
 /** Pages that a 'client' role is allowed to access inside the admin area */
 const CLIENT_ALLOWED_PATHS = [
@@ -19,6 +19,8 @@ export function RequireAuth({ children, requireAdmin }: { children: ReactNode; r
   const { user, loading, isAdmin, roles } = useAuth();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  // Ref pour éviter les redirections multiples dans le même render cycle
+  const redirectingRef = useRef(false);
 
   const isClientOnly =
     roles.includes("client") &&
@@ -30,15 +32,21 @@ export function RequireAuth({ children, requireAdmin }: { children: ReactNode; r
   const clientAllowed = isClientOnly && CLIENT_ALLOWED_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
 
   useEffect(() => {
+    if (redirectingRef.current) return;
     if (!loading && !user) {
+      redirectingRef.current = true;
       navigate({ to: "/auth/login", replace: true });
     } else if (user && pathname !== "/auth/2fa") {
       if (isPending2FA()) {
+        redirectingRef.current = true;
         navigate({ to: "/auth/2fa", replace: true });
       } else if (!is2FAVerified()) {
+        redirectingRef.current = true;
         navigate({ to: "/auth/login", replace: true });
       }
     }
+    // Reset le flag de redirection quand l'état change
+    return () => { redirectingRef.current = false; };
   }, [user, loading, navigate, pathname]);
 
   if (loading) {

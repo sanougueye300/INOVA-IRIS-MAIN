@@ -233,10 +233,13 @@ export async function verifyLogin2FA(params: {
   } else {
     await invokeAuthSecurity("verify_backup_code", { code: params.code });
   }
-  clear2FAState();
+  // Ne pas appeler clear2FAState() ici : complete2FAAndRedirect gère la transition
+  // d'état de façon atomique (efface pending + marque verified) avant la navigation.
 }
 
 export async function complete2FAAndRedirect(navigate: (opts: { to: string; replace?: boolean }) => void) {
+  // Effacer l'état "en attente" et marquer la session comme vérifiée 2FA
+  // AVANT de naviguer, pour que RequireAuth voie is2FAVerified() === true
   sessionStorage.removeItem(PENDING_2FA_KEY);
   sessionStorage.removeItem(OTP_META_KEY);
   sessionStorage.removeItem("soc-fallback-otp");
